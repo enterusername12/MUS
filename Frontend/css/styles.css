@@ -37,9 +37,7 @@ body{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Arial; background
 .info-box{background:#f1f8ff;border:1px solid #dbeefd;padding:12px;border-radius:8px;margin-bottom:12px}
 .benefits{background:#fff;border:1px solid #f0f0f0;padding:12px;border-radius:8px;margin-top:12px}
 .benefits ul{margin:8px 0;padding-left:18px}
-.back{display: flex; flex-direction: row; justify-content: center; align-items: center; width: 136px; height: 56px; padding: 16px; gap: 16px; position: absolute; left: 80px; top: 80px; background: #E12744; border-radius: 8px; color: #fff; front-weight: 600; text-decoration: none; font-size: 16px; transition: all 0,2s ease;}
-.back:hover{background: #c01f37; transform: scale(1.03)}
-.back:active{background: #a11b31; transform: scale(0.98);}
+.back{display:inline-block;margin-bottom:12px;;text-decoration:none; background: #E12744; border-radius: 8px; color: #fff;font-weight: 500;font-size: 16px;transition: all 0.2s ease;left: 80px;top: 80px;width: 136px;height:54px;padding: 16px;gap: 16px;}
 .footer{position: fixed; bottom: 0px; left: 0; width: 100%; background-color: #252525; color: #fff; display: flex; align-items: center;justify-content: space-between; padding: 10px 30px; box-shadow: 0 -2px 5px rgba(0,0,0,0.3); z-index: 1000; }
 .footer-right{display: flex; align-items: center; gap: 15px; }
 .footer-right span{font-size: 12px; color: #a9a9a9;}
