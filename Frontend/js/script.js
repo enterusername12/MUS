@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', ()=>{
 
-// Handle tab switching between Sign In and Create Account
+// Handle tab switching between Sign In and Create Account (important)
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', (e) => {
     e.preventDefault();
@@ -15,6 +15,26 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 });
 
+const togglePassword = document.getElementById('togglePassword');
+const passwordInput = document.getElementById('password');
+const eyeIcon = document.getElementById('eyeIcon');
+const eyeSlashIcon = document.getElementById('eyeSlashIcon');
+
+togglePassword.addEventListener('click', () => {
+  const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+  passwordInput.setAttribute('type', type);
+
+  if (type === 'text') {
+    eyeSlashIcon.style.display = 'none';
+    eyeIcon.style.display = 'block';
+  } else {
+    eyeIcon.style.display = 'none';
+    eyeSlashIcon.style.display = 'block';
+  }
+});
+
+
+//dummy
 // Sign in button - basic validation
 const signInBtn = document.getElementById('signInBtn')
 if(signInBtn){

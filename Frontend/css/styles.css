@@ -25,7 +25,10 @@ body{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Arial; background
 .input{width:100%;padding:12px;border-radius:8px;border:1px solid #ececec;background:#f7f7f7}
 .row.two{display:flex;gap:12px}
 .row.two .label{flex:1}
-.password-row{display:flex;gap:8px}
+.password-row {display: flex;align-items: center;gap: 8px;position: relative;}
+.toggle-password {background: none;border: none;cursor: pointer;color: #666;padding: 4px;display: flex;align-items: center;justify-content: center;}
+.toggle-password:hover {color: var(--primary, #e00);}
+.toggle-password svg {pointer-events: none;}
 .icon-btn{border:0;background:transparent;cursor:pointer;padding:6px}
 .primary-btn{display:block;width:100%;padding:12px;border-radius:8px;border:0;background:var(--accent);color:#fff;font-weight:600;margin-top:12px}
 .ghost-btn{display:block;width:100%;padding:10px;border-radius:8px;border:1px solid #e6e6e6;background:#fff;margin-top:8px}
@@ -36,6 +39,11 @@ body{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Arial; background
 .benefits{background:#fff;border:1px solid #f0f0f0;padding:12px;border-radius:8px;margin-top:12px}
 .benefits ul{margin:8px 0;padding-left:18px}
 .back{display:inline-block;margin-bottom:12px;color:var(--muted);text-decoration:none}
+.footer{position: fixed; bottom: 0px; left: 0; width: 100%; background-color: #252525; color: #fff; display: flex; align-items: center;justify-content: space-between; padding: 10px 30px; box-shadow: 0 -2px 5px rgba(0,0,0,0.3); z-index: 1000; }
+.footer-right{display: flex; align-items: center; gap: 15px; }
+.footer-right span{font-size: 12px; color: #a9a9a9;}
+.crest{height:40px; width: 37px; left: 20px; top:20px;filter: brightness(0) invert(1);}
+.crest-area{text-align: left;margin-left: auto;}
 
 
 @media (max-width:600px){
