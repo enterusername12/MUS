@@ -1,0 +1,73 @@
+<!doctype html>
+<main class="page center">
+<div class="card wide">
+<header class="logo-area">
+<img src="assets/mulogo.png" alt="Murdoch University" class="logo">
+<p class="subtitle">Murdoch University Student Portal</p>
+<link rel="stylesheet" href="css/styles.css">
+</header>
+
+
+<nav class="toggle">
+<button class="tab" data-target="signin">Sign In</button>
+<button class="tab active" data-target="create">Create Account</button>
+</nav>
+
+
+<section class="form-area create">
+<label class="label">I am a
+<select id="createRole" class="input">
+<option>Student</option>
+<option>Guest / Visitor</option>
+</select>
+</label>
+
+
+<div class="row two">
+<label class="label">First Name
+<input id="firstName" type="text" placeholder="John" class="input">
+</label>
+<label class="label">Last Name
+<input id="lastName" type="text" placeholder="Doe" class="input">
+</label>
+</div>
+
+
+<label class="label">Email Address
+<input id="createEmail" type="email" placeholder="your.email@murdoch.edu.au" class="input">
+</label>
+
+
+<label class="label">Student ID
+<input id="studentId" type="text" placeholder="12345678" class="input">
+</label>
+
+
+<label class="label">Phone (Optional)
+<input id="phone" type="tel" placeholder="+61 xxx xxx xxx" class="input">
+</label>
+
+
+<label class="label">Password
+<input id="createPassword" type="password" placeholder="Min 8 characters" class="input">
+</label>
+
+
+<label class="label">Confirm Password
+<input id="confirmPassword" type="password" placeholder="Re-enter password" class="input">
+</label>
+
+
+<p class="small">By creating an account, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</p>
+
+
+<button id="createAccountBtn" class="primary-btn">Create Account</button>
+
+
+<p class="help">Need help? <a href="#" id="contactSupport2">Contact Support</a></p>
+</section>
+</div>
+</main>
+<script src="js/script.js"></script>
+</body>
+</html>

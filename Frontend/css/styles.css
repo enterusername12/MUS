@@ -1,0 +1,44 @@
+
+:root{
+--bg:#f7eef2; /* pale pink */
+--card:#fff;
+--muted:#9b9b9b;
+--accent:#8b2140; /* maroon */
+--pill:#f0f0f0;
+}
+
+
+*{box-sizing:border-box}
+body{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Arial; background:var(--bg); margin:0; color:#222}
+.page{min-height:100vh; padding:40px 16px}
+.center{display:flex;align-items:center;justify-content:center}
+.card{width:360px;background:var(--card);border-radius:12px;padding:22px;box-shadow:0 8px 18px rgba(0,0,0,0.08)}
+.card.wide{width:520px}
+.logo-area{text-align:center;margin-bottom:12px}
+.logo{height:56px}
+.subtitle{color:var(--muted);font-size:14px;margin:6px 0}
+.toggle{display:flex;gap:8px;background:#f3f3f3;padding:6px;border-radius:999px;margin-bottom:14px}
+.tab{flex:1;border:0;background:transparent;padding:8px;border-radius:999px;cursor:pointer}
+.tab.active{background:linear-gradient(180deg,var(--pill),#fff);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.04)}
+.form-area{display:block}
+.label{display:block;font-size:13px;color:#555;margin:10px 0}
+.input{width:100%;padding:12px;border-radius:8px;border:1px solid #ececec;background:#f7f7f7}
+.row.two{display:flex;gap:12px}
+.row.two .label{flex:1}
+.password-row{display:flex;gap:8px}
+.icon-btn{border:0;background:transparent;cursor:pointer;padding:6px}
+.primary-btn{display:block;width:100%;padding:12px;border-radius:8px;border:0;background:var(--accent);color:#fff;font-weight:600;margin-top:12px}
+.ghost-btn{display:block;width:100%;padding:10px;border-radius:8px;border:1px solid #e6e6e6;background:#fff;margin-top:8px}
+.help{text-align:center;color:var(--muted);font-size:13px;margin-top:12px}
+.help a{color:var(--accent);text-decoration:underline}
+.small{font-size:12px;color:var(--muted)}
+.info-box{background:#f1f8ff;border:1px solid #dbeefd;padding:12px;border-radius:8px;margin-bottom:12px}
+.benefits{background:#fff;border:1px solid #f0f0f0;padding:12px;border-radius:8px;margin-top:12px}
+.benefits ul{margin:8px 0;padding-left:18px}
+.back{display:inline-block;margin-bottom:12px;color:var(--muted);text-decoration:none}
+
+
+@media (max-width:600px){
+.card{width:92%}
+.card.wide{width:92%}
+}
