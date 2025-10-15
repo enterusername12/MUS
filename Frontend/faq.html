@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help & FAQs</title>
+    <link rel="stylesheet" href="css/faq.css">
+</head>
+<body>
+    <div class="header">
+        <button class="back-button" onclick="window.history.back()">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Back
+        </button>
+        <div class="page-title">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
+                <text x="12" y="17" text-anchor="middle" font-size="14" font-weight="bold" fill="currentColor">?</text>
+            </svg>
+            <h1>Help & FAQs</h1>
+        </div>
+        <p class="subtitle">Find answers to common questions and learn how to use the platform</p>
+    </div>
+
+    <div class="container">
+      <div class="search-box">
+          <input 
+              type="text" 
+              id="searchInput" 
+              placeholder="Search help topics..."
+              oninput="showSuggestions(this.value)"
+              onfocus="toggleSuggestions(true)"
+              onblur="hideSuggestionsDelayed()"
+          >
+          <ul id="suggestions" class="hidden"></ul>
+      </div>
+
+
+        <div class="quick-links">
+            <div class="quick-link-card">
+                <div class="quick-link-icon icon-blue">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="#4a90e2" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" stroke="#4a90e2" stroke-width="2"/>
+                    </svg>
+                </div>
+                <div class="quick-link-content">
+                    <h3>Getting Started</h3>
+                    <p>Basic tutorials</p>
+                </div>
+            </div>
+
+            <div class="quick-link-card">
+                <div class="quick-link-icon icon-purple">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" stroke="#9333ea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="quick-link-content">
+                    <h3>Common Questions</h3>
+                    <p>Popular topics</p>
+                </div>
+            </div>
+
+            <div class="quick-link-card">
+                <div class="quick-link-icon icon-green">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="5" width="18" height="14" rx="2" stroke="#16a34a" stroke-width="2"/>
+                        <path d="M3 9h18M7 1v4M17 1v4" stroke="#16a34a" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="quick-link-content">
+                    <h3>Contact Support</h3>
+                    <p>Need more help?</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- FAQ Sections -->
+        <div class="section">
+            <h2 class="section-title">Posts & Community</h2>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">How do I share a post?<span class="chevron">▼</span></div>
+                <div class="faq-answer"><p>To share a post, click on the share icon below any post. You can then choose to share it within the platform or copy the link to share externally.</p></div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">How do I view the full details of a post?<span class="chevron">▼</span></div>
+                <div class="faq-answer"><p>Click on any post to view its full details, including all comments, attachments, and additional information.</p></div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">How do I like or comment on a post?<span class="chevron">▼</span></div>
+                <div class="faq-answer"><p>Click the heart icon to like a post. To comment, click on the comment icon or the post itself, then type your comment in the text box.</p></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Polls & Voting</h2>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">How do I participate in polls?<span class="chevron">▼</span></div>
+                <div class="faq-answer"><p>When you see a poll, simply click on your preferred option to cast your vote. Results are typically visible after voting.</p></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Calendar & Events</h2>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">How do I check upcoming events?<span class="chevron">▼</span></div>
+                <div class="faq-answer"><p>Navigate to the Calendar section to view all upcoming events. You can filter by date, category, or event type.</p></div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">What do the different colored dots mean on the calendar?<span class="chevron">▼</span></div>
+                <div class="faq-answer"><p>Colored dots indicate different event categories. Check the calendar legend for specific color meanings for your institution.</p></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Feedback</h2>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">How do I submit feedback?<span class="chevron">▼</span></div>
+                <div class="faq-answer"><p>You can submit feedback through the "Submit Feedback" button or by contacting support directly with your suggestions.</p></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Rewards & Points</h2>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">How do I earn reward points?<span class="chevron">▼</span></div>
+                <div class="faq-answer"><p>Earn reward points by actively participating in the community, attending events, completing challenges, and engaging with content.</p></div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">How do I redeem my reward points?<span class="chevron">▼</span></div>
+                <div class="faq-answer"><p>Visit the Rewards section to view available rewards and redeem your points for merchandise, discounts, or special privileges.</p></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Account</h2>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">How do I edit my profile?<span class="chevron">▼</span></div>
+                <div class="faq-answer"><p>Go to your account settings and click on "Edit Profile" to update your information, photo, and preferences.</p></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Merchandise</h2>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">How do I browse and purchase merchandise?<span class="chevron">▼</span></div>
+                <div class="faq-answer"><p>Visit the Merchandise section to browse available items. Add items to your cart and proceed to checkout to complete your purchase.</p></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Campus News</h2>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">How do I stay updated with campus news?<span class="chevron">▼</span></div>
+                <div class="faq-answer"><p>Check the Campus News section regularly for the latest updates, announcements, and stories from your campus community.</p></div>
+            </div>
+        </div>
+
+        <div class="help-box">
+            <div class="help-box-content">
+                <div class="help-icon">?</div>
+                <div class="help-text">
+                    <h3>Still need help?</h3>
+                    <p>If you can't find the answer you're looking for, our support team is here to help.</p>
+                    <div class="button-group">
+                        <button class="btn btn-primary">Contact Support</button>
+                        <button class="btn btn-secondary">Submit Feedback</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="help-button">?</button>
+
+    <footer class="footer">
+    <div class="footer-right">
+        <img src="assets/crest.png" alt="Murdoch Crest" class="crest">
+    <span>
+        @ 2025 MUSEngage | Developed by Team 2 | Programming / Security Team Chun Meng , Claire, Dominic | AI : Tuan AN | Project Manager : Rafael , Wee Shen
+    </span> 
+    </div>   
+</footer>
+
+    <script src="js/faq.js"></script>
+</body>
+</html>
