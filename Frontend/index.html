@@ -14,7 +14,6 @@
 <p class="subtitle">Murdoch University Student Portal</p>
 </header>
 
-
 <nav class="toggle">
 <button class="tab active" data-target="signin">Sign In</button>
 <button class="tab" data-target="create">Create Account</button>
@@ -67,6 +66,41 @@
 
 </div>
 
+
+<!-- Consent Banner -->
+<div id="consent-banner" class="consent-banner">
+  <p>
+    We use cookies and similar technologies to improve your experience, process online payments,
+    and personalise content using AI-driven recommendations. We may collect your email, purchase data,
+    and interaction behaviour to enhance our services. See our
+    <a href="#">Privacy Policy</a> for details.
+  </p>
+  <div class="button-group">
+    <button id="accept-all" class="btn-primary">Accept All</button>
+    <button id="manage-preferences" class="btn-text">Manage Preferences</button>
+  </div>
+</div>
+
+<!-- Manage Preferences Modal -->
+<div id="preferences-modal" class="modal-overlay">
+  <div class="modal">
+    <h3>Manage Your Privacy Preferences</h3>
+    <p>Select which types of data processing you consent to:</p>
+    <form id="preferences-form">
+      <label><input type="checkbox" name="essential" checked disabled> Essential cookies (required)</label>
+      <label><input type="checkbox" name="analytics" checked> Analytics & performance cookies</label>
+      <label><input type="checkbox" name="email" checked> Email collection for marketing / newsletters</label>
+      <label><input type="checkbox" name="payment" checked> Payment data processing (via secure third-party provider)</label>
+      <label><input type="checkbox" name="ai" checked> AI-based behavioural tracking & personalised recommendations</label>
+    </form>
+    <div class="modal-buttons">
+      <button id="cancel-modal" class="btn-secondary">Cancel</button>
+      <button id="save-preferences" class="btn-primary">Save Preferences</button>
+    </div>
+  </div>
+</div>
+
+
 <footer class="footer">
     <div class="footer-right">
         <img src="assets/crest.png" alt="Murdoch Crest" class="crest">
@@ -81,5 +115,6 @@
 
 
 <script src="js/script.js"></script>
+
 </body>
 </html>
