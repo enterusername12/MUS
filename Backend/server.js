@@ -32,7 +32,7 @@ const resolveSslConfig = () => {
     if (mode === 'verify-full') {
       return { rejectUnauthorized: true };
     }
-//.
+//
     // Treat allow/prefer/require/no-verify the same: enable SSL but don't
     // require a CA bundle (common for managed Postgres providers).
     return { rejectUnauthorized: false };
