@@ -186,6 +186,27 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Please enter your email.');
         return;
       }
+      const normalizedEmail = email.toLowerCase();
+      if (role === 'Student') {
+        if (normalizedEmail.endsWith('@gmail.com')) {
+          alert(
+            'Student accounts cannot be created with Gmail addresses. Please use your Murdoch University student email (e.g., name@murdoch.edu.au).'
+          );
+          return;
+        }
+
+        const emailDomain = normalizedEmail.split('@')[1] || '';
+        const isMurdochDomain =
+          emailDomain === 'murdoch.edu.au' || emailDomain.endsWith('.murdoch.edu.au');
+
+        if (!isMurdochDomain) {
+          alert(
+            'Please use your Murdoch University student email address (e.g., name@murdoch.edu.au) to create a student account.'
+          );
+          return;
+        }
+      }
+
       if (!password || password.length < 8) {
         alert('Password must be at least 8 characters.');
         return;
