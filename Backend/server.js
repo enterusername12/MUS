@@ -299,6 +299,14 @@ const toNullable = (value) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
+const STUDENT_ROLE = 'student';
+const STUDENT_EMAIL_DOMAIN = 'murdoch.edu.au';
+const STUDENT_EMAIL_ERROR_MESSAGE =
+  'Students must use their Murdoch University email address (e.g. your.name@murdoch.edu.au). Gmail addresses are not accepted.';
+
+const isAllowedMurdochEmailDomain = (domain) =>
+  domain === STUDENT_EMAIL_DOMAIN || domain.endsWith(`.${STUDENT_EMAIL_DOMAIN}`);
+
 const respondWithError = (res, statusCode, message) => {
   res.status(statusCode).json({ success: false, message });
 };
@@ -324,6 +332,9 @@ app.post('/api/auth/register', async (req, res) => {
     return respondWithError(res, 400, 'Please select a valid role.');
   }
 
+  const trimmedRole = trimOrEmpty(role);
+  const normalizedRole = trimmedRole.toLowerCase();
+
   if (!email || typeof email !== 'string') {
     return respondWithError(res, 400, 'Email is required.');
   }
@@ -332,6 +343,18 @@ app.post('/api/auth/register', async (req, res) => {
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailPattern.test(normalizedEmail)) {
     return respondWithError(res, 400, 'Please enter a valid email address.');
+  }
+
+  if (normalizedRole === STUDENT_ROLE) {
+    const emailDomain = normalizedEmail.split('@')[1] || '';
+
+    if (emailDomain.endsWith('gmail.com')) {
+      return respondWithError(res, 400, STUDENT_EMAIL_ERROR_MESSAGE);
+    }
+
+    if (!isAllowedMurdochEmailDomain(emailDomain)) {
+      return respondWithError(res, 400, STUDENT_EMAIL_ERROR_MESSAGE);
+    }
   }
 
   if (!password || typeof password !== 'string' || password.length < 8) {
@@ -354,7 +377,7 @@ app.post('/api/auth/register', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, role, first_name, last_name, email, student_id, phone`,
       [
-        trimOrEmpty(role),
+        trimmedRole,
         toNullable(firstName),
         toNullable(lastName),
         normalizedEmail,
@@ -508,10 +531,10 @@ app.post('/api/auth/verify-otp', async (req, res) => {
       [normalizedEmail]
     );
 
-    if (!user) {
-      otpStore.delete(normalizedEmail);
-      return respondWithError(res, 404, 'No account was found for this email.');
-    }
+  if (!user) {
+    otpStore.delete(normalizedEmail);
+    return respondWithError(res, 404, 'No account was found for this email. Please register first.');
+  }
 
     otpStore.delete(normalizedEmail);
 
