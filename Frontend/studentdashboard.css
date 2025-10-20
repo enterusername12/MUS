@@ -1,0 +1,245 @@
+/* Reset Body Styles */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Navigation Banner */
+.nav {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0px;
+    position: relative;
+    width: 100%;
+    height: 80px;
+    left: 0px;
+    top: 0px;
+    background: linear-gradient(90deg, #65135D 0%, #A12262 25%, #E12744 50%, #B72A70 75%, #C74287 100%);
+}
+
+.nav-menu {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 1rem 2rem;
+    box-sizing: border-box;
+}
+
+.logo {
+    height: 40px;
+    width: auto;
+    filter: brightness(0) invert(1)
+}
+
+/* Links Container - Push to Right */
+.nav-menu a {
+    color: white;
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: 400;
+    transition: opacity 0.3s ease;
+    position: relative;
+    padding-bottom: 0.25rem;
+    margin-left: 2rem;
+}
+
+.nav-menu a:hover {
+    opacity: 0.8;
+}
+
+.nav-menu a:first-of-type {
+    border-bottom: 2px solid white;
+    margin-left: auto;
+}
+
+.nav-menu a img {
+    width: 24px;
+    height: 24px;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.nav-menu a img:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+
+.main-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 20px;
+    margin-left: 30px; /* move the container to the right */
+    position: relative;
+}
+
+
+.hat-img {
+    width: 50px;             /* adjust size as needed */
+    height: 50px;
+}
+
+.dashboard-line {
+    border: none;
+    height: 3px;
+    background-image: linear-gradient(90deg, #65135D 0%, #A12262 25%, #E12744 50%, #B72A70 75%, #C74287 100%);
+    width: 90%;       /* line length */
+    border-radius: 2px; /* optional, smooth edges */
+}
+
+
+.main-header h2 {
+    position: absolute;
+    left: 5x;  /* distance from left / QR icon */
+    top: 50px;   /* below the H1 text */
+    color: rgb(106, 105, 105);
+}
+
+  .button-flex button {
+    background: #ffffff;
+    border: 2px solid #8b4454;
+    padding: 12px 16px;
+    border-radius: 50%;
+    cursor: pointer;
+    margin-left: 8px;
+    transition: 0.2s;
+    color: #8b4454;
+  }
+
+  .button-flex button:hover {
+    background: #f5f5f5;
+    border-color: #6d3542;
+  }
+  .button-flex {
+    margin-left: auto;
+    margin-right: 30px; /* push the buttons to the far right */
+    display: flex;
+    gap: 8px;          /* space between buttons */
+}
+
+
+  /* Indicator dots */
+  .indicator-dots {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+    gap: 5px;
+  }
+
+  .indicator-dots div {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: gray;
+  }
+
+  .indicator-dots .active {
+    background-color: #8b4454;
+  }
+
+.header-flex {
+    display: flex;                 /* make the container a flex row */
+    justify-content: space-between; /* push children to the edges */
+    align-items: center;           /* vertically center the items */
+    margin-left: 30px; /* move the container to the right */
+}
+
+ .line
+{
+    border: none;
+    height: 3px;
+    background-color: grey;
+    width: 90%;       /* line length */
+    border-radius: 2px; /* optional, smooth edges */
+
+}
+.post {
+            background: #E12744;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+            text-decoration: none; /* remove underline */
+            margin-right: 30px; /* push the buttons to the far right */
+        }
+
+.post:hover {
+        background: #6d3542;
+        }
+
+/* ========== New Additions for Next/Previous + Cards ========== */
+
+/* Campus Events Section */
+.events-container, .post-container {
+  display: flex;
+  overflow: hidden;
+  scroll-behavior: smooth;
+  width: 90%;
+  margin: 20px auto;
+  gap: 20px;
+}
+
+.event-card, .post-card {
+  flex: 0 0 100%;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  padding: 20px;
+  transition: transform 0.3s ease;
+}
+
+.event-card:hover, .post-card:hover {
+  transform: translateY(-3px);
+}
+
+/* Navigation Controls */
+.nav-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.nav-btn {
+  background: #8b4454;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.nav-btn:hover {
+  background: #6d3542;
+}
+
+/* Active dots */
+.dot {
+  width: 10px;
+  height: 10px;
+  background: #ccc;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+.dot.active {
+  background: #8b4454;
+  width: 25px;
+  border-radius: 8px;
+}
+
+  /*after Backend Add event-container styles */

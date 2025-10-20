@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Student Dashboard — Murdoch</title>
+  <link rel="stylesheet" href="studentdashboard.css">
+</head>
+
+<body>
+  <!-- ✅ Navigation -->
+  <nav class="nav">
+    <div class="nav-menu">
+      <img src="assets/logo.png" alt="Murdoch University" class="logo">
+      <a href="studentdashboard.html">Dashboard</a>
+      <a href="#">Merchandise</a>
+      <a href="#">Community</a>
+      <a href="qr.html"><img src="assets/QR.png" alt="QR Code"></a>
+    </div>
+  </nav>
+
+  <!-- ✅ Header -->
+  <div class="main-header">
+    <img src="assets/dashboardhat.png" alt="Hat" class="hat-img">
+    <h1>Dashboard</h1>
+    <h2>Welcome back, <span id="studentName">Student</span></h2>
+  </div>
+
+  <hr class="dashboard-line">
+
+  <!-- ✅ Campus News & Events -->
+  <section class="dashboard-section">
+    <div class="header-flex">
+      <h2>Campus News & Events</h2>
+      <div class="button-flex">
+        <button class="nav-btn" id="prevNewsBtn">&#10094; Prev</button>
+        <button class="nav-btn" id="nextNewsBtn">Next &#10095;</button>
+      </div>
+    </div>
+
+    <div class="events-container" id="eventsContainer">
+      <!-- Dynamic event cards -->
+    </div>
+
+    <div class="indicator-dots" id="newsDots"></div>
+  </section>
+
+  <hr class="line">
+
+  <!-- ✅ Community Highlights -->
+  <section class="dashboard-section">
+    <div class="header-flex">
+      <h2>Community Highlights</h2>
+      <a href="#" class="post" id="createPost">+ Create Post</a>
+    </div>
+
+    <div class="post-container" id="postContainer">
+      <!-- Dynamic posts from backend -->
+    </div>
+
+    <div class="nav-controls">
+      <button class="nav-btn" id="prevPostBtn">&#10094; Prev</button>
+      <div class="indicator-dots" id="postDots"></div>
+      <button class="nav-btn" id="nextPostBtn">Next &#10095;</button>
+    </div>
+  </section>
+
+  
+    <hr class="line">
+
+    <section class="dashboard-section">
+      <div class="header-flex">
+        <h2>Active Poll</h2>
+        <a href="#" class="post" id="redeemRewards">Vote Now</a>
+      </div>
+
+
+    </section>
+
+
+  <script src="studentdashboard.js"></script>
+</body>
+</html>
