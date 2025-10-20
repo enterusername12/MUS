@@ -12,7 +12,7 @@ document.querySelectorAll('.toggle-password').forEach(btn => {
     }
   });
 });
-
+//
 const requestOtpBtn = document.getElementById('requestOtp');
 const otpInput = document.getElementById('otpInput');
 const otpStatus = document.getElementById('otpStatus');

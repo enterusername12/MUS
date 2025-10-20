@@ -10,7 +10,7 @@ function toggleFaq(element) {
         faqItem.classList.add('active');
     }
 }
-
+//
 // --- Recommended Search Suggestions ---
 const recommendations = [
   "Posts & Community",

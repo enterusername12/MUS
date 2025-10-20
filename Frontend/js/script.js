@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
-
+//
   // Password visibility toggle on the sign-in page
   const togglePassword = document.getElementById('togglePassword');
   const passwordInput = document.getElementById('password');
