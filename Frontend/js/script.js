@@ -1,6 +1,18 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const API_BASE_URL = (window.MUS_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '');
+  // Automatically switch between local and deployed backend
+  const isLocal =
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1';
+
+  const API_BASE_URL = isLocal
+    ? 'http://localhost:3000/api'                // local backend
+    : 'https://mus-g0um.onrender.com/api';       // Render backend
+
   let pendingOtpEmail = sessionStorage.getItem('pendingOtpEmail');
+
+  // ... (rest of your script below)
+
+
 
   // Handle tab switching between Sign In and Create Account
   document.querySelectorAll('.tab').forEach((tab) => {
