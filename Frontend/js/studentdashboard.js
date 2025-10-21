@@ -125,11 +125,6 @@ setupNavigation(
   postDots
 );
 
-// --- Optional: Create Post Button ---
-document.getElementById("createPost").addEventListener("click", (e) => {
-  e.preventDefault();
-  alert("Create post functionality to be implemented.");
-});
 
 // --- Initialize Active Polls ---
 const pollContainer = document.getElementById("pollContainer");
@@ -302,4 +297,87 @@ function loadRewardPoints(data) {
 document.addEventListener('DOMContentLoaded', () => {
   loadStudentSpotlight(spotlightData);
   loadRewardPoints(rewardData);
+});
+
+
+// actual working button
+// ✅ MODAL OPEN/CLOSE HANDLING
+// Make sure the script runs after page is ready
+document.addEventListener('DOMContentLoaded', function() {
+
+  // === MODAL OPEN/CLOSE ===
+  const shareModal = document.getElementById('sharePostModal');
+  const openShareModalBtn = document.getElementById('createPost');
+  const closeShareModalBtn = document.getElementById('closeShareModal');
+  const cancelPostBtn = document.getElementById('cancelPostBtn');
+
+  // Open modal when "+ Create Post" is clicked
+  openShareModalBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    console.log("✅ Create Post clicked");
+    shareModal.classList.remove('hidden');
+  });
+
+  // Close modal (x)
+  closeShareModalBtn.addEventListener('click', () => {
+    console.log("❌ Close clicked");
+    shareModal.classList.add('hidden');
+  });
+
+  // Close modal (Cancel button)
+  cancelPostBtn.addEventListener('click', () => {
+    console.log("❌ Cancel clicked");
+    shareModal.classList.add('hidden');
+  });
+
+  // Close when clicking outside the modal content
+  window.addEventListener('click', (e) => {
+    if (e.target === shareModal) {
+      shareModal.classList.add('hidden');
+    }
+  });
+
+
+  // === SHARE POST FORM ===
+  const form = document.getElementById('sharePostForm');
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    console.log("🚀 Share Post clicked");
+
+    const title = document.getElementById('postTitle').value.trim();
+    const category = document.getElementById('postCategory').value;
+    const tags = document.getElementById('postTags').value.trim();
+    const description = document.getElementById('postDescription').value.trim();
+    const photo = document.getElementById('postPhoto').files[0];
+
+    if (!title || !description) {
+      alert("Please fill out the required fields.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('category', category);
+    formData.append('tags', tags);
+    formData.append('description', description);
+    if (photo) formData.append('photo', photo);
+
+    try {
+      const response = await fetch('https://your-backend-url.com/api/posts', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) throw new Error('Failed to share post');
+
+      alert('✅ Post shared successfully!');
+      shareModal.classList.add('hidden');
+      form.reset();
+
+    } catch (error) {
+      console.error('❌ Error sharing post:', error);
+      alert('❌ Error: ' + error.message);
+    }
+  });
 });

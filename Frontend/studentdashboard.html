@@ -65,6 +65,39 @@
     </div>
   </section>
 
+  <!-- ✅ Share Post Modal -->
+<div id="sharePostModal" class="modal hidden">
+  <div class="modal-content">
+    <span class="close-btn" id="closeShareModal">&times;</span>
+    <h2>Share Post</h2>
+
+    <form id="sharePostForm">
+      <label>Post Title *</label>
+      <input type="text" id="postTitle" placeholder="Enter post title" required>
+
+      <label>Category *</label>
+      <select id="postCategory">
+        <option value="General">General</option>
+        <option value="Academic">Academic</option>
+        <option value="Event">Event</option>
+      </select>
+
+      <label>Tags (optional)</label>
+      <input type="text" id="postTags" placeholder="Type a tag and press Enter">
+
+      <label>Description *</label>
+      <textarea id="postDescription" placeholder="Describe your post..." required></textarea>
+
+      <label>Attach Photo (optional)</label>
+      <input type="file" id="postPhoto" accept="image/png, image/jpeg, image/gif">
+
+      <div class="modal-buttons">
+        <button type="button" id="cancelPostBtn">Cancel</button>
+        <button type="submit" id="sharePostBtn">Share Post</button>
+      </div>
+    </form>
+  </div>
+</div>
   
 <hr class="line">
 

@@ -693,3 +693,69 @@ main {
 .footer-right{display: flex; align-items: center; gap: 15px; }
 .crest{height:40px; width: 37px; left: 20px; top:20px;filter: brightness(0) invert(1);}
 .crest-area{text-align: left;margin-left: auto;}
+
+
+/* button fucniton for all posting sections */
+/* ✅ Modal overlay */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Hide by default */
+.hidden {
+  display: none;
+}
+
+/* ✅ Modal box */
+.modal-content {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 15px;
+  width: 500px;
+  max-width: 90%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+/* ✅ Close button */
+.close-btn {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  font-size: 22px;
+  cursor: pointer;
+  color: #555;
+}
+
+/* ✅ Buttons */
+.modal-buttons {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal-buttons button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+#cancelPostBtn {
+  background-color: #ccc;
+}
+
+#sharePostBtn {
+  background-color: #a83279;
+  color: white;
+}
