@@ -564,84 +564,93 @@ body {
   opacity: 0.9;
 }
 
-/* Floating FAQ Button + Label Container */
-.faq-container {
-  position: fixed;
-  bottom: 25px;
-  right: 25px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  z-index: 1000;
-}
+    /* Floating button container */
+    .faq-container {
+        position: fixed;
+        bottom: 25px;
+        right: 25px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        z-index: 1000;
+    }
 
-/* Floating FAQ Button + Label Container */
-.faq-container {
-  position: fixed;
-  bottom: 25px;
-  right: 25px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  z-index: 1000;
-}
+    /* FAQ button */
+    .faq-button {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background-color: #8B3A62; /* button color */
+        border: none;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        transition: all 0.3s ease;
+        position: relative;
+    }
 
-/* Round FAQ Button */
-.faq-button {
-  width: 70px;
-  height: 70px;
-  background-color: #8b2c5d; /* matches your screenshot */
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.25);
-  transition: transform 0.2s ease;
-}
+    .faq-button:hover {
+        transform: scale(1.1);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+        background-color: #9D4270; /* hover color */
+    }
 
-.faq-button img {
-  width: 35px;
-  height: 35px;
-  filter: invert(1);
-}
+    .faq-button:active {
+        transform: scale(0.95);
+    }
 
-.faq-button:hover {
-  transform: scale(1.1);
-}
+    /* Question mark inside button */
+    .faq-button .question-mark {
+        color: white;
+        font-size: 24px;
+        font-weight: bold;
+        user-select: none;
+    }
 
-/* Hidden Label (appears to the LEFT of the button) */
-.faq-label {
-  background-color: #0f0f1a;
-  color: #fff;
-  font-size: 14px;
-  padding: 10px 14px;
-  border-radius: 8px;
-  opacity: 0;
-  transform: translateX(20px);
-  pointer-events: none;
-  transition: opacity 0.25s ease, transform 0.25s ease;
-  position: relative;
-  white-space: nowrap;
-}
+    /* Label appearing on hover */
+    .faq-label {
+        background-color: #0f0f1a;
+        color: #fff;
+        font-size: 14px;
+        padding: 10px 16px;
+        border-radius: 10px;
+        opacity: 0;
+        transform: translateX(20px);
+        pointer-events: none;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+        white-space: nowrap;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        position: relative;
+    }
 
-/* Arrow (pointing toward button) */
-.faq-label::after {
-  content: '';
-  position: absolute;
-  right: -6px;
-  top: 50%;
-  transform: translateY(-50%) rotate(45deg);
-  width: 10px;
-  height: 10px;
-  background-color: #0f0f1a;
-}
+    .faq-label::after {
+        content: '';
+        position: absolute;
+        right: -6px;
+        top: 50%;
+        transform: translateY(-50%) rotate(45deg);
+        width: 10px;
+        height: 10px;
+        background-color: #0f0f1a;
+    }
 
-/* Show label on hover near button */
-.faq-container:hover .faq-label {
-  opacity: 1;
-  transform: translateX(0);
-}
+    /* Show label when hovering over container */
+    .faq-container:hover .faq-label {
+        opacity: 1;
+        transform: translateX(0);
+    }
 
+       .faq-section {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        position: relative;
+    }
+    
 .bigthropy
 {
   width: 130px;
