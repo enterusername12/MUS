@@ -5,12 +5,13 @@ const ipCooldown = new Map();
 
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-const createOtpRecord = (email, now = Date.now()) => {
+const createOtpRecord = (email, { payload = null, now = Date.now() } = {}) => {
   const code = generateOtp();
   const record = {
     code,
     expires: now + OTP_EXPIRY_MS,
-    lastRequest: now
+    lastRequest: now,
+    payload
   };
   otpStore.set(email, record);
   return record;
@@ -19,6 +20,15 @@ const createOtpRecord = (email, now = Date.now()) => {
 const getOtpRecord = (email) => otpStore.get(email) || null;
 
 const deleteOtpRecord = (email) => otpStore.delete(email);
+
+const consumeOtpPayload = (email) => {
+  const record = otpStore.get(email);
+  if (!record) {
+    return null;
+  }
+  otpStore.delete(email);
+  return record.payload ?? null;
+};
 
 const isEmailOnCooldown = (email, now = Date.now()) => {
   const record = getOtpRecord(email);
@@ -60,6 +70,7 @@ module.exports = {
   createOtpRecord,
   getOtpRecord,
   deleteOtpRecord,
+  consumeOtpPayload,
   isEmailOnCooldown,
   isIpOnCooldown,
   recordIpRequest,

@@ -8,6 +8,7 @@ const {
   createOtpRecord,
   getOtpRecord,
   deleteOtpRecord,
+  consumeOtpPayload,
   isEmailOnCooldown,
   isIpOnCooldown,
   recordIpRequest,
@@ -28,6 +29,17 @@ const STUDENT_ROLE = 'student';
 const STUDENT_EMAIL_DOMAIN = 'murdoch.edu.au';
 const STUDENT_EMAIL_ERROR_MESSAGE =
   'Students must use their Murdoch University email address (e.g. your.name@murdoch.edu.au). Gmail addresses are not accepted.';
+
+const DEFAULT_REDIRECT_PATH = '/studentdashboard.html';
+const ROLE_REDIRECTS = {
+  student: '/studentdashboard.html',
+  'guest / visitor': '/guestdashboard.html',
+  guest: '/guestdashboard.html',
+  staff: '/staffdashboard.html',
+  'staff (admin only)': '/staffdashboard.html',
+  admin: '/staffdashboard.html',
+  'admin (admin only)': '/staffdashboard.html'
+};
 
 const isAllowedMurdochEmailDomain = (domain) =>
   domain === STUDENT_EMAIL_DOMAIN || domain.endsWith(`.${STUDENT_EMAIL_DOMAIN}`);
@@ -100,67 +112,51 @@ router.post('/register', async (req, res) => {
   }
 
   try {
+    if (!mailTransport || !EMAIL_FROM) {
+      return respondWithError(
+        res,
+        503,
+        'Email delivery is not configured. Registration cannot proceed until verification emails can be sent.'
+      );
+    }
     const existingUser = await queryOne('SELECT id FROM users WHERE email = $1', [normalizedEmail]);
     if (existingUser) {
       return respondWithError(res, 409, 'An account with this email already exists.');
     }
 
     const passwordHash = await hashPassword(password);
-    const insertResult = await getPool().query(
-      `INSERT INTO users (role, first_name, last_name, email, student_id, phone, password_hash)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, role, first_name, last_name, email, student_id, phone`,
-      [
-        trimmedRole,
-        toNullable(firstName),
-        toNullable(lastName),
-        normalizedEmail,
-        toNullable(studentId),
-        toNullable(phone),
-        passwordHash
-      ]
-    );
-
-    const userRow = insertResult.rows[0];
-    const user = {
-      id: userRow.id,
-      role: userRow.role,
-      firstName: userRow.first_name || '',
-      lastName: userRow.last_name || '',
-      email: userRow.email,
-      studentId: userRow.student_id || '',
-      phone: userRow.phone || ''
+        const pendingRegistration = {
+      role: trimmedRole,
+      firstName: toNullable(firstName),
+      lastName: toNullable(lastName),
+      email: normalizedEmail,
+      studentId: toNullable(studentId),
+      phone: toNullable(phone),
+      passwordHash
     };
 
-    let otpNotice = {
-      sent: false,
-      message:
-        'Email verification is currently unavailable. Configure SMTP_* variables and request a new code from the OTP page once email delivery is working.'
-    };
+    const now = Date.now();
+    const { code } = createOtpRecord(normalizedEmail, { payload: pendingRegistration, now });
 
-    if (mailTransport && EMAIL_FROM) {
-      const { code } = createOtpRecord(normalizedEmail);
-      try {
-        await sendOtpEmail(normalizedEmail, code);
-        otpNotice = {
-          sent: true,
-          message: 'A verification code has been emailed to you. It expires in a few minutes.'
-        };
-      } catch (error) {
-        deleteOtpRecord(normalizedEmail);
-        console.error('Failed to send OTP after registration:', error);
-        otpNotice = {
-          sent: false,
-          message: 'Your account was created but the verification email could not be sent. Try requesting a new code from the sign-in page.'
-        };
-      }
+    try {
+      await sendOtpEmail(normalizedEmail, code);
+    } catch (error) {
+      deleteOtpRecord(normalizedEmail);
+      console.error('Failed to send OTP after registration:', error);
+      return respondWithError(
+        res,
+        502,
+        'We could not send the verification email. Please try again later.'
+      );
     }
 
-    res.status(201).json({
+    res.status(202).json({
       success: true,
-      message: 'Account created successfully.',
-      user,
-      otp: otpNotice
+      message: 'Registration received. Please verify the code sent to your email before signing in.',
+      otp: {
+        sent: true,
+        message: 'A verification code has been emailed to you. It expires in a few minutes.'
+      }
     });
   } catch (error) {
     if (error?.code === '23505') {
@@ -216,7 +212,7 @@ router.post('/request-otp', async (req, res) => {
       return respondWithError(res, 404, 'No account was found for this email. Please register first.');
     }
 
-    const { code } = createOtpRecord(normalizedEmail, now);
+    const { code } = createOtpRecord(normalizedEmail, { now });
 
     if (ipAddress) {
       recordIpRequest(ipAddress, now);
@@ -262,23 +258,53 @@ router.post('/verify-otp', async (req, res) => {
   }
 
   try {
-    const user = await queryOne(
-      'SELECT id, role, first_name, last_name, email, student_id, phone FROM users WHERE email = $1',
-      [normalizedEmail]
-    );
-
-    if (!user) {
+    if (!record.payload) {
       deleteOtpRecord(normalizedEmail);
-      return respondWithError(res, 404, 'No account was found for this email. Please register first.');
+       return respondWithError(res, 400, 'No pending registration data found for this email. Please register before verifying.');
     }
 
-    deleteOtpRecord(normalizedEmail);
+    const pendingPayload = consumeOtpPayload(normalizedEmail);
+    if (!pendingPayload) {
+      return respondWithError(res, 400, 'No pending registration data found for this email. Please register before verifying.');
+    }
+
+    const {
+      role: pendingRole,
+      firstName: pendingFirstName,
+      lastName: pendingLastName,
+      email: pendingEmail,
+      studentId: pendingStudentId,
+      phone: pendingPhone,
+      passwordHash
+    } = pendingPayload;
+
+    const existingUser = await queryOne('SELECT id FROM users WHERE email = $1', [normalizedEmail]);
+    if (existingUser) {
+      return respondWithError(res, 409, 'An account with this email already exists.');
+    }
+
+    const insertResult = await getPool().query(
+      `INSERT INTO users (role, first_name, last_name, email, student_id, phone, password_hash)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, role, first_name, last_name, email, student_id, phone`,
+      [
+        pendingRole,
+        pendingFirstName ?? null,
+        pendingLastName ?? null,
+        pendingEmail || normalizedEmail,
+        pendingStudentId ?? null,
+        pendingPhone ?? null,
+        passwordHash
+      ]
+    );
+
+    const userRow = insertResult.rows[0];
 
     const token = jwt.sign(
       {
-        sub: user.id,
-        role: user.role,
-        email: user.email
+        sub: userRow.id,
+        role: userRow.role,
+        email: userRow.email
       },
       JWT_SECRET,
       { expiresIn: '1h' }
@@ -286,19 +312,22 @@ router.post('/verify-otp', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Code verified successfully.',
+      message: 'Your account has been verified and created successfully.',
       token,
       user: {
-        id: user.id,
-        role: user.role,
-        firstName: user.first_name || '',
-        lastName: user.last_name || '',
-        email: user.email,
-        studentId: user.student_id || '',
-        phone: user.phone || ''
+        id: userRow.id,
+        role: userRow.role,
+        firstName: userRow.first_name || '',
+        lastName: userRow.last_name || '',
+        email: userRow.email,
+        studentId: userRow.student_id || '',
+        phone: userRow.phone || ''
       }
     });
   } catch (error) {
+    if (error?.code === '23505') {
+      return respondWithError(res, 409, 'An account with this email already exists.');
+    }
     console.error('Error verifying OTP:', error);
     respondWithError(res, 500, 'An unexpected error occurred while verifying the code.');
   }
@@ -342,10 +371,14 @@ router.post('/login', async (req, res) => {
       { expiresIn: '1h' }
     );
 
+    const normalizedRole = trimOrEmpty(user.role).toLowerCase();
+    const redirectPath = ROLE_REDIRECTS[normalizedRole] || DEFAULT_REDIRECT_PATH;
+
     res.json({
       success: true,
       message: 'Login successful.',
       token,
+      redirectPath,
       user: {
         id: user.id,
         role: user.role,
