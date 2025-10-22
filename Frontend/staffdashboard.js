@@ -48,3 +48,120 @@ document.addEventListener("DOMContentLoaded", () => {
     competitionContainer.appendChild(card);
   });
 });
+
+// Modal functionality
+const modal = document.getElementById('createModal');
+const closeModalBtn = document.getElementById('closeModal');
+const addBtns = document.querySelectorAll('.add-btn');
+const tabBtns = document.querySelectorAll('.tab-btn');
+const pollForm = document.getElementById('pollForm');
+const competitionForm = document.getElementById('competitionForm');
+const modalDescription = document.getElementById('modalDescription');
+
+// Open modal
+addBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    modal.classList.remove('hidden');
+  });
+});
+
+// Close modal
+closeModalBtn.addEventListener('click', () => {
+  modal.classList.add('hidden');
+});
+
+// Close on outside click
+modal.addEventListener('click', (e) => {
+  if (e.target === modal) {
+    modal.classList.add('hidden');
+  }
+});
+
+// Tab switching
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    
+    // Update active tab
+    tabBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    // Show correct form
+    if (tab === 'poll') {
+      pollForm.classList.add('active');
+      competitionForm.classList.remove('active');
+      modalDescription.textContent = 'Create and manage polls by entering a title, expiry date, and context. Add multiple selection options for students to participate.';
+    } else {
+      competitionForm.classList.add('active');
+      pollForm.classList.remove('active');
+      modalDescription.textContent = 'Create competitions by entering essential details such as title, reward, venue, and maximum participants. Upload a banner and add hosts to manage the event.';
+    }
+  });
+});
+
+// Add more poll options
+let pollOptionCount = 2;
+document.getElementById('addPollOption').addEventListener('click', () => {
+  if (pollOptionCount < 10) {
+    pollOptionCount++;
+    const container = document.getElementById('pollOptionsContainer');
+    const newOption = document.createElement('div');
+    newOption.className = 'form-group';
+    newOption.innerHTML = `
+      <label>Option ${pollOptionCount} *</label>
+      <input type="text" placeholder="e.g., Event ${String.fromCharCode(64 + pollOptionCount)}" required>
+    `;
+    container.appendChild(newOption);
+  }
+});
+
+// Add more hosts
+let hostCount = 1;
+document.getElementById('addHost').addEventListener('click', () => {
+  if (hostCount < 5) {
+    hostCount++;
+    const container = document.getElementById('hostContainer');
+    const newHost = document.createElement('input');
+    newHost.type = 'text';
+    newHost.placeholder = `Host ${hostCount} (e.g., Dr. Johnson, Student Council)`;
+    newHost.style.marginTop = '8px';
+    container.appendChild(newHost);
+  }
+});
+
+// Banner upload
+document.getElementById('bannerUpload').addEventListener('click', () => {
+  document.getElementById('bannerInput').click();
+});
+
+// Character count for description
+document.getElementById('competitionDesc').addEventListener('input', (e) => {
+  const count = e.target.value.length;
+  document.querySelector('.char-count').textContent = `${count}/500`;
+});
+
+// Discard buttons
+document.querySelectorAll('.btn-discard').forEach(btn => {
+  btn.addEventListener('click', () => {
+    modal.classList.add('hidden');
+    pollForm.reset();
+    competitionForm.reset();
+  });
+});
+
+// Form submissions
+pollForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  alert('Poll created successfully!');
+  modal.classList.add('hidden');
+  pollForm.reset();
+  // TODO: Send data to backend
+});
+
+competitionForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  alert('Competition created successfully!');
+  modal.classList.add('hidden');
+  competitionForm.reset();
+  // TODO: Send data to backend
+});
