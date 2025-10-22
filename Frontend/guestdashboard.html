@@ -1,14 +1,15 @@
 <!doctype html>
 <html lang="en">
 <head>
- <meta charset="utf-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Student Dashboard — Murdoch</title>
   <link rel="stylesheet" href="css/guestdashboard.css">
+  <title>MUSEngage Guest Dashboard</title>
 </head>
 
 <body>
 
+  <!-- ✅ NAVBAR -->
   <nav class="nav">
     <div class="nav-menu">
       <img src="assets/logo.png" alt="Murdoch University" class="logo">
@@ -18,38 +19,71 @@
     </div>
   </nav>
 
+  <!-- ✅ Welcome Section -->
+  <section class="navbelow">
+    <div>
+      <h1>Welcome to MUSEngage</h1>
+      <h2>Your gateway to campus life. Explore events, connect with the community,</h2>
+      <h2>and discover everything our university offers.</h2>
+    </div>
+  </section>
+
+  <!-- ✅ Campus News & Events -->
+  <section class="dashboard-section" id="newsSection">
+    <div class="header-flex">
+      <h2>Campus News & Events</h2>
+      <div class="button-flex">
+        <button class="nav-btn" id="prevNewsBtn">&#10094; </button>
+        <button class="nav-btn" id="nextNewsBtn"> &#10095;</button>
+      </div>
+    </div>
+
+    <div class="events-container" id="eventsContainer">
+      <!-- Dynamic event cards -->
+    </div>
+
+    <div class="indicator-dots" id="newsDots"></div>
+  </section>
+
+ <!-- ✅ Community Highlights -->
+  <section class="dashboard-section">
+      <h2>Community Highlights</h2>
+
+    <div class="events-container" id="postContainer">
+      <!-- Dynamic posts from backend -->
+    </div>
+
+    <div class="nav-controls">
+      <button class="nav-btn" id="prevPostBtn">&#10094; </button>
+      <div class="indicator-dots" id="postDots"></div>
+      <button class="nav-btn" id="nextPostBtn"> &#10095;</button>
+    </div>
+    
+  </section>
 
 
-
-
-<footer class="footer">
+  <!-- ✅ Footer -->
+  <footer class="footer">
     <div class="footer-right">
-        <img src="assets/crest.png" alt="Murdoch Crest" class="crest">
-    <span>
-        @ 2025 MUSEngage | Developed by Team 2 | Programming / Security Team Chun Meng , Claire, Dominic | AI : Tuan AN | Project Manager : Rafael , Wee Shen
-    </span> 
-    </div>   
-</footer>
+      <img src="assets/crest.png" alt="Murdoch Crest" class="crest">
+      <span>
+        © 2025 MUSEngage | Developed by Team 2 | Programming / Security Team: Chun Meng, Claire, Dominic |
+        AI: Tuan An | Project Manager: Rafael, Wee Shen
+      </span>
+    </div>
+  </footer>
 
-<div class="faq-container">
+  <!-- ✅ FAQ Button -->
+  <div class="faq-container">
     <div class="faq-label">FAQ</div>
     <a href="faq.html">
-            <button class="faq-button" type="button">
+      <button class="faq-button" type="button">
         <div class="question-mark">?</div>
-    </button>
-</div>
+      </button>
+    </a>
+  </div>
 
-
-
-
+  <!-- ✅ JS (must be last) -->
+  <script src="js/studentdashboard.js"></script>
 </body>
-
-
-
-
-
-
-
-
-
 </html>

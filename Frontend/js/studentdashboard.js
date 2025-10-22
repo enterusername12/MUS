@@ -113,17 +113,21 @@ setupNavigation(
   newsDots
 );
 
-// --- Initialize Community Highlights ---
+// --- Initialize Community Highlights (only if present) ---
 const postContainer = document.getElementById("postContainer");
 const postDots = document.getElementById("postDots");
-renderCards(postContainer, postData, "post");
-renderDots(postDots, postData.length);
-setupNavigation(
-  document.getElementById("prevPostBtn"),
-  document.getElementById("nextPostBtn"),
-  postContainer,
-  postDots
-);
+
+if (postContainer && postDots) {
+  renderCards(postContainer, postData, "post");
+  renderDots(postDots, postData.length);
+  setupNavigation(
+    document.getElementById("prevPostBtn"),
+    document.getElementById("nextPostBtn"),
+    postContainer,
+    postDots
+  );
+}
+
 
 
 // --- Initialize Active Polls ---
@@ -131,46 +135,54 @@ const pollContainer = document.getElementById("pollContainer");
 const pollDots = document.getElementById("pollDots");
 const pollCount = document.getElementById("pollCount");
 
-pollCount.textContent = `${polls.length} Active`;
+if (pollContainer && pollDots) {
+  if (pollCount) pollCount.textContent = `${polls.length} Active`;
 
-pollContainer.innerHTML = "";
-polls.forEach(poll => {
-  const pollCard = document.createElement("div");
-  pollCard.classList.add("poll-card");
-
-  pollCard.innerHTML = `
-    <div class="poll-header">
-      <div class="poll-icon">📈</div>
-      <div>
-        <div class="poll-title">${poll.title}</div>
-        <div class="poll-subtitle">${poll.options.length} options available</div>
-      </div>
-      <div class="poll-deadline" style="margin-left:auto; color:#b33a3a; font-size:0.85rem;">
-        🗓 Ends ${poll.deadline}
-      </div>
-    </div>
-
-    <div class="poll-options">
-      ${poll.options.map(opt => `
-        <div class="poll-option">
-          <div class="option-label">
-            <span>${opt.name}</span>
-            <span>${opt.percent}%</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill" style="width:${opt.percent}%;"></div>
-          </div>
+  pollContainer.innerHTML = "";
+  polls.forEach(poll => {
+    const pollCard = document.createElement("div");
+    pollCard.classList.add("poll-card");
+    pollCard.innerHTML = `
+      <div class="poll-header">
+        <div class="poll-icon">📈</div>
+        <div>
+          <div class="poll-title">${poll.title}</div>
+          <div class="poll-subtitle">${poll.options.length} options available</div>
         </div>
-      `).join("")}
-    </div>
+        <div class="poll-deadline" style="margin-left:auto; color:#b33a3a; font-size:0.85rem;">
+          🗓 Ends ${poll.deadline}
+        </div>
+      </div>
+      <div class="poll-options">
+        ${poll.options.map(opt => `
+          <div class="poll-option">
+            <div class="option-label">
+              <span>${opt.name}</span>
+              <span>${opt.percent}%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:${opt.percent}%;"></div>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+      <div class="poll-footer">
+        <span>👥 ${poll.totalVotes} total votes</span>
+        <button class="vote-btn">Vote Now</button>
+      </div>
+    `;
+    pollContainer.appendChild(pollCard);
+  });
 
-    <div class="poll-footer">
-      <span>👥 ${poll.totalVotes} total votes</span>
-      <button class="vote-btn">Vote Now</button>
-    </div>
-  `;
-  pollContainer.appendChild(pollCard);
-});
+  renderDots(pollDots, polls.length);
+  setupNavigation(
+    document.getElementById("prevPollBtn"),
+    document.getElementById("nextPollBtn"),
+    pollContainer,
+    pollDots
+  );
+}
+
 
 // ✅ Add indicator dots and navigation
 renderDots(pollDots, polls.length);
@@ -289,9 +301,15 @@ function loadStudentSpotlight(data) {
 
 // === Render Reward Data ===
 function loadRewardPoints(data) {
-  document.getElementById('rewardPoints').textContent = `${data.points} Points`;
-  document.getElementById('rewardProgress').textContent = data.progress;
+  const pointsEl = document.getElementById('rewardPoints');
+  const progressEl = document.getElementById('rewardProgress');
+
+  if (!pointsEl || !progressEl) return; // Skip if elements don’t exist
+
+  pointsEl.textContent = `${data.points} Points`;
+  progressEl.textContent = data.progress;
 }
+
 
 // Load everything when the page is ready
 document.addEventListener('DOMContentLoaded', () => {

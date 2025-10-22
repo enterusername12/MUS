@@ -76,6 +76,28 @@ body {
 }
 
 
+.navbelow
+{
+background: linear-gradient(90deg,#65135D 0%, #C74287 25%, #B72A70 50%, #E12744 75%, #A12262 100%);
+height: 180px;
+margin-top: 1px;
+}
+
+.navbelow h1 
+{
+    text-align: center;
+    color: white;
+    text-decoration: Arial;
+    font-size: 2rem;
+}
+.navbelow h2
+{
+    text-align: center;
+    color: white;
+    text-decoration: Arial;
+    font-size: 20px;
+}
+
 .footer {
   background-color: #252525;      /* dark footer background */
   color: #fff;
@@ -189,3 +211,231 @@ main {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         position: relative;
     }
+
+/* ========== Campus News & Events ========== */
+/* 🌟 Global Section Styling */
+.dashboard-section {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 24px auto;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  max-width: 900px;
+  transition: box-shadow 0.3s ease;
+}
+
+.dashboard-section:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* Header Layout */
+.header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.header-flex h2 {
+  font-size: 1.4rem;
+  color: #222;
+  margin: 0;
+}
+
+.button-flex {
+  display: flex;
+  gap: 8px;
+}
+
+/* Prev/Next Buttons */
+.nav-btn {
+ .nav-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+  gap: 8px;
+}}
+
+.nav-btn:hover {
+  background: #b30059;
+  color: #fff;
+  transform: scale(1.05);
+}
+
+/* Indicator Dots */
+.indicator-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+  gap: 6px;
+}
+
+.indicator-dots .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ccc;
+  transition: background 0.2s ease;
+}
+
+.indicator-dots .dot.active {
+  background: #b30059;
+}
+
+/* ===========================
+   📰 CAMPUS NEWS & EVENTS
+=========================== */
+.events-container {
+  display: flex;
+  overflow-x: hidden;
+  scroll-snap-type: x mandatory;
+  gap: 20px;
+  scroll-behavior: smooth;
+}
+
+.event-card {
+  flex: 0 0 100%;
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 24px;
+  scroll-snap-align: start;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.event-card h3 {
+  margin-bottom: 8px;
+  color: #111;
+  font-size: 1.2rem;
+}
+
+.event-card p {
+  color: #555;
+  font-size: 0.95rem;
+}
+
+
+/* ===========================
+   🌟 COMMUNITY HIGHLIGHTS
+=========================== */
+/* ----- Post Layout ----- */
+
+
+.post-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  padding: 24px;
+  flex: 0 0 100%;
+  transition: transform 0.3s ease;
+}
+
+/* Header (icon + name + badge) */
+.post-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.post-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.author-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #ececec;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: #555;
+}
+
+.author-name {
+  font-weight: 600;
+  color: #222;
+}
+
+.post-time {
+  font-size: 0.9rem;
+  color: #777;
+}
+
+.post-badge {
+  background: #f2f2f2;
+  color: #444;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+/* Post Body */
+.post-content {
+  color: #333;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+/* Post Image Placeholder */
+.post-image {
+  background: #f7f7f7;
+  border-radius: 12px;
+  padding: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.post-image img {
+  width: 70px;
+  opacity: 0.4;
+}
+
+/* Navigation buttons (Prev / Next) */
+.nav-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+  gap: 8px;
+}
+
+.nav-btn {
+  background: white;
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  width: 32px;
+  height: 32px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.nav-btn:hover {
+  background: #f1f1f1;
+}
+
+.indicator-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.indicator-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ddd;
+}
+
+.indicator-dots .active {
+  background: #b30059;
+}
