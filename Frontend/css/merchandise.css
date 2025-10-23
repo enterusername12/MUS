@@ -328,4 +328,91 @@ body {
 .crest-area{text-align: left;margin-left: auto;}
 
 
-  
+/* ---------- Staff Dashboard (Updated to Match Theme + Layout Tweaks) ---------- */
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.25s ease, transform 0.15s ease;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+  margin-top: 12px;            /* ⬇️ adds spacing below header/above list */
+}
+.btn-primary:hover {
+  background: #a83262;
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: #fff;
+  border: 1px solid #ddd;
+  color: var(--accent);
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.25s ease, color 0.25s ease, transform 0.15s ease;
+}
+.btn-ghost:hover {
+  background: var(--pill);
+  color: #6d2b7b;
+  transform: translateY(-1px);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,15,15,0.55);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  background: var(--card);
+  padding: 24px;
+  border-radius: var(--radius);
+  width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow);
+  position: relative;
+}
+
+.close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  border: none;
+  background: none;
+  font-size: 22px;
+  color: var(--subtext);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+.close:hover {
+  color: var(--accent);
+}
+
+.edit-btn {
+  background: var(--muted);
+  border: 1px solid #ddd;
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  margin-left: 8px;             /* ⬅️ moves edit button slightly right */
+}
+.edit-btn:hover {
+  background: var(--pill);
+  color: #6d2b7b;
+  border-color: #d8b5e6;
+}
