@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scan QR — Murdoch Engage</title>
+  <link rel="stylesheet" href="css/qr.css">
+</head>
+<body>
+
+  <!-- Back Button -->
+  <button class="back-btn" onclick="window.location.href='studentdashboard.html'">
+    ← Back
+  </button>
+
+  <!-- QR Scanner Container -->
+  <div class="scanner-container">
+    <div id="qr-reader"></div>
+    <div class="overlay-frame">
+      <div class="scan-line"></div>
+    </div>
+  </div>
+
+  <!-- Result Popup -->
+  <div id="qr-result" class="result-popup hidden">
+    <p id="qr-message">Reward scanned successfully!</p>
+  </div>
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script>
+    const scanner = new Html5Qrcode("qr-reader");
+
+    scanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      (decodedText) => {
+        document.getElementById('qr-message').textContent = `Scanned: ${decodedText}`;
+        document.getElementById('qr-result').classList.remove('hidden');
+        setTimeout(() => document.getElementById('qr-result').classList.add('hidden'), 3000);
+      },
+      (err) => {}
+    );
+  </script>
+
+</body>
+</html>

@@ -12,13 +12,15 @@
 <nav class="nav">
   <div class="nav-menu">
     <img src="assets/logo.png" alt="Murdoch University" class="logo">
-    <a href="studentdashboard.html">Dashboard</a>
-    <a href="merchandise.html" class="active">Merchandise</a>
-    <a href="feedback.html">Feedback</a>
-    <a href="qr.html"><img src="assets/QR.png" alt="QR Code"></a>
-  </div>
+    <a href="staffdashboard.html">Dashboard</a>
+    <a href="#.html" class="active">Merchandise</a>
+    <a href="community.html">Moderation</a>
+    <a href="Analysis.html">Analysis</a>  </div>
 </nav>
 
+<div class="admin-controls" style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+  <button id="addProductBtn" class="btn-primary">+ Add Product</button>
+</div>
 
 <!-- PAGE -->
 <main class="container" id="app">
@@ -171,31 +173,46 @@
     </div>
   </div>
 
+  <!-- Product Edit Modal -->
+<div id="editModal" class="overlay" style="display:none;">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Edit Product">
+    <button class="close" id="closeEditModal">✕</button>
+    <h2>Edit Product</h2>
+    <p>Update product information including image, name, category, price, and description.</p>
+
+    <div class="upload-box" style="margin:16px 0;padding:24px;border:2px dashed #ccc;border-radius:10px;text-align:center;">
+      <input type="file" id="uploadImage" accept="image/*" style="display:none;" />
+      <label for="uploadImage" style="cursor:pointer;color:var(--accent);font-weight:600;">
+        Click to browse or drag and drop
+      </label>
+      <p style="color:#888;font-size:.85rem;">PNG, JPG up to 5MB</p>
+    </div>
+
+    <label class="label">Product Name *</label>
+    <input class="input" id="editName" placeholder="Product name" />
+
+    <label class="label">Category *</label>
+    <select class="input" id="editCategory">
+      <option>Books</option>
+      <option>Apparel</option>
+      <option>Tickets</option>
+    </select>
+
+    <label class="label">Price *</label>
+    <input class="input" id="editPrice" placeholder="0.00" />
+
+    <label class="label">Description *</label>
+    <textarea class="input" id="editDesc" rows="3" maxlength="300" placeholder="Description"></textarea>
+
+    <div style="display:flex;gap:12px;margin-top:16px;">
+      <button id="saveProduct" class="btn-primary" style="flex:1">Save Changes</button>
+      <button id="cancelEdit" class="btn-ghost" style="flex:1">Cancel</button>
+    </div>
+  </div>
+</div>
 
 </main>
 
-
-  <!-- ✅ Footer -->
-  <footer class="footer">
-    <div class="footer-right">
-      <img src="assets/crest.png" alt="Murdoch Crest" class="crest">
-      <span>
-        © 2025 MUSEngage | Developed by Team 2 | Programming / Security Team: Chun Meng, Claire, Dominic |
-        AI: Tuan An | Project Manager: Rafael, Wee Shen
-      </span>
-    </div>
-  </footer>
-
-  <!-- ✅ FAQ Button -->
-  <div class="faq-container">
-    <div class="faq-label">FAQ</div>
-    <a href="faq.html">
-      <button class="faq-button" type="button">
-        <div class="question-mark">?</div>
-      </button>
-    </a>
-  </div>
-
-<script src="js/merchandise.js"></script>
+<script src="js/staffmerchandise.js"></script>
 </body>
 </html>
