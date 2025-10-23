@@ -165,3 +165,70 @@ competitionForm.addEventListener('submit', (e) => {
   competitionForm.reset();
   // TODO: Send data to backend
 });
+
+
+// delete and edit the card
+
+  // 🟧 Enable edit/delete on card click
+  [pollContainer, competitionContainer].forEach(container => {
+    container.addEventListener("click", (e) => {
+      const card = e.target.closest(".card");
+      if (!card) return;
+
+      // Remove any existing menus first
+      const existingMenu = card.querySelector(".card-action-menu");
+      if (existingMenu) {
+        existingMenu.remove();
+        return;
+      }
+
+      // Create popup menu
+      const menu = document.createElement("div");
+      menu.classList.add("card-action-menu");
+      menu.innerHTML = `
+        <button class="edit-btn">Edit</button>
+        <button class="delete-btn">Delete</button>
+      `;
+
+      card.appendChild(menu);
+
+      // 🟢 Edit button — open modal with form (basic demo for now)
+      menu.querySelector(".edit-btn").addEventListener("click", () => {
+        document.getElementById("createModal").classList.remove("hidden");
+
+        // Determine whether it’s a poll or competition
+        const isPoll = container.id === "pollContainer";
+
+        // Switch tab accordingly
+        document.querySelectorAll(".tab-btn").forEach(btn => {
+          btn.classList.toggle("active", btn.dataset.tab === (isPoll ? "poll" : "competition"));
+        });
+        document.getElementById("pollForm").classList.toggle("active", isPoll);
+        document.getElementById("competitionForm").classList.toggle("active", !isPoll);
+
+        // Example of pre-filling title
+        const titleInput = isPoll
+          ? document.querySelector("#pollForm input[type='text']")
+          : document.querySelector("#competitionForm input[type='text']");
+        titleInput.value = card.querySelector("h3").textContent;
+
+        menu.remove();
+      });
+
+      // 🔴 Delete button — confirm and remove
+      menu.querySelector(".delete-btn").addEventListener("click", () => {
+        if (confirm("Are you sure you want to delete this item?")) {
+          card.remove();
+        }
+        menu.remove();
+      });
+
+      // Close menu if clicking outside
+      document.addEventListener("click", function handleOutside(e2) {
+        if (!menu.contains(e2.target) && !card.contains(e2.target)) {
+          menu.remove();
+          document.removeEventListener("click", handleOutside);
+        }
+      });
+    });
+  });
