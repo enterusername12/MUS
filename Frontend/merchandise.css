@@ -65,9 +65,14 @@ body {
 }
 
 .nav-menu a:first-of-type {
-    border-bottom: 2px solid white;
-    margin-left: auto;
+  margin-left: auto;
 }
+
+.nav-menu a.active {
+  border-bottom: 2px solid white;
+}
+
+
 
 .nav-menu a img {
     width: 24px;
