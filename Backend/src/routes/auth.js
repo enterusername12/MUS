@@ -8,7 +8,6 @@ const {
   createOtpRecord,
   getOtpRecord,
   deleteOtpRecord,
-  consumeOtpPayload,
   isEmailOnCooldown,
   isIpOnCooldown,
   recordIpRequest,
@@ -259,13 +258,41 @@ router.post('/verify-otp', async (req, res) => {
 
   try {
     if (!record.payload) {
-      deleteOtpRecord(normalizedEmail);
-       return respondWithError(res, 400, 'No pending registration data found for this email. Please register before verifying.');
-    }
+      const user = await queryOne(
+        'SELECT id, role, first_name, last_name, email, student_id, phone FROM users WHERE email = $1',
+        [normalizedEmail]
+      );
 
-    const pendingPayload = consumeOtpPayload(normalizedEmail);
-    if (!pendingPayload) {
-      return respondWithError(res, 400, 'No pending registration data found for this email. Please register before verifying.');
+      if (!user) {
+        return respondWithError(res, 404, 'No account found for this email.');
+      }
+
+      const token = jwt.sign(
+        {
+          sub: user.id,
+          role: user.role,
+          email: user.email
+        },
+        JWT_SECRET,
+        { expiresIn: '1h' }
+      );
+
+      deleteOtpRecord(normalizedEmail);
+
+      return res.json({
+        success: true,
+        message: 'Login successful via OTP.',
+        token,
+        user: {
+          id: user.id,
+          role: user.role,
+          firstName: user.first_name || '',
+          lastName: user.last_name || '',
+          email: user.email,
+          studentId: user.student_id || '',
+          phone: user.phone || ''
+        }
+      });
     }
 
     const {
@@ -276,7 +303,7 @@ router.post('/verify-otp', async (req, res) => {
       studentId: pendingStudentId,
       phone: pendingPhone,
       passwordHash
-    } = pendingPayload;
+    } = record.payload;
 
     const existingUser = await queryOne('SELECT id FROM users WHERE email = $1', [normalizedEmail]);
     if (existingUser) {
@@ -310,9 +337,11 @@ router.post('/verify-otp', async (req, res) => {
       { expiresIn: '1h' }
     );
 
+    deleteOtpRecord(normalizedEmail);
+
     res.json({
       success: true,
-      message: 'Your account has been verified and created successfully.',
+      message: 'Account verified successfully.',
       token,
       user: {
         id: userRow.id,

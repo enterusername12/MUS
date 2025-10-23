@@ -9,10 +9,54 @@ document.addEventListener('DOMContentLoaded', () => {
     : 'https://mus-g0um.onrender.com/api';       // Render backend
 
   let pendingOtpEmail = sessionStorage.getItem('pendingOtpEmail');
+  const otpEmailInput = document.getElementById('otpEmail');
+  const otpEntrySection = document.getElementById('otpEntrySection');
+  const otpInstructions = document.getElementById('otpInstructions');
+  const defaultOtpInstruction = otpInstructions?.textContent || '';
+  const otpCodeInput = document.getElementById('otpCode');
+  const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+
+  const showOtpEntrySection = ({ message, resetCode = false, focusCode = false } = {}) => {
+    if (!otpEntrySection) {
+      return;
+    }
+    if (otpInstructions) {
+      otpInstructions.textContent = message || defaultOtpInstruction;
+    }
+    otpEntrySection.hidden = false;
+    if (resetCode && otpCodeInput) {
+      otpCodeInput.value = '';
+    }
+    if (focusCode && otpCodeInput) {
+      otpCodeInput.focus();
+    }
+  };
+
+  const hideOtpEntrySection = () => {
+    if (!otpEntrySection) {
+      return;
+    }
+    otpEntrySection.hidden = true;
+    if (otpInstructions) {
+      otpInstructions.textContent = defaultOtpInstruction;
+    }
+    if (otpCodeInput) {
+      otpCodeInput.value = '';
+    }
+  };
+
+  const completeOtpVerification = (message) => {
+    sessionStorage.removeItem('pendingOtpEmail');
+    pendingOtpEmail = null;
+    if (otpEmailInput) {
+      otpEmailInput.value = '';
+    }
+    hideOtpEntrySection();
+    alert(message || 'Your account has been verified successfully.');
+    window.location.href = 'index.html';
+  };
 
   // ... (rest of your script below)
-
-
 
   // Handle tab switching between Sign In and Create Account
   document.querySelectorAll('.tab').forEach((tab) => {
@@ -243,22 +287,14 @@ document.addEventListener('DOMContentLoaded', () => {
         sessionStorage.setItem('pendingOtpEmail', email);
         pendingOtpEmail = email;
 
-        let message = 'Account created successfully!';
+        let message = result?.message || 'Registration received. Please verify your email to continue.';
         if (result?.otp?.message) {
           message += `\n\n${result.otp.message}`;
         }
 
         alert(message);
 
-        if (result?.otp?.sent) {
-          const proceed = confirm('Would you like to enter the verification code now?');
-          if (proceed) {
-            window.location.href = 'otp.html';
-            return;
-          }
-        }
-
-        window.location.href = 'index.html';
+        window.location.href = 'otp.html';
       } catch (error) {
         alert(error.message);
       } finally {
@@ -278,8 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const sendOtpBtn = document.getElementById('sendOtpBtn');
   if (sendOtpBtn) {
     sendOtpBtn.addEventListener('click', async () => {
-      const emailInput = document.getElementById('otpEmail');
-      const email = emailInput?.value.trim() || pendingOtpEmail || '';
+      const email = otpEmailInput?.value.trim() || pendingOtpEmail || '';
       if (!email) {
         alert('Please enter your email.');
         return;
@@ -287,37 +322,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const resetButton = setButtonBusy(sendOtpBtn, 'Sending...');
       try {
-        if (emailInput && !emailInput.value) {
-          emailInput.value = email;
-        }
+        const response = await postJSON('/auth/request-otp', { email });
+        const message = response?.message || `A verification code has been sent to ${email}.`;
+
         sessionStorage.setItem('pendingOtpEmail', email);
         pendingOtpEmail = email;
-        await postJSON('/auth/request-otp', { email });
-        alert(`A verification code has been sent to ${email}.`);
 
-        const code = prompt('Enter the 6-digit code we emailed to you:');
-        if (!code) {
-          alert('Verification cancelled. You can request another code when you are ready.');
-          return;
+        if (otpEmailInput && !otpEmailInput.value) {
+          otpEmailInput.value = email;
         }
 
-        const trimmedCode = code.trim();
-        if (!trimmedCode) {
-          alert('Please enter the code to continue.');
-          return;
-        }
-
-        if (!/^\d{6}$/.test(trimmedCode)) {
-          alert('The verification code should be a 6-digit number.');
-          return;
-        }
-
-        const result = await postJSON('/auth/verify-otp', { email, code: trimmedCode });
-        localStorage.setItem('musAuthToken', result.token);
-        localStorage.setItem('musAuthUser', JSON.stringify(result.user));
-        sessionStorage.removeItem('pendingOtpEmail');
-        alert('OTP verified! You are signed in.');
-        window.location.href = 'index.html';
+        alert(message);
+        showOtpEntrySection({
+          message: `${message} Enter the code below to continue.`,
+          resetCode: true,
+          focusCode: true
+        });
       } catch (error) {
         alert(error.message);
       } finally {
@@ -326,9 +346,47 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const otpEmailInput = document.getElementById('otpEmail');
+  if (verifyOtpBtn) {
+    verifyOtpBtn.addEventListener('click', async () => {
+      const email = otpEmailInput?.value.trim() || pendingOtpEmail || '';
+      if (!email) {
+        alert('Please enter your email before verifying your code.');
+        return;
+      }
+
+      const code = otpCodeInput?.value.trim();
+      if (!code) {
+        alert('Please enter the verification code.');
+        otpCodeInput?.focus();
+        return;
+      }
+
+      if (!/^\d{6}$/.test(code)) {
+        alert('The verification code should be a 6-digit number.');
+        otpCodeInput?.focus();
+        return;
+      }
+
+      const resetButton = setButtonBusy(verifyOtpBtn, 'Verifying...');
+      try {
+        const result = await postJSON('/auth/verify-otp', { email, code });
+        localStorage.setItem('musAuthToken', result.token);
+        localStorage.setItem('musAuthUser', JSON.stringify(result.user));
+        completeOtpVerification(result?.message);
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        resetButton();
+      }
+    });
+  }
+
   if (otpEmailInput && !otpEmailInput.value && pendingOtpEmail) {
     otpEmailInput.value = pendingOtpEmail;
+  }
+
+  if (pendingOtpEmail) {
+    showOtpEntrySection();
   }
 
   // Contact support dummy links
@@ -340,5 +398,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
 
 //..
