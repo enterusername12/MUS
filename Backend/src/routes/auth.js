@@ -267,6 +267,9 @@ router.post('/verify-otp', async (req, res) => {
         return respondWithError(res, 404, 'No account found for this email.');
       }
 
+      const redirectPath =
+        ROLE_REDIRECTS[trimOrEmpty(user.role).toLowerCase()] || DEFAULT_REDIRECT_PATH;
+
       const token = jwt.sign(
         {
           sub: user.id,
@@ -283,6 +286,7 @@ router.post('/verify-otp', async (req, res) => {
         success: true,
         message: 'Login successful via OTP.',
         token,
+        redirectPath,
         user: {
           id: user.id,
           role: user.role,
