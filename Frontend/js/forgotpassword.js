@@ -1,97 +1,228 @@
-// Toggle password visibility
-document.querySelectorAll('.toggle-password').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const target = document.getElementById(btn.dataset.target);
-    if (!target) return;
-    if (target.type === 'password') {
-      target.type = 'text';
-      btn.textContent = '🙈';
-    } else {
-      target.type = 'password';
-      btn.textContent = '👁️';
-    }
+// Toggle password visibility and handle forgot password workflow
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.toggle-password').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = document.getElementById(btn.dataset.target);
+      if (!target) return;
+      if (target.type === 'password') {
+        target.type = 'text';
+        btn.textContent = '🙈';
+      } else {
+        target.type = 'password';
+        btn.textContent = '👁️';
+      }
+    });
   });
-});
-//
-const requestOtpBtn = document.getElementById('requestOtp');
-const otpInput = document.getElementById('otpInput');
-const otpStatus = document.getElementById('otpStatus');
-const emailInput = document.getElementById('email');
-let simulatedOtp = null;
-let otpSent = false;
 
-requestOtpBtn.addEventListener('click', () => {
-  const email = emailInput.value.trim();
-  if (!email) {
-    otpStatus.textContent = 'Please enter your email before requesting an OTP.';
-    otpStatus.className = 'status error';
-    return;
+  const isLocal =
+    window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+  const API_BASE_URL = isLocal
+    ? 'http://localhost:3000/api'
+    : 'https://mus-g0um.onrender.com/api';
+
+  const requestOtpBtn = document.getElementById('requestOtp');
+  const otpInput = document.getElementById('otpInput');
+  const otpStatus = document.getElementById('otpStatus');
+  const emailInput = document.getElementById('email');
+  const form = document.getElementById('resetForm');
+  const message = document.getElementById('message');
+  const changeBtn = document.getElementById('changeBtn');
+
+  let otpSent = false;
+
+  const setOtpStatus = (text, type = 'muted') => {
+    if (!otpStatus) return;
+    otpStatus.textContent = text;
+    otpStatus.className = `status ${type}`.trim();
+  };
+
+  const extractErrorMessage = (payload) => {
+    if (!payload || typeof payload !== 'object') {
+      return null;
+    }
+
+    if (payload.message && typeof payload.message === 'string' && payload.message.trim()) {
+      return payload.message.trim();
+    }
+
+    const { errors } = payload;
+    if (!errors) {
+      return null;
+    }
+
+    if (Array.isArray(errors)) {
+      return errors.join(' ');
+    }
+
+    if (typeof errors === 'object') {
+      return Object.values(errors)
+        .flat()
+        .filter(Boolean)
+        .join(' ');
+    }
+
+    if (typeof errors === 'string') {
+      return errors;
+    }
+
+    return null;
+  };
+
+  const parseJsonResponse = async (response) => {
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const errorMessage =
+        extractErrorMessage(data) || 'Something went wrong. Please try again later.';
+      throw new Error(errorMessage);
+    }
+    return data;
+  };
+
+  const setFormDisabled = (disabled) => {
+    if (!form) return;
+    Array.from(form.elements).forEach((el) => {
+      if (el === otpInput) {
+        el.disabled = disabled || !otpSent;
+      } else {
+        el.disabled = disabled;
+      }
+    });
+    if (requestOtpBtn) {
+      requestOtpBtn.disabled = disabled;
+    }
+  };
+
+  if (requestOtpBtn) {
+    requestOtpBtn.addEventListener('click', async () => {
+      const email = emailInput?.value.trim();
+      if (!email) {
+        setOtpStatus('Please enter your email before requesting an OTP.', 'error');
+        return;
+      }
+
+      try {
+        requestOtpBtn.disabled = true;
+        requestOtpBtn.classList.add('is-loading');
+        setOtpStatus('Sending OTP…', 'muted');
+
+        const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+
+        const data = await parseJsonResponse(response);
+        otpSent = true;
+        if (otpInput) {
+          otpInput.disabled = false;
+          otpInput.focus();
+        }
+        setOtpStatus(
+          data?.message || 'OTP sent successfully. Please check your email.',
+          'success'
+        );
+      } catch (error) {
+        otpSent = false;
+        if (otpInput) {
+          otpInput.disabled = true;
+        }
+        setOtpStatus(error.message || 'Failed to send OTP. Please try again.', 'error');
+      } finally {
+        requestOtpBtn.disabled = false;
+        requestOtpBtn.classList.remove('is-loading');
+      }
+    });
   }
-  simulatedOtp = String(Math.floor(100000 + Math.random() * 900000));
-  otpSent = true;
-  otpInput.disabled = false;
-  otpInput.focus();
-  otpStatus.innerHTML = 'OTP sent to ' + email + ' — (simulated: ' + simulatedOtp + ')';
-  otpStatus.className = 'status muted';
-});
 
-const form = document.getElementById('resetForm');
-const message = document.getElementById('message');
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (message) {
+        message.className = 'status';
+        message.textContent = '';
+      }
 
-form.addEventListener('submit', (e) => {
-  e.preventDefault();
-  message.className = 'status';
-  const newP = document.getElementById('newPassword').value;
-  const confirmP = document.getElementById('confirmPassword').value;
-  const enteredOtp = otpInput.value.trim();
+      const email = emailInput?.value.trim();
+      const code = otpInput?.value.trim();
+      const newPassword = document.getElementById('newPassword')?.value || '';
+      const confirmPassword = document.getElementById('confirmPassword')?.value || '';
 
-  if (!otpSent) {
-    message.textContent = 'Please request and verify your OTP first.';
-    message.classList.add('error');
-    return;
+      const setMessage = (text, type = 'error') => {
+        if (!message) return;
+        message.textContent = text;
+        message.className = `status ${type}`.trim();
+      };
+
+      if (!email) {
+        setMessage('Email is required.');
+        return;
+      }
+
+      if (!code) {
+        setMessage('Please enter the OTP you received.');
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        setMessage('New password and confirmation do not match.');
+        return;
+      }
+
+      try {
+        setFormDisabled(true);
+        if (changeBtn) {
+          changeBtn.classList.add('is-loading');
+        }
+        setMessage('Resetting your password…', 'muted');
+
+        const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, code, newPassword, confirmPassword })
+        });
+
+        const data = await parseJsonResponse(response);
+        setMessage(
+          data?.message || 'Password reset successful. Redirecting to login…',
+          'success'
+        );
+
+        form.reset();
+        otpSent = false;
+        if (otpInput) {
+          otpInput.disabled = true;
+        }
+        setOtpStatus('', 'muted');
+
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 1500);
+      } catch (error) {
+        setMessage(error.message || 'Failed to reset password. Please try again.');
+      } finally {
+        setFormDisabled(false);
+        if (changeBtn) {
+          changeBtn.classList.remove('is-loading');
+        }
+      }
+    });
   }
 
-  if (!enteredOtp) {
-    message.textContent = 'Please enter the OTP.';
-    message.classList.add('error');
-    return;
+  const backToAccount = document.getElementById('backToAccount');
+  if (backToAccount) {
+    backToAccount.addEventListener('click', (e) => {
+      e.preventDefault();
+      alert('This would return to your Sign In page.');
+    });
   }
 
-  if (enteredOtp !== simulatedOtp) {
-    message.textContent = 'OTP is incorrect.';
-    message.classList.add('error');
-    return;
+  const contactSupport = document.getElementById('contactSupport');
+  if (contactSupport) {
+    contactSupport.addEventListener('click', (e) => {
+      e.preventDefault();
+      alert('Contact support: support@murdoch.edu.au');
+    });
   }
-
-  if (!newP || !confirmP) {
-    message.textContent = 'Please fill in all password fields.';
-    message.classList.add('error');
-    return;
-  }
-
-  if (newP !== confirmP) {
-    message.textContent = 'New password and confirmation do not match.';
-    message.classList.add('error');
-    return;
-  }
-
-  if (newP.length < 8) {
-    message.textContent = 'Password must be at least 8 characters.';
-    message.classList.add('error');
-    return;
-  }
-
-  message.textContent = 'Password reset successful! Please sign in using your new password.';
-  message.className = 'status success';
-  setTimeout(() => { form.reset(); otpInput.disabled = true; otpStatus.textContent = ''; }, 1200);
-});
-
-document.getElementById('backToAccount').addEventListener('click', (e)=>{
-  e.preventDefault();
-  alert('This would return to your Sign In page.');
-});
-
-document.getElementById('contactSupport').addEventListener('click', (e)=>{
-  e.preventDefault();
-  alert('Contact support: support@murdoch.edu.au');
 });

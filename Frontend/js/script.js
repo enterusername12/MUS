@@ -1,12 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // Automatically switch between local and deployed backend
-  const isLocal =
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1';
-
-  const API_BASE_URL = isLocal
-    ? 'http://localhost:3000/api'                // local backend
-    : 'https://mus-g0um.onrender.com/api';       // Render backend
+  const API_BASE_URL = 'http://localhost:3000/api';
 
   let pendingOtpEmail = sessionStorage.getItem('pendingOtpEmail');
   const otpEmailInput = document.getElementById('otpEmail');
