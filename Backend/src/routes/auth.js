@@ -124,7 +124,7 @@ router.post('/register', async (req, res) => {
     }
 
     const passwordHash = await hashPassword(password);
-        const pendingRegistration = {
+    const pendingRegistration = {
       role: trimmedRole,
       firstName: toNullable(firstName),
       lastName: toNullable(lastName),
@@ -135,7 +135,11 @@ router.post('/register', async (req, res) => {
     };
 
     const now = Date.now();
-    const { code } = createOtpRecord(normalizedEmail, { payload: pendingRegistration, now });
+    const { code } = createOtpRecord(normalizedEmail, {
+      payload: pendingRegistration,
+      purpose: 'registration',
+      now
+    });
 
     try {
       await sendOtpEmail(normalizedEmail, code);
@@ -211,7 +215,7 @@ router.post('/request-otp', async (req, res) => {
       return respondWithError(res, 404, 'No account was found for this email. Please register first.');
     }
 
-    const { code } = createOtpRecord(normalizedEmail, { now });
+    const { code } = createOtpRecord(normalizedEmail, { now, purpose: 'login' });
 
     if (ipAddress) {
       recordIpRequest(ipAddress, now);
@@ -229,6 +233,164 @@ router.post('/request-otp', async (req, res) => {
   } catch (error) {
     console.error('Error requesting OTP:', error);
     respondWithError(res, 500, 'An unexpected error occurred while generating the code.');
+  }
+});
+
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body || {};
+
+  if (!email || typeof email !== 'string') {
+    return respondWithError(res, 400, 'Email is required.');
+  }
+
+  if (!mailTransport || !EMAIL_FROM) {
+    return respondWithError(
+      res,
+      503,
+      'Email delivery is not configured. Password reset codes cannot be sent at this time.'
+    );
+  }
+
+  const normalizedEmail = sanitizeEmail(email);
+  const ipAddress = getClientIp(req);
+  const now = Date.now();
+
+  if (isIpOnCooldown(ipAddress, now)) {
+    const lastRequest = getIpLastRequest(ipAddress);
+    const remainingMs = lastRequest ? OTP_IP_COOLDOWN_MS - (now - lastRequest) : OTP_IP_COOLDOWN_MS;
+    const remaining = Math.max(Math.ceil(remainingMs / 1000), 1);
+    return respondWithError(
+      res,
+      429,
+      `Too many reset attempts from this network. Please wait ${remaining} seconds before trying again.`
+    );
+  }
+
+  if (isEmailOnCooldown(normalizedEmail, now)) {
+    const previousRequest = getOtpRecord(normalizedEmail);
+    const remainingMs = previousRequest
+      ? OTP_EMAIL_COOLDOWN_MS - (now - previousRequest.lastRequest)
+      : OTP_EMAIL_COOLDOWN_MS;
+    const remaining = Math.max(Math.ceil(remainingMs / 1000), 1);
+    return respondWithError(
+      res,
+      429,
+      `Please wait ${remaining} seconds before requesting another reset code.`
+    );
+  }
+
+  try {
+    const user = await queryOne('SELECT id FROM users WHERE email = $1', [normalizedEmail]);
+
+    if (!user) {
+      return respondWithError(res, 404, 'No account was found for this email. Please register first.');
+    }
+
+    const { code } = createOtpRecord(normalizedEmail, {
+      now,
+      purpose: 'password-reset',
+      payload: { userId: user.id }
+    });
+
+    if (ipAddress) {
+      recordIpRequest(ipAddress, now);
+    }
+
+    try {
+      await sendOtpEmail(normalizedEmail, code);
+    } catch (error) {
+      deleteOtpRecord(normalizedEmail);
+      console.error('Failed to send password reset OTP:', error);
+      return respondWithError(
+        res,
+        502,
+        'We could not send the password reset email. Please try again later.'
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'A password reset code has been sent to your email. It expires in a few minutes.'
+    });
+  } catch (error) {
+    console.error('Error generating password reset OTP:', error);
+    respondWithError(res, 500, 'An unexpected error occurred while generating the reset code.');
+  }
+});
+
+router.post('/reset-password', async (req, res) => {
+  const { email, code, newPassword, confirmPassword } = req.body || {};
+
+  if (!email || typeof email !== 'string') {
+    return respondWithError(res, 400, 'Email is required.');
+  }
+
+  if (!code || typeof code !== 'string') {
+    return respondWithError(res, 400, 'Reset code is required.');
+  }
+
+  if (!newPassword || typeof newPassword !== 'string') {
+    return respondWithError(res, 400, 'New password is required.');
+  }
+
+  if (newPassword.length < 8) {
+    return respondWithError(res, 400, 'Password must be at least 8 characters long.');
+  }
+
+  if (confirmPassword !== undefined && newPassword !== confirmPassword) {
+    return respondWithError(res, 400, 'New password and confirmation do not match.');
+  }
+
+  const normalizedEmail = sanitizeEmail(email);
+  const sanitizedCode = code.trim();
+  const record = getOtpRecord(normalizedEmail);
+
+  if (!record || record.purpose !== 'password-reset') {
+    return respondWithError(res, 400, 'No password reset code has been requested for this email.');
+  }
+
+  if (record.expires < Date.now()) {
+    deleteOtpRecord(normalizedEmail);
+    return respondWithError(res, 400, 'That reset code has expired. Please request a new one.');
+  }
+
+  if (record.code !== sanitizedCode) {
+    return respondWithError(res, 400, 'Invalid reset code. Please double-check and try again.');
+  }
+
+  try {
+    const user = await queryOne('SELECT id FROM users WHERE email = $1', [normalizedEmail]);
+
+    if (!user) {
+      deleteOtpRecord(normalizedEmail);
+      return respondWithError(res, 404, 'No account found for this email.');
+    }
+
+    if (record.payload && record.payload.userId && record.payload.userId !== user.id) {
+      deleteOtpRecord(normalizedEmail);
+      return respondWithError(res, 400, 'The reset code is no longer valid. Please request a new one.');
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    const updateResult = await getPool().query(
+      'UPDATE users SET password_hash = $1 WHERE id = $2 RETURNING id',
+      [passwordHash, user.id]
+    );
+
+    if (updateResult.rowCount === 0) {
+      deleteOtpRecord(normalizedEmail);
+      return respondWithError(res, 404, 'No account found for this email.');
+    }
+
+    deleteOtpRecord(normalizedEmail);
+
+    res.json({
+      success: true,
+      message: 'Your password has been reset successfully. You can now sign in with your new password.'
+    });
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    respondWithError(res, 500, 'An unexpected error occurred while resetting the password.');
   }
 });
 
@@ -257,6 +419,10 @@ router.post('/verify-otp', async (req, res) => {
   }
 
   try {
+    if (record.purpose && record.purpose !== 'registration' && record.purpose !== 'login') {
+      return respondWithError(res, 400, 'That code cannot be used for account verification.');
+    }
+
     if (!record.payload) {
       const user = await queryOne(
         'SELECT id, role, first_name, last_name, email, student_id, phone FROM users WHERE email = $1',

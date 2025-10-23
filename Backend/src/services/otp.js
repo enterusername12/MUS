@@ -5,13 +5,21 @@ const ipCooldown = new Map();
 
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-const createOtpRecord = (email, { payload = null, now = Date.now() } = {}) => {
+const createOtpRecord = (
+  email,
+  { payload = null, purpose = null, expiresInMs = OTP_EXPIRY_MS, now = Date.now() } = {}
+) => {
+  const ttl = Number.isFinite(expiresInMs) && expiresInMs > 0 ? expiresInMs : OTP_EXPIRY_MS;
   const code = generateOtp();
+  const expiresAt = now + ttl;
   const record = {
     code,
-    expires: now + OTP_EXPIRY_MS,
+    expires: expiresAt,
+    expiresAt,
     lastRequest: now,
-    payload
+    payload,
+    purpose,
+    ttl
   };
   otpStore.set(email, record);
   return record;

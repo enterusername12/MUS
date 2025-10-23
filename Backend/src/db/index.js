@@ -52,6 +52,22 @@ const ensureDatabase = async () => {
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )`
       );
+
+      await client.query(
+        `CREATE TABLE IF NOT EXISTS user_consent (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+          session_token TEXT UNIQUE,
+          essential BOOLEAN NOT NULL DEFAULT TRUE,
+          analytics BOOLEAN NOT NULL DEFAULT FALSE,
+          email BOOLEAN NOT NULL DEFAULT FALSE,
+          payment BOOLEAN NOT NULL DEFAULT FALSE,
+          ai BOOLEAN NOT NULL DEFAULT FALSE,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          CONSTRAINT user_consent_identity CHECK (user_id IS NOT NULL OR session_token IS NOT NULL)
+        )`
+      );
     } finally {
       client.release();
     }
