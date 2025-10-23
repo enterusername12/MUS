@@ -56,8 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.location.href = 'index.html';
   };
 
-  // ... (rest of your script below)
-
   // Handle tab switching between Sign In and Create Account
   document.querySelectorAll('.tab').forEach((tab) => {
     tab.addEventListener('click', (e) => {
@@ -208,7 +206,38 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('musAuthUser', JSON.stringify(result.user));
         alert('Login successful!');
         console.info('Authenticated user:', result.user);
-        // Redirect to dashboard/home once available
+
+                const redirectMap = {
+          student: '/Frontend/studentdashboard.html',
+          'guest / visitor': '/Frontend/guestdashboard.html',
+          guest: '/Frontend/guestdashboard.html',
+          visitor: '/Frontend/guestdashboard.html',
+          staff: '/Frontend/staffdashboard.html',
+          'staff (admin only)': '/Frontend/staffdashboard.html',
+          admin: '/Frontend/staffdashboard.html',
+          'admin (admin only)': '/Frontend/staffdashboard.html'
+        };
+
+        const normalizePath = (path) => {
+          if (!path) return null;
+          if (/^https?:\/\//i.test(path)) {
+            return path;
+          }
+          const trimmed = path.replace(/^\/+/, '');
+          const normalized = /^frontend\//i.test(trimmed)
+            ? trimmed
+            : `Frontend/${trimmed}`;
+          return `/${normalized.replace(/^\/+/, '')}`;
+        };
+
+        const normalizedRole = (result.user?.role || role || '').trim().toLowerCase();
+        const redirectPath =
+          normalizePath(result.redirectPath) ||
+          redirectMap[normalizedRole] ||
+          '/Frontend/studentdashboard.html';
+
+        window.location.href = redirectPath;
+
       } catch (error) {
         alert(error.message);
       } finally {
