@@ -192,10 +192,10 @@ competitionForm.addEventListener('submit', (e) => {
 
     menu.innerHTML = isCompetition
       ? `
-        <button class="qr-participate">📱 Participation QR</button>
-        <button class="qr-reward">💎 Reward QR</button>
-        <button class="edit-btn">✏️ Edit</button>
-        <button class="delete-btn">🗑️ Delete</button>
+        <button class="qr-participate"> Participation QR</button>
+        <button class="qr-reward"> Reward QR</button>
+        <button class="edit-btn"> Edit</button>
+        <button class="delete-btn"> Delete</button>
       `
       : `
         <button class="edit-btn">Edit</button>

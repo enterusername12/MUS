@@ -201,11 +201,11 @@ section {
 }
 
 .poll-card, .competition-card {
-    background: #4a5568;
-    color: #fff;
+    background: #dfdfdf;
+    color: #000000;
     padding: 24px;
     border-radius: 12px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 6px rgba(99, 99, 99, 0.1);
     transition: transform 0.2s;
 }
 
@@ -242,32 +242,32 @@ section {
 
 .status.active {
     background: #48bb78;
-    color: white;
+    color: rgb(0, 0, 0);
 }
 
 .status.ongoing {
     background: #48bb78;
-    color: white;
+    color: rgb(0, 0, 0);
 }
 
 .status.upcoming {
     background: #4299e1;
-    color: white;
+    color: rgb(0, 0, 0);
 }
 
 .status.enrolled {
     background: #9f7aea;
-    color: white;
+    color: rgb(0, 0, 0);
 }
 
 .status.ended {
     background: #718096;
-    color: white;
+    color: rgb(0, 0, 0);
 }
 
 .card-deadline {
     font-size: 0.85rem;
-    color: #cbd5e0;
+    color: #070707;
 }
 
 .card-body h4 {
@@ -279,7 +279,7 @@ section {
 .card-footer {
     margin-top: 12px;
     font-size: 0.9rem;
-    color: #cbd5e0;
+    color: #090909;
 }
 
 
