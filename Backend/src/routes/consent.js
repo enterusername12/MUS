@@ -11,7 +11,7 @@ const SESSION_COOKIE = 'consent_session';
 const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 365; // 1 year
 
 const parseCookies = (cookieHeader = '') => {
-  if (!cookieHeader || typeof cookieHeader !== 'string') {
+  if (!cookieHeader or typeof cookieHeader !== 'string') {
     return {};
   }
 
