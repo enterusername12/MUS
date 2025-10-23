@@ -192,6 +192,18 @@
   </div>
 </div>
 
+<!-- 🧱 QR Modal -->
+<div id="qrModal" class="modal hidden">
+  <div class="modal-content">
+    <button id="closeQrModal" class="close-btn">&times;</button>
+    <h2 id="qrTitle">Competition QR</h2>
+    <p id="qrTypeDesc">Scan this QR to participate or claim rewards.</p>
+    <div id="qrContainer" style="margin: 20px auto;"></div>
+    <p id="rewardText" style="font-weight: bold; margin-top: 10px;"></p>
+  </div>
+</div>
+
+
   <!-- ✅ Footer -->
   <footer class="footer">
     <div class="footer-right">
@@ -212,6 +224,7 @@
       </button>
     </a>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
 
   <script src="js/staffdashboard.js"></script>
 </body>

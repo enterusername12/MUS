@@ -11,9 +11,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // 🟦 Demo Competition Data (Replace later with backend data)
   const competitions = [
-    { id: 1, title: "Hackathon 2025", participants: 45, status: "ongoing", due: "Nov 1" },
-    { id: 2, title: "Photography Contest", participants: 67, status: "upcoming", due: "Oct 30" },
-    { id: 3, title: "Essay Writing Competition", participants: 89, status: "enrolled", due: "Oct 5" }
+    { id: 1, title: "Hackathon 2025", participants: 45, status: "ongoing", due: "Nov 1", reward: "1000 points" },
+    { id: 2, title: "Photography Contest", participants: 67, status: "upcoming", due: "Oct 30", reward: "500 points" },
+    { id: 3, title: "Essay Writing Competition", participants: 89, status: "enrolled", due: "Oct 5", reward: "300 points" }
   ];
 
   // ✅ Create Poll Cards
@@ -36,6 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
   competitions.forEach(comp => {
     const card = document.createElement("div");
     card.className = "card competition-card";
+    card.dataset.reward = comp.reward;
     card.innerHTML = `
       <div class="card-header">
         <span>Competition #${comp.id}</span>
@@ -44,12 +45,13 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
       <h3>${comp.title}</h3>
       <p>${comp.participants} participants</p>
+      <p class="reward">Reward: ${comp.reward}</p>
     `;
     competitionContainer.appendChild(card);
   });
 });
 
-// Modal functionality
+// 🟢 Modal Elements
 const modal = document.getElementById('createModal');
 const closeModalBtn = document.getElementById('closeModal');
 const addBtns = document.querySelectorAll('.add-btn');
@@ -58,35 +60,43 @@ const pollForm = document.getElementById('pollForm');
 const competitionForm = document.getElementById('competitionForm');
 const modalDescription = document.getElementById('modalDescription');
 
-// Open modal
+// ✅ QR Modal Elements
+const qrModal = document.getElementById('qrModal');
+const qrContainer = document.getElementById('qrContainer');
+const qrTitle = document.getElementById('qrTitle');
+const qrTypeDesc = document.getElementById('qrTypeDesc');
+const rewardText = document.getElementById('rewardText');
+const closeQrModal = document.getElementById('closeQrModal');
+
+// 🟣 Close QR Modal
+closeQrModal.addEventListener('click', () => {
+  qrModal.classList.add('hidden');
+});
+qrModal.addEventListener('click', (e) => {
+  if (e.target === qrModal) qrModal.classList.add('hidden');
+});
+
+// 🟠 Open main modal
 addBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     modal.classList.remove('hidden');
   });
 });
 
-// Close modal
+// 🔴 Close main modal
 closeModalBtn.addEventListener('click', () => {
   modal.classList.add('hidden');
 });
-
-// Close on outside click
 modal.addEventListener('click', (e) => {
-  if (e.target === modal) {
-    modal.classList.add('hidden');
-  }
+  if (e.target === modal) modal.classList.add('hidden');
 });
 
-// Tab switching
+// 🟡 Tab switching
 tabBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     const tab = btn.dataset.tab;
-    
-    // Update active tab
     tabBtns.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    
-    // Show correct form
     if (tab === 'poll') {
       pollForm.classList.add('active');
       competitionForm.classList.remove('active');
@@ -94,12 +104,12 @@ tabBtns.forEach(btn => {
     } else {
       competitionForm.classList.add('active');
       pollForm.classList.remove('active');
-      modalDescription.textContent = 'Create competitions by entering essential details such as title, reward, venue, and maximum participants. Upload a banner and add hosts to manage the event.';
+      modalDescription.textContent = 'Create competitions by entering essential details such as title, reward, venue, and maximum participants.';
     }
   });
 });
 
-// Add more poll options
+// 🟢 Add more poll options
 let pollOptionCount = 2;
 document.getElementById('addPollOption').addEventListener('click', () => {
   if (pollOptionCount < 10) {
@@ -115,7 +125,7 @@ document.getElementById('addPollOption').addEventListener('click', () => {
   }
 });
 
-// Add more hosts
+// 🟢 Add more hosts
 let hostCount = 1;
 document.getElementById('addHost').addEventListener('click', () => {
   if (hostCount < 5) {
@@ -129,18 +139,18 @@ document.getElementById('addHost').addEventListener('click', () => {
   }
 });
 
-// Banner upload
+// 🖼️ Banner upload
 document.getElementById('bannerUpload').addEventListener('click', () => {
   document.getElementById('bannerInput').click();
 });
 
-// Character count for description
+// 📝 Character count
 document.getElementById('competitionDesc').addEventListener('input', (e) => {
   const count = e.target.value.length;
   document.querySelector('.char-count').textContent = `${count}/500`;
 });
 
-// Discard buttons
+// 🚮 Discard buttons
 document.querySelectorAll('.btn-discard').forEach(btn => {
   btn.addEventListener('click', () => {
     modal.classList.add('hidden');
@@ -149,19 +159,109 @@ document.querySelectorAll('.btn-discard').forEach(btn => {
   });
 });
 
-// Form submissions
+// 📨 Form submissions
 pollForm.addEventListener('submit', (e) => {
   e.preventDefault();
   alert('Poll created successfully!');
   modal.classList.add('hidden');
   pollForm.reset();
-  // TODO: Send data to backend
 });
-
 competitionForm.addEventListener('submit', (e) => {
   e.preventDefault();
   alert('Competition created successfully!');
   modal.classList.add('hidden');
   competitionForm.reset();
-  // TODO: Send data to backend
+});
+
+// ⚙️ Card action menu (Edit/Delete/QR)
+[pollContainer, competitionContainer].forEach(container => {
+  container.addEventListener("click", (e) => {
+    const card = e.target.closest(".card");
+    if (!card) return;
+
+    // Remove old menu
+    const existingMenu = card.querySelector(".card-action-menu");
+    if (existingMenu) {
+      existingMenu.remove();
+      return;
+    }
+
+    const isCompetition = container.id === "competitionContainer";
+    const menu = document.createElement("div");
+    menu.classList.add("card-action-menu");
+
+    menu.innerHTML = isCompetition
+      ? `
+        <button class="qr-participate"> Participation QR</button>
+        <button class="qr-reward"> Reward QR</button>
+        <button class="edit-btn"> Edit</button>
+        <button class="delete-btn"> Delete</button>
+      `
+      : `
+        <button class="edit-btn">Edit</button>
+        <button class="delete-btn">Delete</button>
+      `;
+    card.appendChild(menu);
+
+    // ✏️ Edit
+    menu.querySelector(".edit-btn").addEventListener("click", () => {
+      modal.classList.remove("hidden");
+      tabBtns.forEach(btn =>
+        btn.classList.toggle("active", btn.dataset.tab === (isCompetition ? "competition" : "poll"))
+      );
+      pollForm.classList.toggle("active", !isCompetition);
+      competitionForm.classList.toggle("active", isCompetition);
+      const titleInput = isCompetition
+        ? competitionForm.querySelector("input[type='text']")
+        : pollForm.querySelector("input[type='text']");
+      titleInput.value = card.querySelector("h3").textContent;
+      menu.remove();
+    });
+
+    // 🗑️ Delete
+    menu.querySelector(".delete-btn").addEventListener("click", () => {
+      if (confirm("Are you sure you want to delete this item?")) card.remove();
+      menu.remove();
+    });
+
+    // 📱 QR Buttons (Competitions)
+    if (isCompetition) {
+      const compName = card.querySelector("h3").textContent;
+      const reward = card.dataset.reward || "500 points";
+
+      menu.querySelector(".qr-participate").addEventListener("click", () => {
+        qrModal.classList.remove("hidden");
+        qrContainer.innerHTML = "";
+        qrTitle.textContent = "Participation QR";
+        qrTypeDesc.textContent = `Scan this to join "${compName}".`;
+        rewardText.textContent = "";
+        new QRCode(qrContainer, {
+          text: `http://localhost:5500/competition/${encodeURIComponent(compName)}/join`,
+          width: 250,
+          height: 250,
+        });
+      });
+
+      menu.querySelector(".qr-reward").addEventListener("click", () => {
+        qrModal.classList.remove("hidden");
+        qrContainer.innerHTML = "";
+        qrTitle.textContent = "Reward QR";
+        qrTypeDesc.textContent = `Scan this to claim your reward for "${compName}".`;
+        rewardText.textContent = `Reward: ${reward}`;
+        new QRCode(qrContainer, {
+          text: `http://localhost:5500/competition/${encodeURIComponent(compName)}/reward`,
+          width: 250,
+          height: 250,
+        });
+      });
+    }
+
+    // Close menu on outside click
+    document.addEventListener("click", function handleOutside(e2) {
+      if (!menu.contains(e2.target) && !card.contains(e2.target)) {
+        menu.remove();
+        document.removeEventListener("click", handleOutside);
+      }
+    });
+  });
 });
