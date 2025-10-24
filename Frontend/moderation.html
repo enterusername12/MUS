@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Moderation Dashboard</title>
+  <link rel="stylesheet" href="css/moderation.css" />
+</head>
+<body>
+
+  <!-- ===== NAV BAR ===== -->
+  <nav class="nav">
+    <div class="nav-menu">
+      <img src="assets/logo.png" alt="Murdoch University" class="logo">
+      <a href="#" onclick="history.back(); return false;">Dashbaord</a>
+      <a href="staffmerchandise.html">Merchandise</a>
+      <a href="#" class="active">Moderation</a>
+      <a href="Analysis.html">Analysis</a>
+    </div>
+  </nav>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main">
+    <div class="main-header">
+      <h1 id="page-title">Abnormal Content Review</h1>
+      <p class="items-count" id="items-count">3 items in queue</p>
+    </div>
+
+  <hr class="dashboard-line">
+
+    <div class="tab-bar">
+      <button class="tab active" data-tab="abnormal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        Abnormal Content
+        <span class="count">3</span>
+      </button>
+      <button class="tab" data-tab="feedback">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Student Feedback
+        <span class="count blue">3</span>
+      </button>
+      <button class="tab" data-tab="reports">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+        </svg>
+        Reports
+        <span class="count orange">3</span>
+      </button>
+    </div>
+
+    <div class="card-container">
+      <!-- Dynamic content loaded by JS -->
+    </div>
+  </main>
+
+  
+  <!-- ✅ Footer -->
+  <footer class="footer">
+    <div class="footer-right">
+      <img src="assets/crest.png" alt="Murdoch Crest" class="crest">
+      <span>
+        © 2025 MUSEngage | Developed by Team 2 | Programming / Security Team: Chun Meng, Claire, Dominic |
+        AI: Tuan An | Project Manager: Rafael, Wee Shen
+      </span>
+    </div>
+  </footer>
+
+  <!-- ✅ FAQ Button -->
+  <div class="faq-container">
+    <div class="faq-label">FAQ</div>
+    <a href="faq.html">
+      <button class="faq-button" type="button">
+        <div class="question-mark">?</div>
+      </button>
+    </a>
+  </div>
+
+  <script src="js/moderation.js"></script>
+</body>
+</html>
