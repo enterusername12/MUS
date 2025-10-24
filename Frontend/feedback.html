@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="css/feedback.css">
+</head>
+
+<body>
+  <!-- ✅ Navigation -->
+  <nav class="nav">
+    <div class="nav-menu">
+      <img src="assets/logo.png" alt="Murdoch University" class="logo">
+      <a href="studentdashboard.html">Dashboard</a>
+      <a href="merchandise.html">Merchandise</a>
+      <a href="#" class="active">Feedback</a>
+      <a href="qr.html"><img src="assets/QR.png" alt="QR Code"></a>
+    </div>
+  </nav>
+
+    <!-- ✅ Header -->
+  <div class="main-header">
+    <img src="assets/feedback.png" alt="Hat" class="hat-img">
+    <h1>Student Feedback</h1>
+    <h2>Share your thoughts and help us improve your campus experience</h2>
+  </div>
+
+  <hr class="dashboard-line">
+
+  <!-- ✅ Feedback Submission Form -->
+<section class="feedback-section">
+  <div class="feedback-container">
+    <h2>Submit New Feedback</h2>
+    <p>Your feedback helps us create a better campus experience. Earn 5 points for each submission!</p>
+
+    <form id="feedbackForm" enctype="multipart/form-data">
+      <!-- Category -->
+      <label for="category">Category <span class="required">*</span></label>
+      <select id="category" name="category" required>
+        <option value="">Select a category</option>
+        <option>Academic</option>
+        <option>Facilities</option>
+        <option>Events & Activities</option>
+        <option>Technology & IT</option>
+        <option>Other</option>
+      </select>
+
+      <!-- Feedback -->
+      <label for="feedback">Your Feedback <span class="required">*</span></label>
+      <textarea id="feedback" name="feedback" maxlength="500" placeholder="Share your suggestions, concerns, or compliments..." required></textarea>
+      <div class="char-count">0 / 500 characters </div>
+
+      <!-- Upload -->
+      <label for="upload">Attach Image or Document (Optional)</label>
+      <p class="upload-hint">Add a photo or document to support your feedback (Max 10MB)</p>
+
+      <div class="upload-area" id="uploadArea">
+        <input type="file" id="upload" name="upload" accept=".jpg,.png,.gif,.pdf,.doc,.docx" hidden />
+        <div class="upload-content">
+          <div class="upload-icon">📎</div>
+          <p><strong>Click to upload</strong> or drag and drop</p>
+          <small>Images (JPG, PNG, GIF) or Documents (PDF, DOC, DOCX) up to 10MB</small>
+        </div>
+      </div>
+      <p id="file-name" class="file-name"></p>
+
+      <button type="submit" class="submit-btn">
+        <span></span> Submit Feedback
+      </button>
+    </form>
+  </div>
+
+  <!-- ✅ Feedback Guidelines -->
+  <div class="feedback-guidelines">
+    <h3>💡 Feedback Guidelines</h3>
+    <ul>
+      <li>Be specific and constructive in your feedback</li>
+      <li>Attach photos or documents to provide visual evidence</li>
+      <li>Responses typically take 2–3 business days</li>
+      <li>Urgent matters should be reported to campus security</li>
+      <li>Earn 5 reward points for each feedback submission</li>
+    </ul>
+  </div>
+</section>
+
+  <!-- ✅ Footer -->
+  <footer class="footer">
+    <div class="footer-right">
+      <img src="assets/crest.png" alt="Murdoch Crest" class="crest">
+      <span>
+        © 2025 MUSEngage | Developed by Team 2 | Programming / Security Team: Chun Meng, Claire, Dominic |
+        AI: Tuan An | Project Manager: Rafael, Wee Shen
+      </span>
+    </div>
+  </footer>
+
+  <!-- ✅ FAQ Button -->
+  <div class="faq-container">
+    <div class="faq-label">FAQ</div>
+    <a href="faq.html">
+      <button class="faq-button" type="button">
+        <div class="question-mark">?</div>
+      </button>
+    </a>
+  </div>
+
+  <script src="js/feedback.js"></script>
+</body>
+</html>
