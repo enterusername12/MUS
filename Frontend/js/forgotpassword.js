@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (backToAccount) {
     backToAccount.addEventListener('click', (e) => {
       e.preventDefault();
-      alert('This would return to your Sign In page.');
+      window.location.href = 'index.html';
     });
   }
 

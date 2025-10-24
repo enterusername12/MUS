@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
-//
+
   // Password visibility toggle on the sign-in page
   const togglePassword = document.getElementById('togglePassword');
   const passwordInput = document.getElementById('password');
@@ -93,24 +93,57 @@ document.addEventListener('DOMContentLoaded', () => {
   const savePrefs = document.getElementById('save-preferences');
   const form = document.getElementById('preferences-form');
 
-  const storedConsent = localStorage.getItem('userConsent');
-  if (!storedConsent && banner) {
-    banner.style.display = 'block';
+  const parseStoredConsent = () => {
+    try {
+      const raw = localStorage.getItem('userConsent');
+      if (!raw) {
+        return null;
+      }
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+        console.warn('Unable to parse stored consent preferences.', error)
+        return null;
+    }
   }
+
+  const applyPreferencesToFrom = (prefences = {}) => {
+    if (!form) return;
+    const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach((checkbox) => {
+      let value;
+      if (name === 'essential') {
+        value = true;
+      } else if (Object.prototype.hasOwnProperty.call(prefences, name)) {
+        value = Boolean(prefences[name]);
+      } else {
+        value = checkbox.defaultChecked;
+      }
+      checkbox.checked = value;
+    });
+  };
+
+  const setBannerVisibility = (shouldShow) => {
+    if (!banner) return;
+    banner.style.display = shouldShow ? 'block' : 'none';
+  };
+
+  let currentConsent = parseStoredConsent();
+  applyPreferencesToFrom(currentConsent || {});
+  setBannerVisibility(!currentConsent)
 
   if (acceptBtn) {
     acceptBtn.addEventListener('click', () => {
-      localStorage.setItem(
-        'userConsent',
-        JSON.stringify({
-          essential: true,
-          analytics: true,
-          email: true,
-          payment: true,
-          ai: true
-        })
-      );
-      if (banner) banner.style.display = 'none';
+      currentConsent = {
+        essential: true,
+        analystics: true,
+        email: true,
+        payment: true,
+        ai: true,
+      };
+      localStorage.setItem('userConsent', JSON.stringify(currentConsent));
+      applyPreferencesToFrom(currentConsent);
+      setBannerVisibility(false);
       if (modal) modal.style.display = 'none';
     });
   }
@@ -128,15 +161,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (savePrefs && form) {
-    savePrefs.addEventListener('click', () => {
-      const data = {};
-      new FormData(form).forEach((value, key) => {
-        data[key] = true;
+    savePrefs.addEventListener('click', (event) => {
+      event.preventDefault();
+      const preferences = {};
+      form.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+        const { name } = checkbox;
+        const value = name === 'essential' ? true : Boolean(checkbox.checked)
+        checkbox.checked = value;
+        preferences[name] = value;
       });
-      localStorage.setItem('userConsent', JSON.stringify(data));
+      localStorage.setItem('userConsent', JSON.stringify(preferences));
+      currentConsent = preferences;
       if (modal) modal.style.display = 'none';
-      if (banner) banner.style.display = 'none';
-      alert('Your preferences have been saved.');
+      setBannerVisibility(false);
     });
   }
 
@@ -200,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Login successful!');
         console.info('Authenticated user:', result.user);
 
-                const redirectMap = {
+        const redirectMap = {
           student: '/Frontend/studentdashboard.html',
           'guest / visitor': '/Frontend/guestdashboard.html',
           guest: '/Frontend/guestdashboard.html',
