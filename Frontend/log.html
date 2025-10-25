@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Master Admins log</title>
+  <link rel="stylesheet" href="css/log.css">
+</head>
+
+<body>
+  <nav class="nav">
+    <div class="nav-menu">
+      <img src="assets/logo.png" alt="Murdoch University" class="logo">
+      <a href="#" onclick="history.back(); return false;">Dashbaord</a>
+      <a href="managerole.html">Manage Roles</a>
+      <a href="#" class="active">Loggings</a>
+      <a href="staffmerchandise.html">Merchandise</a>
+      <a href="moderation.html">Moderation</a>
+      <a href="analysis.html">Analysis</a>
+    </div>
+  </nav>
+
+  <div class="main-header">
+    <h1>Website Log</h1>
+    <h2>To safegaurd the website</h2>
+  </div>
+
+  <hr class="dashboard-line">
+
+    <section id="audit" class="section">
+    <div class="filter-bar">
+      <input type="text" placeholder="Search logs..." id="auditSearch" style="flex: 1;">
+      <select id="auditActionFilter">
+        <option value="">All Actions</option>
+        <option value="create">Create</option>
+        <option value="update">Update</option>
+        <option value="delete">Delete</option>
+        <option value="login">Login</option>
+        <option value="upload">Upload</option>
+      </select>
+      <button class="btn" onclick="loadAuditLogs()">
+        <i class="fas fa-search"></i> Search
+      </button>
+    </div>
+
+    <div id="auditLogsList">
+      <div class="loading">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p>Loading audit logs...</p>
+      </div>
+    </div>
+  </section>
+  
+
+</body>
+<script src="js/log.js"></script>
+</html>
