@@ -29,15 +29,15 @@ const STUDENT_EMAIL_DOMAIN = 'murdoch.edu.au';
 const STUDENT_EMAIL_ERROR_MESSAGE =
   'Students must use their Murdoch University email address (e.g. your.name@murdoch.edu.au). Gmail addresses are not accepted.';
 
-const DEFAULT_REDIRECT_PATH = '/studentdashboard.html';
+const DEFAULT_REDIRECT_PATH = '/Frontend/studentdashboard.html';
 const ROLE_REDIRECTS = {
-  student: '/studentdashboard.html',
-  'guest / visitor': '/guestdashboard.html',
-  guest: '/guestdashboard.html',
-  staff: '/staffdashboard.html',
-  'staff (admin only)': '/staffdashboard.html',
-  admin: '/staffdashboard.html',
-  'admin (admin only)': '/staffdashboard.html'
+  student: '/Frontend/studentdashboard.html',
+  'guest / visitor': '/Frontend/guestdashboard.html',
+  guest: '/Frontend/guestdashboard.html',
+  staff: '/Frontend/staffdashboard.html',
+  'staff (admin only)': '/Frontend/staffdashboard.html',
+  admin: '/Frontend/staffdashboard.html',
+  'admin (admin only)': '/Frontend/staffdashboard.html'
 };
 
 const isAllowedMurdochEmailDomain = (domain) =>
