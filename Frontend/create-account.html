@@ -1,80 +1,272 @@
 <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Murdoch University Student Portal</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+ /* ===== CENTERED MODAL POPUP STYLES ===== */
+.modals {
+  display: none; /* Hidden by default */
+  position: fixed;
+  inset: 0; /* shorthand for top/right/bottom/left:0 */
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.5);
+  align-items: center;          /* Vertical center */
+  justify-content: center;      /* Horizontal center */
+  overflow: auto;
+  padding: 20px;
+}
+
+.modals.show {
+  display: flex;
+}
+
+/* Modal content box */
+.modals-content {
+  background: #fff;
+  border-radius: 10px;
+  padding: 25px 30px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  position: relative;
+  animation: popIn 0.25s ease-out;
+  transform-origin: center;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollable content area */
+.modals-scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  margin: 15px 0;
+  padding-right: 10px;
+}
+
+/* Custom scrollbar for webkit browsers */
+.modals-scroll-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modals-scroll-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.modals-scroll-content::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.modals-scroll-content::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Close (X) button */
+.close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  color: #888;
+  font-size: 26px;
+  font-weight: bold;
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+.close:hover {
+  color: #333;
+}
+
+/* Acknowledge button */
+.acknowledge-btn {
+  width: 100%;
+  padding: 12px;
+  background :#E12744;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  margin-top: 10px;
+}
+
+.acknowledge-btn:hover {
+  background: #E12744;
+}
+
+/* Animation for pop effect */
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Optional: make text readable on all screens */
+.modals-content h2 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #222;
+}
+
+.modals-content p {
+  color: #444;
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 15px;
+}
+
+  </style>
+</head>
+
+<body>
 <main class="page center">
-<div class="card wide">
-<header class="logo-area">
-<img src="assets/logo.png" alt="Murdoch University" class="logo">
-<p class="subtitle">Murdoch University Student Portal</p>
-<link rel="stylesheet" href="css/styles.css">
-</header>
+  <div class="card wide">
+    <header class="logo-area">
+      <img src="assets/logo.png" alt="Murdoch University" class="logo">
+      <p class="subtitle">Murdoch University Student Portal</p>
+    </header>
 
+    <nav class="toggle">
+      <button class="tab" data-target="signin">Sign In</button>
+      <button class="tab active" data-target="create">Create Account</button>
+    </nav>
 
-<nav class="toggle">
-<button class="tab" data-target="signin">Sign In</button>
-<button class="tab active" data-target="create">Create Account</button>
-</nav>
+    <section class="form-area create">
+      <label class="label">I am a
+        <select id="createRole" class="input">
+          <option>Student</option>
+          <option>Guest / Visitor</option>
+        </select>
+      </label>
 
+      <div class="row two">
+        <label class="label">First Name
+          <input id="firstName" type="text" placeholder="John" class="input">
+        </label>
+        <label class="label">Last Name
+          <input id="lastName" type="text" placeholder="Doe" class="input">
+        </label>
+      </div>
 
-<section class="form-area create">
-<label class="label">I am a
-<select id="createRole" class="input">
-<option>Student</option>
-<option>Guest / Visitor</option>
-</select>
-</label>
+      <label class="label">Email Address
+        <input id="createEmail" type="email" placeholder="your.email@murdoch.edu.au" class="input">
+      </label>
+      <p class="small">Student accounts must use a Murdoch University email (e.g., name@murdoch.edu.au). Gmail addresses are not accepted.</p>
 
+      <label class="label">Phone (Optional)
+        <input id="phone" type="tel" placeholder="+65 xxx xxx xxx" class="input">
+      </label>
 
-<div class="row two">
-<label class="label">First Name
-<input id="firstName" type="text" placeholder="John" class="input">
-</label>
-<label class="label">Last Name
-<input id="lastName" type="text" placeholder="Doe" class="input">
-</label>
-</div>
+      <label class="label">Password
+        <input id="createPassword" type="password" placeholder="Min 8 characters" class="input">
+      </label>
 
+      <label class="label">Confirm Password
+        <input id="confirmPassword" type="password" placeholder="Re-enter password" class="input">
+      </label>
 
-<label class="label">Email Address
-<input id="createEmail" type="email" placeholder="your.email@murdoch.edu.au" class="input">
-</label>
-<p class="small">Student accounts must use a Murdoch University email (e.g., name@murdoch.edu.au). Gmail addresses are not accepted.</p>
+      <p class="small">
+        By creating an account, you agree to our 
+        <a href="javascript:void(0)" onclick="openModal('termsModal')">Terms</a> 
+        and 
+        <a href="javascript:void(0)" onclick="openModal('privacyModal')">Privacy Policy</a>.
+      </p>
 
-<label class="label">Phone (Optional)
-<input id="phone" type="tel" placeholder="+65 xxx xxx xxx" class="input">
-</label>
+      <button id="createAccountBtn" class="primary-btn">Create Account</button>
 
+      <p class="help">Need help? <a href="#" id="contactSupport2">Contact Support</a></p>
+    </section>
+  </div>
 
-<label class="label">Password
-<input id="createPassword" type="password" placeholder="Min 8 characters" class="input">
-</label>
+  <!-- ===== TERMS & PRIVACY MODALS ===== -->
 
+  <div id="termsModal" class="modals">
+    <div class="modals-content">
+      <span class="close" onclick="closeModal('termsModal')">&times;</span>
+      <h2>Terms and Conditions</h2>
+      <div class="modals-scroll-content">
+        <p>By using this portal, you agree to abide by Murdoch University's digital conduct guidelines. 
+        You are responsible for maintaining the confidentiality of your login credentials. Unauthorized access,
+        misuse of information, or sharing of sensitive data is strictly prohibited. 
+        The University reserves the right to suspend or terminate accounts found in violation of these terms.</p>
+        
+        <p>Use of this system is monitored and logged for security and compliance purposes.</p>
+        
+        <p>Students and authorized users must comply with all applicable laws and regulations when accessing university resources. Any attempt to bypass security measures, access unauthorized data, or engage in fraudulent activities will result in immediate account suspension and may lead to disciplinary action.</p>
+        
+        <p>The University reserves the right to modify these terms at any time. Continued use of the portal constitutes acceptance of any changes to these terms and conditions.</p>
+      </div>
+      <button class="acknowledge-btn" onclick="closeModal('termsModal')">Acknowledge</button>
+    </div>
+  </div>
 
-<label class="label">Confirm Password
-<input id="confirmPassword" type="password" placeholder="Re-enter password" class="input">
-</label>
-
-
-<p class="small">By creating an account, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</p>
-
-
-<button id="createAccountBtn" class="primary-btn">Create Account</button>
-
-
-<p class="help">Need help? <a href="#" id="contactSupport2">Contact Support</a></p>
-
-</section>
+  <div id="privacyModal" class="modals">
+    <div class="modals-content">
+      <span class="close" onclick="closeModal('privacyModal')">&times;</span>
+      <h2>Privacy Policy</h2>
+      <div class="modals-scroll-content">
+        <p>Murdoch University values your privacy. Information collected through this portal is used solely for
+        academic, administrative, and support purposes. Personal data such as your name, email, and student ID
+        may be stored securely and processed according to University data protection policies.</p>
+        
+        <p>We do not sell or share personal information with third parties except as required by law or internal compliance.</p>
+        
+        <p>Your data is protected using industry-standard encryption and security measures. You have the right to access, modify, or request deletion of your personal information in accordance with applicable data protection regulations.</p>
+      </div>
+      <button class="acknowledge-btn" onclick="closeModal('privacyModal')">Acknowledge</button>
+    </div>
+  </div>
 </main>
-<br>
-<br>
+</main>
+
+</main>
+
+<br><br>
+
 <footer class="footer">
-    <div class="footer-right">
-        <img src="assets/crest.png" alt="Murdoch Crest" class="crest">
+  <div class="footer-right">
+    <img src="assets/crest.png" alt="Murdoch Crest" class="crest">
     <span>
-        @ 2025 MUSEngage | Developed by Team 2 | Programming / Security Team Chun Meng , Claire, Dominic | AI : Tuan AN | Project Manager : Rafael , Wee Shen
+      @ 2025 MUSEngage | Developed by Team 2 | Programming / Security Team Chun Meng , Claire, Dominic | 
+      AI : Tuan AN | Project Manager : Rafael , Wee Shen
     </span> 
-    </div>   
+  </div>   
 </footer>
 
-
 <script src="js/script.js"></script>
+
+<script>
+  // ===== MODAL HANDLERS =====
+  function openModal(id) {
+    const modal = document.getElementById(id);
+    modal.style.display = 'flex';
+  }
+
+  function closeModal(id) {
+    const modal = document.getElementById(id);
+    modal.style.display = 'none';
+  }
+
+  // Close modal when clicking outside the box
+  window.onclick = function(event) {
+    if (event.target.classList.contains('modal')) {
+      event.target.style.display = 'none';
+    }
+  }
+</script>
+
 </body>
 </html>

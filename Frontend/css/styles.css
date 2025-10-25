@@ -145,6 +145,8 @@ body{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Arial; background
 }
 
 
+
+
 @media (max-width:600px){
 .card{width:92%}
 .card.wide{width:92%}
