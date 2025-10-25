@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Staff Dashboard — Murdoch</title>
+  <link rel="stylesheet" href="css/staffdashboard.css">
+</head>
+
+<body>
+  <nav class="nav">
+    <div class="nav-menu">
+      <img src="assets/logo.png" alt="Murdoch University" class="logo">
+      <a href="#" onclick="history.back(); return false;">Dashbaord</a>
+      <a href="managerole.html">Manage Roles</a>
+      <a href="log.html">Loggings</a>
+      <a href="staffmerchandise.html">Merchandise</a>
+      <a href="moderation.html">Moderation</a>
+      <a href="analysis.html">Analysis</a>
+    </div>
+  </nav>
+
+  <div class="main-header">
+    <h1>Master Admin Dashboard</h1>
+    <h2>Welcome back, <span id="staffName">Master Admin</span></h2>
+  </div>
+
+  <hr class="dashboard-line">
+
+  <!-- Two-column layout -->
+  <div class="dashboard-grid">
+    <!-- Left: Manage Polls -->
+    <section class="poll-section">
+      <div class="header-flex">
+        <h2>Manage Polls</h2>
+      </div>
+
+      <div class="poll-container" id="pollContainer">
+        <!-- Poll cards dynamically inserted here -->
+      </div>
+    </section>
+
+    <!-- Right: Manage Competitions -->
+    <section class="competition-section">
+      <div class="header-flex">
+        <h2>Manage Competitions</h2>
+        <button class="add-btn">+</button>
+      </div>
+
+      <div class="competition-container" id="competitionContainer">
+        <!-- Competition cards dynamically inserted here -->
+      </div>
+    </section>
+  </div>
+
+
+<!-- Modal for Create Poll/Competition -->
+<div id="createModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="close-modal" id="closeModal">×</button>
+    
+    <div class="modal-header">
+      <h3>Staff Dashboard → Create</h3>
+      <h2>Create New Poll or Competition</h2>
+      <p id="modalDescription">Create and manage polls by entering a title, expiry date, and context. Add multiple selection options for students to participate.</p>
+    </div>
+
+    <!-- Tab Buttons -->
+    <div class="tab-buttons">
+      <button class="tab-btn active" data-tab="poll">Poll</button>
+      <button class="tab-btn" data-tab="competition">Competition</button>
+    </div>
+
+    <!-- Poll Form -->
+    <form id="pollForm" class="form-content active">
+      <section class="form-section">
+        <h4>Poll Details</h4>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Title *</label>
+            <input type="text" placeholder="e.g., Favorite Campus Event" required>
+          </div>
+          <div class="form-group">
+            <label>Expiry Date *</label>
+            <input type="date" required>
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <h4>Poll Question</h4>
+        <div class="form-group">
+          <label>Context / Question *</label>
+          <textarea placeholder="What is this poll about? Describe the purpose of the poll..." rows="4" required></textarea>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <div class="section-header">
+          <h4>Poll Options</h4>
+          <button type="button" class="add-option-btn" id="addPollOption">+ Add More Selection</button>
+        </div>
+        <div id="pollOptionsContainer">
+          <div class="form-group">
+            <label>Option 1 *</label>
+            <input type="text" placeholder="e.g., Event A" required>
+          </div>
+          <div class="form-group">
+            <label>Option 2 *</label>
+            <input type="text" placeholder="e.g., Event B" required>
+          </div>
+        </div>
+        <p class="form-hint">At least 2 options required. Maximum 10 options allowed.</p>
+      </section>
+
+      <div class="form-actions">
+        <button type="button" class="btn-discard">Discard</button>
+        <button type="submit" class="btn-post">Post</button>
+      </div>
+    </form>
+
+    <!-- Competition Form -->
+    <form id="competitionForm" class="form-content">
+      <section class="form-section">
+        <h4>Competition Details</h4>
+        
+        <div class="form-group">
+          <label>Host(s) *</label>
+          <div class="host-container" id="hostContainer">
+            <input type="text" placeholder="Host 1 (e.g., Dr. Smith, Admin Team)" required>
+          </div>
+          <button type="button" class="add-host-btn" id="addHost">+ Add Host</button>
+          <p class="form-hint">At least 1 host required. Maximum 5 hosts allowed.</p>
+        </div>
+
+        <div class="form-group">
+          <label>Title *</label>
+          <input type="text" placeholder="e.g., Hackathon 2025, Photography Contest" required>
+        </div>
+
+        <div class="form-group">
+          <label>Competition Expiry Date *</label>
+          <input type="date" required>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <h4>Additional Settings</h4>
+        
+        <div class="form-group">
+          <label>Maximum Participants (Pax) *</label>
+          <input type="number" placeholder="e.g., 50, 100, 200" required>
+        </div>
+
+        <div class="form-group">
+          <label>Reward Points *</label>
+          <input type="text" placeholder="e.g., 500 points, Certificate + 1000 points" required>
+        </div>
+
+        <div class="form-group">
+          <label>Venue *</label>
+          <input type="text" placeholder="e.g., Main Hall, Online (Zoom), Science Building Room 301" required>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <h4>Description & Banner</h4>
+        
+        <div class="form-group">
+          <label>Competition Banner</label>
+          <div class="upload-area" id="bannerUpload">
+            <div class="upload-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                <path d="M12 15V3M12 3L8 7M12 3L16 7M2 17L2 19C2 20.1046 2.89543 21 4 21L20 21C21.1046 21 22 20.1046 22 19V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <p><strong>+ Upload Banner</strong></p>
+            <p class="upload-hint">PNG, JPG up to 5MB. Recommended: 1200x400px</p>
+            <input type="file" id="bannerInput" accept="image/png,image/jpeg" hidden>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Description * <span class="char-count">0/500</span></label>
+          <textarea id="competitionDesc" placeholder="Describe the competition, requirements, judging criteria, prizes, and any important details..." rows="5" maxlength="500" required></textarea>
+        </div>
+      </section>
+
+      <div class="form-actions">
+        <button type="button" class="btn-discard">Discard</button>
+        <button type="submit" class="btn-create">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 🧱 QR Modal -->
+<div id="qrModal" class="modal hidden">
+  <div class="modal-content">
+    <button id="closeQrModal" class="close-btn">&times;</button>
+    <h2 id="qrTitle">Competition QR</h2>
+    <p id="qrTypeDesc">Scan this QR to participate or claim rewards.</p>
+    <div id="qrContainer" style="margin: 20px auto;"></div>
+    <p id="rewardText" style="font-weight: bold; margin-top: 10px;"></p>
+  </div>
+</div>
+
+
+  <!-- ✅ Footer -->
+  <footer class="footer">
+    <div class="footer-right">
+      <img src="assets/crest.png" alt="Murdoch Crest" class="crest">
+      <span>
+        © 2025 MUSEngage | Developed by Team 2 | Programming / Security Team: Chun Meng, Claire, Dominic |
+        AI: Tuan An | Project Manager: Rafael, Wee Shen
+      </span>
+    </div>
+  </footer>
+
+  <!-- ✅ FAQ Button -->
+  <div class="faq-container">
+    <div class="faq-label">FAQ</div>
+    <a href="faq.html">
+      <button class="faq-button" type="button">
+        <div class="question-mark">?</div>
+      </button>
+    </a>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+
+  <script src="js/staffdashboard.js"></script>
+</body>
+</html>
