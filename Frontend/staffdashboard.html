@@ -9,9 +9,11 @@
 
 <body>
   <nav class="nav">
+       <!-- Hamburger button (only shows on mobile) -->
+    <button class="menu-toggle">☰</button>
     <div class="nav-menu">
       <img src="assets/logo.png" alt="Murdoch University" class="logo">
-      <a href="#" onclick="history.back(); return false;">Dashbaord</a>
+      <a href="#" onclick="history.back(); return false;">Dashboard</a>
       <a href="staffmerchandise.html">Merchandise</a>
       <a href="moderation.html">Moderation</a>
       <a href="analysis.html">Analysis</a>
@@ -269,13 +271,8 @@
         </div>
       </form>
 
-
-
   </div>
 </div>
-
-
-
 
 
 <!-- 🧱 QR Modal -->
@@ -288,7 +285,6 @@
     <p id="rewardText" style="font-weight: bold; margin-top: 10px;"></p>
   </div>
 </div>
-
 
   <!-- ✅ Footer -->
   <footer class="footer">
@@ -313,5 +309,17 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
 
   <script src="js/staffdashboard.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const menuToggle = document.querySelector(".menu-toggle");
+  const nav = document.querySelector(".nav");
+
+  menuToggle.addEventListener("click", () => {
+    nav.classList.toggle("active");
+  });
+});
+</script>
+
 </body>
 </html>
