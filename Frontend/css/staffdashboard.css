@@ -443,7 +443,8 @@ section {
 }
 
 .form-group input,
-.form-group textarea {
+.form-group textarea,
+.form-group select {
   width: 100%;
   padding: 12px 16px;
   border: 1px solid #ddd;
@@ -727,3 +728,45 @@ main {
 .qr-modal-content { text-align: center; max-width: 400px; margin: auto; }
 .qr-container { margin-top: 1rem; display: flex; justify-content: center; }
 .reward-text { margin-top: 1rem; font-weight: 600; color: #006400; }
+
+.event-section {
+  padding: 0 32px 32px 32px;
+}
+
+.event-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  max-height: 65vh;
+  padding-right: 8px;
+}
+
+.event-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.event-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.event-container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+
+.event-card {
+  background: #dfdfdf;
+  color: #000000;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(99, 99, 99, 0.1);
+  transition: transform 0.2s;
+  position: relative;
+  cursor: pointer;
+}
+
+.event-card:hover {
+  transform: translateY(-2px);
+}
