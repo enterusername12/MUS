@@ -936,3 +936,80 @@ main {
     }
   }
 }
+
+
+/* ===============================
+   📱 MOBILE NAV + HEADER FIX
+================================= */
+@media (max-width: 768px) {
+  /* ✅ NAV: stack properly and center items */
+  .nav-menu {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    height: auto;
+  }
+
+  .logo {
+    height: 35px;
+    margin: 0;
+  }
+
+  .menu-toggle {
+    font-size: 28px;
+    margin-left: auto;
+  }
+
+  /* ✅ Fix the nav-links dropdown */
+  .nav-links {
+    position: absolute;
+    top: 70px; /* below nav */
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: none;
+    flex-direction: column;
+    padding: 10px 0;
+  }
+
+  .nav-links.show {
+    display: flex;
+  }
+
+  .nav-links a {
+    padding: 12px 20px;
+    text-align: left;
+  }
+
+  /* ✅ HEADER ALIGNMENT FIX */
+  .main-header {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    margin: 15px;
+    gap: 6px;
+    position: relative;
+  }
+
+  .main-header img.hat-img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .main-header h1 {
+    font-size: 20px;
+    margin: 0;
+  }
+
+  .main-header h2 {
+    font-size: 16px;
+    position: static;
+    margin: 0;
+    color: #666;
+  }
+
+  .dashboard-line {
+    margin-top: 5px;
+  }
+}
