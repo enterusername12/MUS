@@ -439,3 +439,766 @@ main {
 .indicator-dots .active {
   background: #b30059;
 }
+
+
+/* Mobile */
+@media (max-width: 768px) {
+  .nav-menu {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .nav-menu a {
+    margin-left: 0;
+  }
+
+  .tabs {
+    flex-direction: column;
+  }
+
+  .tab {
+    width: 100%;
+  }
+
+  .content.active {
+    display: block;
+  }
+
+  .main-header h2 {
+    font-size: 18px;
+    top: 30px;
+  }
+
+  .poll-card, .student-card {
+    padding: 15px;
+  }
+
+  .faq-container {
+    bottom: 15px;
+    right: 15px;
+  }
+
+  .faq-button {
+    width: 60px;
+    height: 60px;
+  }
+
+  .bigthropy {
+    width: 90px;
+    height: 70px;
+    margin-right: 20px;
+  }
+
+  .dashboard-section {
+    width: 95%;
+    padding: 15px;
+  }
+
+  .footer {
+    font-size: 12px;
+    padding: 15px;
+  }
+}
+
+/* Extra Small Devices */
+@media (max-width: 480px) {
+  .logo {
+    height: 30px;
+  }
+
+  .nav {
+    height: auto;
+    padding: 10px;
+  }
+
+  .tab {
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  .search-box {
+    padding: 10px;
+  }
+
+  .poll-title, .student-name {
+    font-size: 16px;
+  }
+
+  .faq-button .question-mark {
+    font-size: 20px;
+  }
+}
+
+/* ================================================
+   MOBILE MENU (only active under 768px)
+=================================================== */
+
+/* Hide toggle button on desktop */
+.menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 26px;
+  color: white;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+/* Hide nav links on mobile by default */
+@media (max-width: 768px) {
+  .menu-toggle {
+    display: block;
+  }
+
+  .nav-links {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    position: absolute;
+    top: 80px; /* same as your nav height */
+    left: 0;
+    padding: 10px 0;
+    z-index: 999;
+    backdrop-filter: blur(5px);
+  }
+
+  .nav-links.show {
+    display: flex;
+    animation: slideDown 0.3s ease;
+  }
+
+  .nav-links a {
+    display: block;
+    padding: 12px 20px;
+    color: white;
+    width: 100%;
+    text-align: left;
+  }
+
+  .nav-links a:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Animation */
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+
+/* ===============================
+   📱 MOBILE NAV + HEADER FIX
+================================= */
+@media (max-width: 768px) {
+  /* ✅ NAV: stack properly and center items */
+  .nav-menu {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    height: auto;
+  }
+
+  .logo {
+    height: 35px;
+    margin: 0;
+  }
+
+  .menu-toggle {
+    font-size: 28px;
+    margin-left: auto;
+  }
+
+  /* ✅ Fix the nav-links dropdown */
+  .nav-links {
+    position: absolute;
+    top: 70px; /* below nav */
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: none;
+    flex-direction: column;
+    padding: 10px 0;
+  }
+
+  .nav-links.show {
+    display: flex;
+  }
+
+  .nav-links a {
+    padding: 12px 20px;
+    text-align: left;
+  }
+
+  /* ✅ HEADER ALIGNMENT FIX */
+  .main-header {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    margin: 15px;
+    gap: 6px;
+    position: relative;
+  }
+
+  .main-header img.hat-img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .main-header h1 {
+    font-size: 20px;
+    margin: 0;
+  }
+
+  .main-header h2 {
+    font-size: 16px;
+    position: static;
+    margin: 0;
+    color: #666;
+  }
+
+  .dashboard-line {
+    margin-top: 5px;
+  }
+}
+
+/* ===============================
+   🌈 GLOBAL RESET & BASE
+=============================== */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+main {
+  flex: 1;
+}
+
+/* ===============================
+   🎨 NAVIGATION BAR
+=============================== */
+.nav {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  height: 80px;
+  background: linear-gradient(90deg, #65135D 0%, #A12262 25%, #E12744 50%, #B72A70 75%, #C74287 100%);
+  position: relative;
+}
+
+.nav-menu {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 1rem 2rem;
+  box-sizing: border-box;
+}
+
+.logo {
+  height: 40px;
+  filter: brightness(0) invert(1);
+}
+
+.nav-menu a {
+  color: white;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 400;
+  transition: opacity 0.3s ease;
+  margin-left: 2rem;
+  position: relative;
+}
+
+.nav-menu a:hover {
+  opacity: 0.8;
+}
+
+.nav-menu a:first-of-type {
+  border-bottom: 2px solid white;
+  margin-left: auto;
+}
+
+/* ===============================
+   🍔 BURGER MENU
+=============================== */
+.menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: white;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+/* Hidden by default on mobile */
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Show when toggled */
+.nav-links.show {
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.85);
+  position: absolute;
+  top: 80px;
+  left: 0;
+  width: 100%;
+  padding: 12px 0;
+  animation: slideDown 0.3s ease;
+  backdrop-filter: blur(6px);
+  z-index: 999;
+}
+
+.nav-links a {
+  color: white;
+  text-decoration: none;
+  display: block;
+  padding: 12px 20px;
+  width: 100%;
+  text-align: left;
+}
+
+.nav-links a:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Animation */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===============================
+   🧭 NAV BELOW HEADER
+=============================== */
+.navbelow {
+  background: linear-gradient(90deg,#65135D 0%, #C74287 25%, #B72A70 50%, #E12744 75%, #A12262 100%);
+  height: 180px;
+  margin-top: 1px;
+  text-align: center;
+}
+
+.navbelow h1 {
+  color: white;
+  font-size: 2rem;
+}
+
+.navbelow h2 {
+  color: white;
+  font-size: 20px;
+}
+
+/* ===============================
+   📞 FLOATING FAQ BUTTON
+=============================== */
+.faq-container {
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1000;
+}
+
+.faq-button {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background-color: #8B3A62;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+  transition: all 0.3s ease;
+}
+
+.faq-button:hover {
+  transform: scale(1.1);
+  background-color: #9D4270;
+}
+
+.faq-button:active {
+  transform: scale(0.95);
+}
+
+.faq-button .question-mark {
+  color: white;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.faq-label {
+  background-color: #0f0f1a;
+  color: #fff;
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  opacity: 0;
+  transform: translateX(20px);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  white-space: nowrap;
+}
+
+.faq-container:hover .faq-label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ===============================
+   📰 DASHBOARD / EVENTS / POSTS
+=============================== */
+.dashboard-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 24px auto;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  max-width: 900px;
+  transition: box-shadow 0.3s ease;
+}
+
+.dashboard-section:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+/* ===============================
+   ⚙️ RESPONSIVE FIXES
+=============================== */
+@media (max-width: 768px) {
+  /* NAVIGATION */
+  .nav {
+    height: auto;
+  }
+
+  .nav-menu {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 10px 15px;
+  }
+
+  .logo {
+    height: 35px;
+  }
+
+  .menu-toggle {
+    display: block;
+  }
+
+  .nav-links {
+    display: none;
+    flex-direction: column;
+  }
+
+  .nav-links.show {
+    display: flex;
+  }
+
+  /* HEADER BELOW */
+  .navbelow {
+    height: auto;
+    padding: 20px 10px;
+  }
+
+  .navbelow h1 {
+    font-size: 1.6rem;
+  }
+
+  .navbelow h2 {
+    font-size: 1rem;
+  }
+
+  /* DASHBOARD */
+  .dashboard-section {
+    width: 92%;
+    padding: 15px;
+  }
+
+  /* FAQ */
+  .faq-container {
+    bottom: 15px;
+    right: 15px;
+  }
+
+  .faq-button {
+    width: 60px;
+    height: 60px;
+  }
+
+  /* FOOTER */
+  .footer {
+    font-size: 12px;
+    padding: 15px;
+  }
+}
+
+/* Extra Small Devices */
+@media (max-width: 480px) {
+  .logo {
+    height: 30px;
+  }
+
+  .faq-button .question-mark {
+    font-size: 20px;
+  }
+
+  .navbelow h1 {
+    font-size: 1.4rem;
+  }
+}
+
+/* ================================
+   📱 MOBILE OPTIMIZATION
+================================= */
+@media (max-width: 768px) {
+    /* --- NAV --- */
+    .nav {
+        height: auto;
+        padding: 0;
+    }
+
+    .nav-menu {
+        flex-direction: column;
+        align-items: flex-start;
+        position: relative;
+        padding: 1rem;
+    }
+
+    .logo {
+        height: 35px;
+        margin: 0;
+    }
+
+    /* --- HIDE LINKS INITIALLY --- */
+    .nav-menu a {
+        display: none;
+        margin: 0.75rem 0;
+        width: 100%;
+    }
+
+    /* --- SHOW WHEN ACTIVE --- */
+    .nav.active .nav-menu a {
+        display: block;
+        animation: fadeSlideIn 0.3s ease;
+    }
+
+    /* --- HAMBURGER BUTTON --- */
+    .menu-toggle {
+        display: block;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 2rem;
+        cursor: pointer;
+        position: absolute;
+        right: 20px;
+        top: 20px;
+        z-index: 1100;
+    }
+
+    /* --- DROPDOWN BACKGROUND --- */
+    .nav.active {
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(6px);
+        border-radius: 0 0 12px 12px;
+        transition: all 0.3s ease;
+    }
+
+    /* --- ANIMATION --- */
+    @keyframes fadeSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* --- HEADER ADJUSTMENTS --- */
+    .main-header {
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+        margin: 15px;
+        gap: 6px;
+    }
+
+    .main-header img.hat-img {
+        width: 40px;
+        height: 40px;
+    }
+
+    .main-header h1 {
+        font-size: 20px;
+        margin: 0;
+    }
+
+    .main-header h2 {
+        font-size: 16px;
+        color: #666;
+        margin: 0;
+        position: static;
+    }
+
+    .dashboard-line {
+        margin-top: 5px;
+    }
+
+    .bigthropy {
+        width: 90px;
+        height: 70px;
+        margin-right: 20px;
+    }
+
+    /* --- LAYOUT FIXES --- */
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 16px;
+    }
+
+    .dashboard-section {
+        width: 95%;
+        padding: 15px;
+    }
+
+    section {
+        padding: 16px;
+        border-radius: 12px;
+    }
+
+    .header-flex {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    /* --- CARD ADJUSTMENTS --- */
+    .poll-card,
+    .competition-card,
+    .event-card {
+        padding: 16px;
+        font-size: 0.9rem;
+    }
+
+    /* --- MODAL ADJUSTMENTS --- */
+    .modal-content {
+        padding: 20px;
+        max-width: 95%;
+    }
+
+    .modal-header h2 {
+        font-size: 1.4rem;
+    }
+
+    .tab-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .form-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .btn-discard,
+    .btn-post,
+    .btn-create {
+        width: 100%;
+    }
+
+    /* --- FAQ BUTTON --- */
+    .faq-container {
+        bottom: 15px;
+        right: 15px;
+    }
+
+    .faq-button {
+        width: 60px;
+        height: 60px;
+    }
+
+    .faq-button .question-mark {
+        font-size: 20px;
+    }
+
+    .faq-label {
+        display: none;
+    }
+
+    /* --- FOOTER --- */
+    .footer {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 14px;
+        font-size: 13px;
+    }
+
+    .footer-right {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .crest {
+        height: 32px;
+    }
+
+    body {
+        overflow-x: hidden;
+    }
+}
+
+/* ================================
+   💻 DESKTOP VIEW (min 769px)
+================================= */
+@media (min-width: 769px) {
+    .menu-toggle {
+        display: none;
+    }
+
+    .nav-menu {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .nav.active {
+        background: none;
+    }
+}
