@@ -198,24 +198,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const setButtonBusy = (button, busyText) => {
     if (!button) return () => {};
     const original = button.textContent;
-    button.dataset.originalText = original;
+
     button.disabled = true;
-    button.classList.add('is-loading');
     if (busyText) {
       button.textContent = busyText;
     }
 
     return () => {
       button.disabled = false;
-      button.classList.remove('is-loading');
-      button.textContent = button.dataset.originalText || original;
+      button.textContent = original;
     };
   };
 
-  // Sign-in handler ---------------------------------------------------------
+  // Sign-in handler -----------------------------------------------------------
   const signInBtn = document.getElementById('signInBtn');
   if (signInBtn) {
-    signInBtn.addEventListener('click', async () => {
+    signInBtn.addEventListener('click', async (event) => {
+      event.preventDefault();
+
       const email = document.getElementById('email')?.value.trim();
       const password = document.getElementById('password')?.value;
       const role = document.getElementById('roleSelect')?.value || '';
@@ -250,21 +250,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const normalizePath = (path) => {
           if (!path) return null;
-          if (/^https?:\/\//i.test(path)) {
-            return path;
+
+          const trimmedPath = path.trim();
+          if (!trimmedPath) return null;
+
+          if (/^https?:\/\//i.test(trimmedPath)) {
+            return trimmedPath;
           }
-          const trimmed = path.replace(/^\/+/, '');
-          const normalized = /^frontend\//i.test(trimmed)
-            ? trimmed
-            : `Frontend/${trimmed}`;
-          return `/${normalized.replace(/^\/+/, '')}`;
+
+          if (trimmedPath.startsWith('/')) {
+            try {
+              return new URL(trimmedPath, window.location.origin).href;
+            } catch (error) {
+              console.warn('Unable to resolve redirect path:', path, error);
+              return trimmedPath;
+            }
+          }
+
+          const withoutLeadingSlash = trimmedPath.replace(/^\+/, '');
+          const ensuredFrontendPath = withoutLeadingSlash.toLowerCase().startsWith('frontend/')
+            ? withoutLeadingSlash
+            : `Frontend/${withoutLeadingSlash}`;
+          const ensuredWithLeadingSlash = ensuredFrontendPath.startsWith('/')
+            ? ensuredFrontendPath
+            : `/${ensuredFrontendPath}`;
+
+          try {
+            return new URL(ensuredWithLeadingSlash, window.location.origin).href;
+          } catch (error) {
+            console.warn('Unable to resolve redirect path:', path, error);
+            return ensuredWithLeadingSlash;
+          }
         };
 
         const normalizedRole = (result.user?.role || role || '').trim().toLowerCase();
-        const redirectPath =
-          normalizePath(result.redirectPath) ||
+        const rawRedirectPath =
+          result.redirectPath ||
           redirectMap[normalizedRole] ||
           '/Frontend/studentdashboard.html';
+        const redirectPath = normalizePath(rawRedirectPath) || rawRedirectPath;
 
         window.location.href = redirectPath;
 
@@ -322,16 +346,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      if (!password || password.length < 8) {
-        alert('Password must be at least 8 characters.');
+      if (!studentId && role === 'Student') {
+        alert('Please enter your student ID.');
+        return;
+      }
+      if (!phone) {
+        alert('Please enter your phone number.');
+        return;
+      }
+      if (!password || !confirmPassword) {
+        alert('Please enter and confirm your password.');
         return;
       }
       if (password !== confirmPassword) {
         alert('Passwords do not match.');
         return;
       }
+      if (password.length < 8) {
+        alert('Password must be at least 8 characters long.');
+        return;
+      }
 
-      const resetButton = setButtonBusy(createBtn, 'Creating...');
+      const resetButton = setButtonBusy(createBtn, 'Creating Account...');
       try {
         const result = await postJSON('/auth/register', {
           role,
@@ -459,4 +495,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-//..
+  //..
