@@ -61,6 +61,22 @@ const queryOne = async (sql, params = []) => {
   return result.rows[0] || null;
 };
 
+const logUserLogin = async ({ userId, ipAddress, userAgent }) => {
+  if (!userId) {
+    return;
+  }
+
+  try {
+    await getPool().query(
+      `INSERT INTO user_login_history (user_id, ip_address, user_agent)
+       VALUES ($1, $2, $3)`,
+      [userId, toNullable(ipAddress), toNullable(userAgent)]
+    );
+  } catch (error) {
+    console.error('Failed to record user login history:', error);
+  }
+};
+
 router.post('/register', async (req, res) => {
   const {
     role,
@@ -436,6 +452,11 @@ router.post('/verify-otp', async (req, res) => {
       const redirectPath =
         ROLE_REDIRECTS[trimOrEmpty(user.role).toLowerCase()] || DEFAULT_REDIRECT_PATH;
 
+      const ipAddress = getClientIp(req);
+      const userAgent = trimOrEmpty(req.headers['user-agent']);
+
+      await logUserLogin({ userId: user.id, ipAddress, userAgent });
+
       const token = jwt.sign(
         {
           sub: user.id,
@@ -544,6 +565,8 @@ router.post('/login', async (req, res) => {
   }
 
   const normalizedEmail = sanitizeEmail(email);
+  const ipAddress = getClientIp(req);
+  const userAgent = trimOrEmpty(req.headers['user-agent']);
 
   try {
     const user = await queryOne(
@@ -559,6 +582,8 @@ router.post('/login', async (req, res) => {
     if (!isMatch) {
       return respondWithError(res, 401, 'Invalid email or password.');
     }
+
+    await logUserLogin({ userId: user.id, ipAddress, userAgent });
 
     const token = jwt.sign(
       {

@@ -54,6 +54,16 @@ const ensureDatabase = async () => {
       );
 
       await client.query(
+        `CREATE TABLE IF NOT EXISTS user_login_history (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+          ip_address TEXT,
+          user_agent TEXT,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )`
+      );
+
+      await client.query(
         `CREATE TABLE IF NOT EXISTS user_consent (
           id SERIAL PRIMARY KEY,
           user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
@@ -67,6 +77,16 @@ const ensureDatabase = async () => {
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           CONSTRAINT user_consent_identity CHECK (user_id IS NOT NULL OR session_token IS NOT NULL)
         )`
+      );
+
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS user_login_history_user_id_idx
+         ON user_login_history (user_id)`
+      );
+
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS user_login_history_user_id_created_at_idx
+         ON user_login_history (user_id, created_at DESC)`
       );
     } finally {
       client.release();
