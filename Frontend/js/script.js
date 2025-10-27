@@ -38,15 +38,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  const completeOtpVerification = (message) => {
+  const completeOtpVerification = (result = {}) => {
+    const { message, user, redirectPath } = result || {};
+    const extraMessages = [];
+    if (message) {
+      extraMessages.push(message);
+    }
+
+    const userRole = (user?.role || '').toString().toLowerCase();
+    if (userRole.includes('student')) {
+      const studentId = user?.studentId || '';
+      const officialEmail = (user?.email || '').trim();
+      if (studentId) {
+        const normalizedStudentId = studentId.toString().toUpperCase();
+        const generatedEmail = `${normalizedStudentId}@murdoch.edu.au`;
+        extraMessages.push(
+          `Your Murdoch student ID is ${normalizedStudentId}. Your official email is ${generatedEmail}.`
+        );
+      } else if (officialEmail) {
+        extraMessages.push(`Your Murdoch student email is ${officialEmail}.`);
+      }
+    }
+
     sessionStorage.removeItem('pendingOtpEmail');
     pendingOtpEmail = null;
     if (otpEmailInput) {
       otpEmailInput.value = '';
     }
     hideOtpEntrySection();
-    alert(message || 'Your account has been verified successfully.');
-    window.location.href = 'index.html';
+    const alertMessage =
+      extraMessages.join('\n\n') || 'Your account has been verified successfully.';
+    alert(alertMessage);
+    window.location.href = redirectPath || 'index.html';
   };
 
   // Handle tab switching between Sign In and Create Account
@@ -102,20 +125,21 @@ document.addEventListener('DOMContentLoaded', () => {
       const parsed = JSON.parse(raw);
       return parsed && typeof parsed === 'object' ? parsed : null;
     } catch (error) {
-        console.warn('Unable to parse stored consent preferences.', error)
-        return null;
+      console.warn('Unable to parse stored consent preferences.', error);
+      return null;
     }
-  }
+  };
 
-  const applyPreferencesToFrom = (prefences = {}) => {
+  const applyPreferencesToForm = (preferences = {}) => {
     if (!form) return;
     const checkboxes = form.querySelectorAll('input[type="checkbox"]');
     checkboxes.forEach((checkbox) => {
+      const { name } = checkbox;
       let value;
       if (name === 'essential') {
         value = true;
-      } else if (Object.prototype.hasOwnProperty.call(prefences, name)) {
-        value = Boolean(prefences[name]);
+      } else if (Object.prototype.hasOwnProperty.call(preferences, name)) {
+        value = Boolean(preferences[name]);
       } else {
         value = checkbox.defaultChecked;
       }
@@ -129,20 +153,20 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   let currentConsent = parseStoredConsent();
-  applyPreferencesToFrom(currentConsent || {});
-  setBannerVisibility(!currentConsent)
+  applyPreferencesToForm(currentConsent || {});
+  setBannerVisibility(!currentConsent);
 
   if (acceptBtn) {
     acceptBtn.addEventListener('click', () => {
       currentConsent = {
         essential: true,
-        analystics: true,
+        analytics: true,
         email: true,
         payment: true,
-        ai: true,
+        ai: true
       };
       localStorage.setItem('userConsent', JSON.stringify(currentConsent));
-      applyPreferencesToFrom(currentConsent);
+      applyPreferencesToForm(currentConsent);
       setBannerVisibility(false);
       if (modal) modal.style.display = 'none';
     });
@@ -166,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const preferences = {};
       form.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
         const { name } = checkbox;
-        const value = name === 'essential' ? true : Boolean(checkbox.checked)
+        const value = name === 'essential' ? true : Boolean(checkbox.checked);
         checkbox.checked = value;
         preferences[name] = value;
       });
@@ -267,7 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           }
 
-          const withoutLeadingSlash = trimmedPath.replace(/^\+/, '');
+          const withoutLeadingSlash = trimmedPath.replace(/^\/+/, '');
           const ensuredFrontendPath = withoutLeadingSlash.toLowerCase().startsWith('frontend/')
             ? withoutLeadingSlash
             : `Frontend/${withoutLeadingSlash}`;
@@ -291,7 +315,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const redirectPath = normalizePath(rawRedirectPath) || rawRedirectPath;
 
         window.location.href = redirectPath;
-
       } catch (error) {
         alert(error.message);
       } finally {
@@ -307,8 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const role = document.getElementById('createRole')?.value || '';
       const firstName = document.getElementById('firstName')?.value.trim();
       const lastName = document.getElementById('lastName')?.value.trim();
-      const email = document.getElementById('createEmail')?.value.trim();
-      const studentId = document.getElementById('studentId')?.value.trim();
+      const personalEmail = document.getElementById('personalEmail')?.value.trim();
       const phone = document.getElementById('phone')?.value.trim();
       const password = document.getElementById('createPassword')?.value;
       const confirmPassword = document.getElementById('confirmPassword')?.value;
@@ -321,33 +343,8 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Please enter your first and last names.');
         return;
       }
-      if (!email) {
-        alert('Please enter your email.');
-        return;
-      }
-      const normalizedEmail = email.toLowerCase();
-      if (role === 'Student') {
-        if (normalizedEmail.endsWith('@gmail.com')) {
-          alert(
-            'Student accounts cannot be created with Gmail addresses. Please use your Murdoch University student email (e.g., name@murdoch.edu.au).'
-          );
-          return;
-        }
-
-        const emailDomain = normalizedEmail.split('@')[1] || '';
-        const isMurdochDomain =
-          emailDomain === 'murdoch.edu.au' || emailDomain.endsWith('.murdoch.edu.au');
-
-        if (!isMurdochDomain) {
-          alert(
-            'Please use your Murdoch University student email address (e.g., name@murdoch.edu.au) to create a student account.'
-          );
-          return;
-        }
-      }
-
-      if (!studentId && role === 'Student') {
-        alert('Please enter your student ID.');
+      if (!personalEmail) {
+        alert('Please enter your personal email.');
         return;
       }
       if (!phone) {
@@ -373,14 +370,13 @@ document.addEventListener('DOMContentLoaded', () => {
           role,
           firstName,
           lastName,
-          email,
-          studentId,
+          personalEmail,
           phone,
           password,
           confirmPassword
         });
-        sessionStorage.setItem('pendingOtpEmail', email);
-        pendingOtpEmail = email;
+        sessionStorage.setItem('pendingOtpEmail', personalEmail);
+        pendingOtpEmail = personalEmail;
 
         let message = result?.message || 'Registration received. Please verify your email to continue.';
         if (result?.otp?.message) {
@@ -467,7 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await postJSON('/auth/verify-otp', { email, code });
         localStorage.setItem('musAuthToken', result.token);
         localStorage.setItem('musAuthUser', JSON.stringify(result.user));
-        completeOtpVerification(result?.message);
+        completeOtpVerification(result);
       } catch (error) {
         alert(error.message);
       } finally {
@@ -493,6 +489,3 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
-
-
-  //..

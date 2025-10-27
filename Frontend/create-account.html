@@ -1,80 +1,92 @@
 <!doctype html>
-<main class="page center">
-<div class="card wide">
-<header class="logo-area">
-<img src="assets/logo.png" alt="Murdoch University" class="logo">
-<p class="subtitle">Murdoch University Student Portal</p>
-<link rel="stylesheet" href="css/styles.css">
-</header>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Murdoch University — Create Account</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <main class="page center">
+    <div class="card wide">
+      <header class="logo-area">
+        <img src="assets/logo.png" alt="Murdoch University" class="logo" />
+        <p class="subtitle">Murdoch University Student Portal</p>
+      </header>
 
+      <nav class="toggle">
+        <button class="tab" data-target="signin">Sign In</button>
+        <button class="tab active" data-target="create">Create Account</button>
+      </nav>
 
-<nav class="toggle">
-<button class="tab" data-target="signin">Sign In</button>
-<button class="tab active" data-target="create">Create Account</button>
-</nav>
+      <section class="form-area create">
+        <label class="label">I am a
+          <select id="createRole" class="input">
+            <option selected>Student</option>
+            <option>Guest / Visitor</option>
+          </select>
+        </label>
 
+        <div class="row two">
+          <label class="label">First Name
+            <input id="firstName" type="text" placeholder="John" class="input" autocomplete="given-name" />
+          </label>
+          <label class="label">Last Name
+            <input id="lastName" type="text" placeholder="Doe" class="input" autocomplete="family-name" />
+          </label>
+        </div>
 
-<section class="form-area create">
-<label class="label">I am a
-<select id="createRole" class="input">
-<option>Student</option>
-<option>Guest / Visitor</option>
-</select>
-</label>
+        <label class="label">Personal Email (for OTP delivery)
+          <input
+            id="personalEmail"
+            type="email"
+            placeholder="your.email@example.com"
+            class="input"
+            autocomplete="email"
+          />
+        </label>
+        <p class="small">We will send your verification code to this personal email address.</p>
 
+        <p class="small">
+          After we verify your personal email, we'll generate your Murdoch Student ID and official
+          <strong>@murdoch.edu.au</strong> email address for you. You'll use that Murdoch email to sign in,
+          and we'll deliver future OTP codes to the personal email you provide here.
+        </p>
 
-<div class="row two">
-<label class="label">First Name
-<input id="firstName" type="text" placeholder="John" class="input">
-</label>
-<label class="label">Last Name
-<input id="lastName" type="text" placeholder="Doe" class="input">
-</label>
-</div>
+        <label class="label">Phone Number
+          <input id="phone" type="tel" placeholder="+65 xxx xxx xxx" class="input" autocomplete="tel" />
+        </label>
 
+        <label class="label">Password
+          <input id="createPassword" type="password" placeholder="Min 8 characters" class="input" />
+        </label>
 
-<label class="label">Email Address
-<input id="createEmail" type="email" placeholder="your.email@murdoch.edu.au" class="input">
-</label>
-<p class="small">Student accounts must use a Murdoch University email (e.g., name@murdoch.edu.au). Gmail addresses are not accepted.</p>
+        <label class="label">Confirm Password
+          <input id="confirmPassword" type="password" placeholder="Re-enter password" class="input" />
+        </label>
 
-<label class="label">Phone (Optional)
-<input id="phone" type="tel" placeholder="+65 xxx xxx xxx" class="input">
-</label>
+        <p class="small">
+          By creating an account, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.
+        </p>
 
+        <button id="createAccountBtn" class="primary-btn">Create Account</button>
 
-<label class="label">Password
-<input id="createPassword" type="password" placeholder="Min 8 characters" class="input">
-</label>
-
-
-<label class="label">Confirm Password
-<input id="confirmPassword" type="password" placeholder="Re-enter password" class="input">
-</label>
-
-
-<p class="small">By creating an account, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</p>
-
-
-<button id="createAccountBtn" class="primary-btn">Create Account</button>
-
-
-<p class="help">Need help? <a href="#" id="contactSupport2">Contact Support</a></p>
-
-</section>
-</main>
-<br>
-<br>
-<footer class="footer">
+        <p class="help">Need help? <a href="#" id="contactSupport2">Contact Support</a></p>
+      </section>
+    </div>
+  </main>
+  <br />
+  <br />
+  <footer class="footer">
     <div class="footer-right">
-        <img src="assets/crest.png" alt="Murdoch Crest" class="crest">
-    <span>
-        @ 2025 MUSEngage | Developed by Team 2 | Programming / Security Team Chun Meng , Claire, Dominic | AI : Tuan AN | Project Manager : Rafael , Wee Shen
-    </span> 
-    </div>   
-</footer>
+      <img src="assets/crest.png" alt="Murdoch Crest" class="crest" />
+      <span>
+        @ 2025 MUSEngage | Developed by Team 2 | Programming / Security Team Chun Meng , Claire, Dominic | AI : Tuan AN |
+        Project Manager : Rafael , Wee Shen
+      </span>
+    </div>
+  </footer>
 
-
-<script src="js/script.js"></script>
+  <script src="js/script.js"></script>
 </body>
 </html>
