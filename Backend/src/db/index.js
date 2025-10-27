@@ -46,6 +46,7 @@ const ensureDatabase = async () => {
           first_name TEXT,
           last_name TEXT,
           email TEXT NOT NULL UNIQUE,
+          personal_email TEXT,
           student_id TEXT,
           phone TEXT,
           password_hash TEXT NOT NULL,
@@ -53,6 +54,23 @@ const ensureDatabase = async () => {
         )`
       );
 
+      await client.query(
+        `ALTER TABLE users
+           ADD COLUMN IF NOT EXISTS personal_email TEXT`
+      );
+
+      await client.query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS users_personal_email_uniq
+           ON users (personal_email)
+           WHERE personal_email IS NOT NULL`
+      );
+
+      await client.query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS users_student_id_uniq
+           ON users (student_id)
+           WHERE student_id IS NOT NULL`
+      );
+      
       await client.query(
         `CREATE TABLE IF NOT EXISTS user_login_history (
           id SERIAL PRIMARY KEY,
