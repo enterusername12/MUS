@@ -3,6 +3,7 @@ const cors = require('cors');
 
 const authRoutes = require('./routes/auth');
 const consentRoutes = require('./routes/consent');
+const dashboardRoutes = require('./routes/dashboard');
 
 const app = express();
 
@@ -21,5 +22,6 @@ app.get('/health', (_req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/consent', consentRoutes);
+app.use('/api/dashboard', dashboardRoutes); 
 
 module.exports = app;
