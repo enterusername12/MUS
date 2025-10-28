@@ -12,12 +12,21 @@
   <nav class="nav">
     <div class="nav-menu">
       <img src="assets/logo.png" alt="Murdoch University" class="logo">
-      <a href="#">Dashboard</a>
-      <a href="merchandise.html">Merchandise</a>
-      <a href="feedback.html">Feedback</a>
-      <a href="qr.html"><img src="assets/QR.png" alt="QR Code"></a>
+
+      <!-- Hamburger button (only shows on mobile) -->
+      <button class="menu-toggle">☰</button>
+
+      <!-- Wrap links inside .nav-links -->
+      <div class="nav-links">
+        <a href="#">Dashboard</a>
+        <a href="merchandise.html">Merchandise</a>
+        <a href="feedback.html">Feedback</a>
+        <a href="qr.html"><img src="assets/QR.png" alt="QR Code"></a>
+      </div>
     </div>
   </nav>
+
+
 
   <!-- ✅ Header -->
   <div class="main-header">
@@ -211,5 +220,17 @@
 </div>
 
   <script src="js/studentdashboard.js"></script>
+
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const toggle = document.querySelector(".menu-toggle");
+  const navLinks = document.querySelector(".nav-links");
+
+  toggle.addEventListener("click", () => {
+    navLinks.classList.toggle("show");
+  });
+});
+</script>
+
 </body>
 </html>

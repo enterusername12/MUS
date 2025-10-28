@@ -347,4 +347,3 @@ renderBadge();
 
 /* Small accessibility: open cart when pressing 'c' key */
 document.addEventListener('keydown', (e)=>{ if(e.key==='c') openCart(); });
-

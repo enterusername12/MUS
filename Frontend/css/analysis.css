@@ -547,3 +547,381 @@ body {
 .crest{height:40px; width: 37px; left: 20px; top:20px;filter: brightness(0) invert(1);}
 .crest-area{text-align: left;margin-left: auto;}
 
+/* ================================
+   📱 MOBILE OPTIMIZATION
+================================= */
+@media (max-width: 768px) {
+    /* --- NAV --- */
+    .nav {
+        height: auto;
+        padding: 0;
+    }
+
+    .nav-menu {
+        flex-direction: column;
+        align-items: flex-start;
+        position: relative;
+        padding: 1rem;
+    }
+
+    .logo {
+        height: 35px;
+        margin: 0;
+    }
+
+    /* --- HIDE LINKS INITIALLY --- */
+    .nav-menu a {
+        display: none;
+        margin: 0.75rem 0;
+        width: 100%;
+    }
+
+    /* --- SHOW WHEN ACTIVE --- */
+    .nav.active .nav-menu a {
+        display: block;
+        animation: fadeSlideIn 0.3s ease;
+    }
+
+    /* --- HAMBURGER BUTTON --- */
+    .menu-toggle {
+        display: block;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 2rem;
+        cursor: pointer;
+        position: absolute;
+        right: 20px;
+        top: 20px;
+        z-index: 1100;
+    }
+
+    /* --- DROPDOWN BACKGROUND --- */
+    .nav.active {
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(6px);
+        border-radius: 0 0 12px 12px;
+        transition: all 0.3s ease;
+    }
+
+    /* --- ANIMATION --- */
+    @keyframes fadeSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* --- HEADER ADJUSTMENTS --- */
+    .main-header {
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+        margin: 15px;
+        gap: 6px;
+    }
+
+    .main-header img.hat-img {
+        width: 40px;
+        height: 40px;
+    }
+
+    .main-header h1 {
+        font-size: 20px;
+        margin: 0;
+    }
+
+    .main-header h2 {
+        font-size: 16px;
+        color: #666;
+        margin: 0;
+        position: static;
+    }
+
+    .dashboard-line {
+        margin-top: 5px;
+    }
+
+    .bigthropy {
+        width: 90px;
+        height: 70px;
+        margin-right: 20px;
+    }
+
+    /* --- LAYOUT FIXES --- */
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 16px;
+    }
+
+    .dashboard-section {
+        width: 95%;
+        padding: 15px;
+    }
+
+    section {
+        padding: 16px;
+        border-radius: 12px;
+    }
+
+    .header-flex {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    /* --- CARD ADJUSTMENTS --- */
+    .poll-card,
+    .competition-card,
+    .event-card {
+        padding: 16px;
+        font-size: 0.9rem;
+    }
+
+    /* --- MODAL ADJUSTMENTS --- */
+    .modal-content {
+        padding: 20px;
+        max-width: 95%;
+    }
+
+    .modal-header h2 {
+        font-size: 1.4rem;
+    }
+
+    .tab-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .form-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .btn-discard,
+    .btn-post,
+    .btn-create {
+        width: 100%;
+    }
+
+    /* --- FAQ BUTTON --- */
+    .faq-container {
+        bottom: 15px;
+        right: 15px;
+    }
+
+    .faq-button {
+        width: 60px;
+        height: 60px;
+    }
+
+    .faq-button .question-mark {
+        font-size: 20px;
+    }
+
+    .faq-label {
+        display: none;
+    }
+
+    /* --- FOOTER --- */
+    .footer {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 14px;
+        font-size: 13px;
+    }
+
+    .footer-right {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .crest {
+        height: 32px;
+    }
+
+    body {
+        overflow-x: hidden;
+    }
+}
+
+/* --- DASHBOARD MAIN CONTENT --- */
+.container {
+  padding: 10px;
+  width: 100%;
+}
+
+.tabs {
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  margin-bottom: 20px;
+  box-shadow: none;
+  border-radius: 10px;
+}
+
+.tab {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+}
+
+.content.active {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.sidebar {
+  order: 2;
+  width: 100%;
+  flex-direction: column;
+}
+
+.main-content {
+  order: 1;
+  width: 100%;
+  padding: 16px;
+  max-height: none;
+}
+
+/* --- POLL CARDS --- */
+.poll-list {
+  max-height: none;
+  padding-right: 0;
+}
+
+.poll-card {
+  padding: 15px;
+  font-size: 0.9rem;
+}
+
+.poll-title {
+  font-size: 16px;
+}
+
+.poll-stats {
+  font-size: 13px;
+}
+
+/* --- SEARCH BAR --- */
+.search-box {
+  flex-direction: row;
+  gap: 8px;
+  padding: 10px;
+}
+
+.search-box input {
+  font-size: 13px;
+}
+
+/* --- CHARTS --- */
+.chart-container {
+  height: auto;
+  flex-direction: column;
+  margin-top: 20px;
+}
+
+.pie-chart {
+  width: 220px;
+  height: 220px;
+}
+
+.chart-legend {
+  gap: 10px;
+  margin-top: 15px;
+  font-size: 13px;
+}
+
+/* --- STUDENT SPOTLIGHT --- */
+.spotlight-sidebar {
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filter-select {
+  font-size: 13px;
+  padding: 10px;
+}
+
+.student-card {
+  padding: 15px;
+  font-size: 0.9rem;
+}
+
+.student-name {
+  font-size: 16px;
+}
+
+.student-award {
+  font-size: 13px;
+}
+
+.score-badge {
+  font-size: 24px;
+}
+
+/* --- DETAILS & CHART --- */
+.detail-row {
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-col {
+  width: 100%;
+}
+
+.line-chart {
+  height: 200px;
+}
+
+/* --- GENERAL FIXES --- */
+h1, h2, h3 {
+  font-size: clamp(16px, 4vw, 22px);
+}
+
+.option-header {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.option-votes {
+  font-size: 12px;
+}
+
+.bar-container {
+  height: 10px;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+/* ================================
+   💻 DESKTOP VIEW (min 769px)
+================================= */
+@media (min-width: 769px) {
+    .menu-toggle {
+        display: none;
+    }
+
+    .nav-menu {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .nav.active {
+        background: none;
+    }
+}

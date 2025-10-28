@@ -145,7 +145,137 @@ body{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Arial; background
 }
 
 
+
+
 @media (max-width:600px){
 .card{width:92%}
 .card.wide{width:92%}
+}
+
+
+/* ============================
+   📱 MOBILE OPTIMIZATION ONLY
+   ============================ */
+@media (max-width: 600px) {
+
+  /* --- General page padding --- */
+  .page {
+    padding: 20px 12px;
+  }
+
+  /* --- Cards --- */
+  .card,
+  .card.wide {
+    width: 100%;
+    padding: 18px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+
+  /* --- Logo + spacing --- */
+  .logo-area {
+    margin-bottom: 8px;
+  }
+  .logo {
+    height: 32px;
+  }
+
+  /* --- Text adjustments --- */
+  .subtitle {
+    font-size: 13px;
+  }
+  .label {
+    font-size: 12px;
+  }
+  .input {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  /* --- Toggle tabs --- */
+  .toggle {
+    gap: 4px;
+    padding: 4px;
+  }
+  .tab {
+    font-size: 13px;
+    padding: 6px;
+  }
+
+  /* --- Buttons --- */
+  .primary-btn,
+  .ghost-btn {
+    font-size: 15px;
+    padding: 12px;
+  }
+  .primary-btn {
+    background: var(--accent);
+  }
+
+  /* --- Back button --- */
+  .back {
+    width: 120px;
+    height: auto;
+    font-size: 14px;
+    padding: 10px 16px;
+    position: static;
+    margin-bottom: 16px;
+  }
+
+  /* --- Footer --- */
+  .footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 14px 18px;
+    text-align: left;
+  }
+  .footer-right {
+    gap: 8px;
+  }
+  .footer-right span {
+    font-size: 11px;
+  }
+  .crest {
+    height: 32px;
+    width: auto;
+  }
+
+  /* --- Consent Banner --- */
+  .consent-banner {
+    padding: 12px;
+    font-size: 13px;
+  }
+  .button-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .btn-primary, .btn-secondary, .btn-text {
+    width: 100%;
+    font-size: 14px;
+  }
+
+  /* --- Modal --- */
+  .modal {
+    width: 95%;
+    padding: 20px;
+    max-width: none;
+  }
+  .modal-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .modal-buttons button {
+    width: 100%;
+  }
+
+  /* --- Input rows --- */
+  .row.two {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* --- Hide unnecessary desktop-only extras if any --- */
+  .desktop-only {
+    display: none !important;
+  }
 }
