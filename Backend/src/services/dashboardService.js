@@ -267,6 +267,8 @@ const toTimestamp = (value) => {
 
 const normalizePollOptions = (options, totalVotes) => {
   const normalizedOptions = ensureArray(options).map((option, index) => {
+    const rawOptionId = option.id ?? option.option_id ?? option.optionId;
+    const numericOptionId = ensureNumber(rawOptionId, null);
     const votes = ensureNumber(
       option.votes ?? option.count ?? option.total ?? option.value ?? option.vote_count,
       null
@@ -282,7 +284,8 @@ const normalizePollOptions = (options, totalVotes) => {
     return {
       id: ensureString(option.id, `option-${index + 1}`),
       name: ensureString(option.name ?? option.label ?? option.option ?? `Option ${index + 1}`),
-      percent: resolvedPercent
+      percent: resolvedPercent,
+      optionId: numericOptionId
     };
   });
 
@@ -291,6 +294,8 @@ const normalizePollOptions = (options, totalVotes) => {
 
 const normalizePolls = (items) =>
   ensureArray(items).map((poll, index) => {
+    const rawPollId = poll.id ?? poll.poll_id ?? poll.pollId;
+    const numericPollId = ensureNumber(rawPollId, null);
     const options = ensureArray(poll.options);
     const explicitTotal = ensureNumber(
       poll.totalVotes ?? poll.voteCount ?? poll.total_votes ?? poll.votes ?? poll.total,
@@ -307,6 +312,7 @@ const normalizePolls = (items) =>
 
     return {
       id: ensureString(poll.id, `poll-${index + 1}`),
+      pollId: numericPollId,
       title: ensureString(poll.title ?? poll.question ?? `Poll ${index + 1}`),
       description: ensureString(poll.description ?? poll.prompt ?? ''),
       deadline: toISOString(poll.deadline ?? poll.expires_at ?? poll.endsAt ?? poll.closesAt ?? ''),
