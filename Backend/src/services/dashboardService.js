@@ -255,6 +255,16 @@ const normalizeEvents = (items) =>
     )
   }));
 
+  const toTimestamp = (value) => {
+  const iso = toISOString(value);
+  if (!iso) {
+    return null;
+  }
+
+  const parsed = Date.parse(iso);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
 const normalizePollOptions = (options, totalVotes) => {
   const normalizedOptions = ensureArray(options).map((option, index) => {
     const votes = ensureNumber(
@@ -404,7 +414,7 @@ const normalizeCalendar = (items) =>
 
 const fetchLatestNews = async (limit = DEFAULT_NEWS_LIMIT) => {
   const { rows } = await getPool().query(
-    `SELECT id, title, summary, body, link, image_url, published_at, author
+    `SELECT id, title, summary, body, link, image_url, published_at
        FROM campus_news
        ORDER BY published_at DESC NULLS LAST, id DESC
        LIMIT $1`,
@@ -415,13 +425,52 @@ const fetchLatestNews = async (limit = DEFAULT_NEWS_LIMIT) => {
 
 const fetchUpcomingEvents = async (limit = DEFAULT_EVENTS_LIMIT) => {
   const { rows } = await getPool().query(
-    `SELECT id, title, description, location, start_time, end_time, image_url, organizer
+    `SELECT id, title, description, location, start_time, end_time, image_url
        FROM campus_events
        ORDER BY start_time ASC NULLS LAST, id ASC
        LIMIT $1`,
     [limit]
   );
   return rows;
+};
+
+const fetchCommunityPosts = async (limit = DEFAULT_EVENTS_LIMIT) => {
+  const { rows } = await getPool().query(
+    `SELECT id, title, category, description, tags, created_at
+       FROM community_posts
+       ORDER BY created_at DESC NULLS LAST, id DESC
+       LIMIT $1`,
+    [limit]
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    author: ensureString(row.author, 'Community'),
+    content: row.description,
+    created_at: row.created_at
+  }));
+};
+
+const mergeEvents = (campusEvents, communityPosts, limit = DEFAULT_EVENTS_LIMIT) => {
+  const withSortKey = [
+    ...ensureArray(campusEvents).map((event) => ({
+      ...event,
+      __sortTimestamp:
+        toTimestamp(event.start_time ?? event.startTime ?? event.created_at ?? event.createdAt) ?? 0
+    })),
+    ...ensureArray(communityPosts).map((post) => ({
+      ...post,
+      author: ensureString(post.author, 'Community'),
+      __sortTimestamp: toTimestamp(post.created_at ?? post.createdAt) ?? 0
+    }))
+  ];
+
+  withSortKey.sort((a, b) => b.__sortTimestamp - a.__sortTimestamp);
+
+  return withSortKey.slice(0, limit).map((item) => {
+    const { __sortTimestamp, ...rest } = item;
+    return rest;
+  });
 };
 
 const fetchActivePolls = async (limit = DEFAULT_POLLS_LIMIT) => {
@@ -543,7 +592,15 @@ async function getDashboardData(options = {}) {
 
   const defaultLoaders = {
     news: () => fetchLatestNews(effectiveLimits.news),
-    events: () => fetchUpcomingEvents(effectiveLimits.events),
+    events: () =>
+      (async () => {
+        const [campusEvents, communityPosts] = await Promise.all([
+          fetchUpcomingEvents(effectiveLimits.events),
+          fetchCommunityPosts(effectiveLimits.events)
+        ]);
+
+        return mergeEvents(campusEvents, communityPosts, effectiveLimits.events);
+      })(),
     polls: () => fetchActivePolls(effectiveLimits.polls),
     spotlights: () => fetchStudentSpotlights(effectiveLimits.spotlights),
     rewardLeaders: () => fetchRewardLeaders(effectiveLimits.rewards),

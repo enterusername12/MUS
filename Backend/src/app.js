@@ -4,6 +4,7 @@ const cors = require('cors');
 const authRoutes = require('./routes/auth');
 const consentRoutes = require('./routes/consent');
 const dashboardRoutes = require('./routes/dashboard');
+const communityPostsRoutes = require('./routes/communityPosts');
 
 const app = express();
 
@@ -23,5 +24,6 @@ app.get('/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/consent', consentRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/community-posts', communityPostsRoutes);
 
 module.exports = app;

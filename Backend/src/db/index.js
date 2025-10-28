@@ -269,7 +269,7 @@ const ensureDatabase = async () => {
            ON users (student_id)
            WHERE student_id IS NOT NULL`
       );
-      
+
       await client.query(
         `CREATE TABLE IF NOT EXISTS user_login_history (
           id SERIAL PRIMARY KEY,
@@ -306,7 +306,7 @@ const ensureDatabase = async () => {
          ON user_login_history (user_id, created_at DESC)`
       );
 
-await client.query(
+      await client.query(
         `CREATE TABLE IF NOT EXISTS campus_news (
           id SERIAL PRIMARY KEY,
           title TEXT NOT NULL,
@@ -408,6 +408,18 @@ await client.query(
       );
 
       await client.query(
+        `CREATE TABLE IF NOT EXISTS community_posts (
+          id SERIAL PRIMARY KEY,
+          title TEXT NOT NULL,
+          category TEXT,
+          description TEXT NOT NULL,
+          tags TEXT[],
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )`
+      );
+
+      await client.query(
         `CREATE INDEX IF NOT EXISTS campus_events_start_time_idx
            ON campus_events (start_time)`
       );
@@ -415,6 +427,11 @@ await client.query(
       await client.query(
         `CREATE INDEX IF NOT EXISTS calendar_items_start_time_idx
            ON calendar_items (start_time)`
+      );
+
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS community_posts_created_at_idx
+           ON community_posts (created_at DESC)`
       );
 
       await seedDashboardData(client);
