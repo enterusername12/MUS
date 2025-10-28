@@ -255,7 +255,7 @@ const normalizeEvents = (items) =>
     )
   }));
 
-  const toTimestamp = (value) => {
+const toTimestamp = (value) => {
   const iso = toISOString(value);
   if (!iso) {
     return null;
@@ -477,7 +477,8 @@ const fetchActivePolls = async (limit = DEFAULT_POLLS_LIMIT) => {
   const { rows: polls } = await getPool().query(
     `SELECT id, title, description, is_active, expires_at, created_at
        FROM polls
-       WHERE is_active = TRUE OR (expires_at IS NOT NULL AND expires_at > NOW())
+       WHERE is_active = TRUE
+         AND (expires_at IS NULL OR expires_at > NOW())
        ORDER BY COALESCE(expires_at, created_at + INTERVAL '365 days') ASC, created_at DESC
        LIMIT $1`,
     [limit]
@@ -550,15 +551,113 @@ const fetchRewardLeaders = async (limit = DEFAULT_REWARD_LIMIT) => {
   };
 };
 
-const fetchCalendarItems = async (limit = DEFAULT_CALENDAR_LIMIT) => {
-  const { rows } = await getPool().query(
+const combineDateTimeToTimestamp = (dateValue, timeValue) => {
+  const isoDate = toISOString(dateValue);
+  if (!isoDate) {
+    return null;
+  }
+
+  const baseDate = isoDate.slice(0, 10);
+  if (!baseDate) {
+    return null;
+  }
+
+  const baseline = Date.parse(`${baseDate}T00:00:00`);
+  if (Number.isNaN(baseline)) {
+    return null;
+  }
+
+  if (timeValue === undefined || timeValue === null || timeValue === '') {
+    return baseline;
+  }
+
+  if (timeValue instanceof Date) {
+    const isoTime = timeValue.toISOString().slice(11, 19);
+    const parsed = Date.parse(`${baseDate}T${isoTime}`);
+    return Number.isNaN(parsed) ? baseline : parsed;
+  }
+
+  if (typeof timeValue === 'string') {
+    const trimmed = timeValue.trim();
+    if (!trimmed) {
+      return baseline;
+    }
+
+    const normalized =
+      trimmed.length === 5
+        ? `${trimmed}:00`
+        : trimmed.length === 8
+          ? trimmed
+          : trimmed;
+
+    const parsed = Date.parse(`${baseDate}T${normalized}`);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+
+  if (typeof timeValue === 'number' && Number.isFinite(timeValue)) {
+    return baseline + timeValue;
+  }
+
+  return baseline;
+};
+
+const fetchCalendarItems = async (limit = DEFAULT_CALENDAR_LIMIT, userId = null) => {
+  const baseQuery = getPool().query(
     `SELECT id, title, description, start_time, end_time, location, category, link
        FROM calendar_items
        ORDER BY start_time ASC NULLS LAST, id ASC
        LIMIT $1`,
     [limit]
   );
-  return rows;
+
+  const userQuery =
+    userId && Number.isInteger(userId)
+      ? getPool().query(
+          `SELECT id, user_id, source_type, source_id, title, date, time, category
+             FROM user_calendar_items
+             WHERE user_id = $1
+             ORDER BY date ASC NULLS LAST, time ASC NULLS LAST, id ASC
+             LIMIT $2`,
+          [userId, limit]
+        )
+      : Promise.resolve({ rows: [] });
+
+  const [baseResult, userResult] = await Promise.all([baseQuery, userQuery]);
+
+  const combined = [
+    ...baseResult.rows.map((row) => ({
+      ...row,
+      __sortTimestamp: toTimestamp(row.start_time),
+      type: row.category ?? 'event'
+    })),
+    ...ensureArray(userResult.rows).map((row) => ({
+      id: `user-calendar-${row.id}`,
+      title: row.title,
+      date: row.date,
+      time: row.time,
+      category: row.category ?? row.source_type,
+      type: row.category ?? row.source_type,
+      source_type: row.source_type,
+      source_id: row.source_id,
+      __sortTimestamp: combineDateTimeToTimestamp(row.date, row.time)
+    }))
+  ];
+
+  combined.sort((a, b) => {
+    const aTime = a.__sortTimestamp ?? Number.POSITIVE_INFINITY;
+    const bTime = b.__sortTimestamp ?? Number.POSITIVE_INFINITY;
+    if (aTime !== bTime) {
+      return aTime - bTime;
+    }
+    return String(a.id).localeCompare(String(b.id));
+  });
+
+  return combined.slice(0, limit).map((item) => {
+    const { __sortTimestamp, ...rest } = item;
+    return rest;
+  });
 };
 
 async function safeLoadSection(loader, fallback) {
@@ -579,7 +678,11 @@ async function safeLoadSection(loader, fallback) {
 }
 
 async function getDashboardData(options = {}) {
-  const { loaders: overrideLoaders = {}, limits: limitOverrides = {} } = options;
+  const {
+    loaders: overrideLoaders = {},
+    limits: limitOverrides = {},
+    userId = null
+  } = options;
 
   const effectiveLimits = {
     news: parseLimit(limitOverrides.newsLimit, DEFAULT_NEWS_LIMIT),
@@ -604,7 +707,7 @@ async function getDashboardData(options = {}) {
     polls: () => fetchActivePolls(effectiveLimits.polls),
     spotlights: () => fetchStudentSpotlights(effectiveLimits.spotlights),
     rewardLeaders: () => fetchRewardLeaders(effectiveLimits.rewards),
-    calendar: () => fetchCalendarItems(effectiveLimits.calendar)
+    calendar: () => fetchCalendarItems(effectiveLimits.calendar, userId)
   };
 
   const loaders = {
@@ -648,6 +751,7 @@ module.exports = {
     normalizeSpotlights,
     normalizeRewardLeaders,
     normalizeCalendar,
+    combineDateTimeToTimestamp,
     toISOString,
     toDateOnly,
     toTime

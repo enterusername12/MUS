@@ -205,6 +205,36 @@ const seedDashboardData = async (client) => {
          )`
     );
   }
+
+  const [{ count: userCalendarCount }] = (
+    await client.query('SELECT COUNT(*)::INT FROM user_calendar_items')
+  ).rows;
+
+  if (toInt(userCalendarCount) === 0) {
+    await client.query(
+      `INSERT INTO user_calendar_items (
+         user_id,
+         source_type,
+         source_id,
+         title,
+         date,
+         time,
+         category
+       )
+       SELECT
+         users.id,
+         'orientation',
+         1,
+         'Orientation Week Prep',
+         (NOW() + INTERVAL '7 days')::DATE,
+         TO_CHAR(NOW() + INTERVAL '7 days', 'HH24:MI:SS'),
+         'reminder'
+       FROM users
+       WHERE users.id IS NOT NULL
+       ORDER BY users.id
+       LIMIT 1`
+    );
+  }
 };
 
 const createDatabaseIfMissing = async () => {
@@ -408,6 +438,22 @@ const ensureDatabase = async () => {
       );
 
       await client.query(
+        `CREATE TABLE IF NOT EXISTS user_calendar_items (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          source_type TEXT NOT NULL,
+          source_id INTEGER NOT NULL,
+          title TEXT NOT NULL,
+          date DATE NOT NULL,
+          time TEXT,
+          category TEXT,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          UNIQUE (user_id, source_type, source_id)
+        )`
+      );
+
+      await client.query(
         `CREATE TABLE IF NOT EXISTS community_posts (
           id SERIAL PRIMARY KEY,
           title TEXT NOT NULL,
@@ -427,6 +473,11 @@ const ensureDatabase = async () => {
       await client.query(
         `CREATE INDEX IF NOT EXISTS calendar_items_start_time_idx
            ON calendar_items (start_time)`
+      );
+
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS user_calendar_items_user_id_date_idx
+           ON user_calendar_items (user_id, date, time)`
       );
 
       await client.query(

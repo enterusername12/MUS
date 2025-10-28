@@ -1,9 +1,8 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
 const { getPool } = require('../db');
-const { JWT_SECRET } = require('../config/env');
+const { readJwtUserId } = require('../utils/auth');
 
 const router = express.Router();
 
@@ -41,26 +40,6 @@ const readSessionToken = (req) => {
 };
 
 const ensureSessionToken = (req) => readSessionToken(req) || crypto.randomBytes(24).toString('hex');
-
-const readJwtUserId = (req) => {
-  const authHeader = req.headers?.authorization;
-  if (!authHeader) {
-    return null;
-  }
-
-  const [scheme, token] = authHeader.split(' ');
-  if (scheme?.toLowerCase() !== 'bearer' || !token) {
-    return null;
-  }
-
-  try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    const id = Number(payload?.sub);
-    return Number.isInteger(id) && id > 0 ? id : null;
-  } catch (error) {
-    return null;
-  }
-};
 
 const normalizePreferences = (source = {}) => ({
   essential: true,
