@@ -10,9 +10,10 @@
 
   <!-- ===== NAV BAR ===== -->
   <nav class="nav">
+    <button class="menu-toggle">☰</button>
     <div class="nav-menu">
       <img src="assets/logo.png" alt="Murdoch University" class="logo">
-      <a href="#" onclick="history.back(); return false;">Dashbaord</a>
+      <a href="#" onclick="history.back(); return false;">Dashboard</a>
       <a href="staffmerchandise.html">Merchandise</a>
       <a href="#" class="active">Moderation</a>
       <a href="Analysis.html">Analysis</a>
@@ -82,5 +83,16 @@
   </div>
 
   <script src="js/moderation.js"></script>
+
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const menuToggle = document.querySelector(".menu-toggle");
+  const nav = document.querySelector(".nav");
+
+  menuToggle.addEventListener("click", () => {
+    nav.classList.toggle("active");
+  });
+});
+</script>
 </body>
 </html>

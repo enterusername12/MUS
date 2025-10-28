@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Manage Roles</title>
+  <link rel="stylesheet" href="css/managerole.css">
+</head>
+
+<body>
+  <nav class="nav">
+    
+<button class="menu-toggle">☰</button>
+    <div class="nav-menu">
+      <img src="assets/logo.png" alt="Murdoch University" class="logo">
+      <a href="#" onclick="history.back(); return false;">Dashboard</a>
+      <a href="#" class="active">Manage Roles</a>
+      <a href="log.html">Loggings</a>
+      <a href="staffmerchandise.html">Merchandise</a>
+      <a href="moderation.html">Moderation</a>
+      <a href="analysis.html">Analysis</a>
+    </div>
+ </nav>
+
+  <div class="main-header">
+    <h1>Master Admin Dashboard</h1>
+    <h2>Manage user roles, permissions, and monitor platform activity</h2>
+  </div>
+
+ <hr class="dashboard-line">
+
+<div class="stats-container" id="statsContainer"></div>
+
+  <div class="manage-section">
+    <div class="section-header">
+      <h3>Manage Roles</h3>
+      <p>Search and edit user roles and permissions</p>
+    </div>
+
+    <div class="search-box">
+      <span class="search-icon"></span>
+      <input type="text" id="searchInput" placeholder="Search by email or name..." />
+    </div>
+
+    <table class="users-table">
+      <thead>
+        <tr>
+          <th>EMAIL</th>
+          <th>NAME</th>
+          <th>ROLE</th>
+          <th>STATUS</th>
+          <th>LAST LOGIN</th>
+          <th>ACTION</th>
+        </tr>
+      </thead>
+      <tbody id="usersTableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <button class="close-btn" onclick="closeModal()">✕</button>
+      
+      <div class="modal-header">
+        <h3>Edit User Role & Status</h3>
+        <p id="modalSubtitle">Update the role and status for user</p>
+      </div>
+
+      <form id="editForm">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="text" id="modalEmail" readonly />
+        </div>
+
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" id="modalName" readonly />
+        </div>
+
+        <div class="form-group">
+          <label>Role</label>
+          <div class="custom-select-wrapper">
+            <div class="custom-select" id="roleSelect">
+              <span id="roleValue">Student</span>
+              <span class="select-arrow">▼</span>
+            </div>
+            <div class="dropdown-menu" id="roleDropdown">
+              <div class="dropdown-item" data-value="student">
+                <span>Student</span>
+                <span class="checkmark" style="display: none;">✓</span>
+              </div>
+              <div class="dropdown-item" data-value="guest">
+                <span>Guest</span>
+                <span class="checkmark" style="display: none;">✓</span>
+              </div>
+              <div class="dropdown-item" data-value="staff">
+                <span>Staff</span>
+                <span class="checkmark" style="display: none;">✓</span>
+              </div>
+              <div class="dropdown-item" data-value="admin">
+                <span>Admin</span>
+                <span class="checkmark" style="display: none;">✓</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Status</label>
+          <div class="custom-select-wrapper">
+            <div class="custom-select" id="statusSelect">
+              <span id="statusValue">Active</span>
+              <span class="select-arrow">▼</span>
+            </div>
+            <div class="dropdown-menu" id="statusDropdown">
+              <div class="dropdown-item" data-value="active">
+                <span>Active</span>
+                <span class="checkmark" style="display: none;">✓</span>
+              </div>
+              <div class="dropdown-item" data-value="inactive">
+                <span>Inactive</span>
+                <span class="checkmark" style="display: none;">✓</span>
+              </div>
+              <div class="dropdown-item" data-value="suspended">
+                <span>Suspended</span>
+                <span class="checkmark" style="display: none;">✓</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Join Date</label>
+          <input type="text" id="modalJoinDate" readonly />
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-save">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+ <!-- ✅ Footer -->
+  <footer class="footer">
+    <div class="footer-right">
+      <img src="assets/crest.png" alt="Murdoch Crest" class="crest">
+      <span>
+        © 2025 MUSEngage | Developed by Team 2 | Programming / Security Team: Chun Meng, Claire, Dominic |
+        AI: Tuan An | Project Manager: Rafael, Wee Shen
+      </span>
+    </div>
+  </footer>
+
+  <!-- ✅ FAQ Button -->
+  <div class="faq-container">
+    <div class="faq-label">FAQ</div>
+    <a href="faq.html">
+      <button class="faq-button" type="button">
+        <div class="question-mark">?</div>
+      </button>
+    </a>
+  </div>
+
+<script src="js/managerole.js"></script>
+
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const menuToggle = document.querySelector(".menu-toggle");
+  const nav = document.querySelector(".nav");
+
+  menuToggle.addEventListener("click", () => {
+    nav.classList.toggle("active");
+  });
+});
+</script>
+
+</body>
+
+</html>

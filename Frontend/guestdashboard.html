@@ -11,11 +11,11 @@
 
   <!-- ✅ NAVBAR -->
   <nav class="nav">
+          <button class="menu-toggle">☰</button>
     <div class="nav-menu">
       <img src="assets/logo.png" alt="Murdoch University" class="logo">
       <a href="#">Campus Info</a>
       <a href="merchandise.html">Merchandise</a>
-      <a href="feedback.html">Feedback</a>
     </div>
   </nav>
 
@@ -85,5 +85,18 @@
 
   <!-- ✅ JS (must be last) -->
   <script src="js/studentdashboard.js"></script>
+
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const menuToggle = document.querySelector(".menu-toggle");
+  const nav = document.querySelector(".nav");
+
+  menuToggle.addEventListener("click", () => {
+    nav.classList.toggle("active");
+  });
+});
+</script>
+
+</script>
 </body>
 </html>
