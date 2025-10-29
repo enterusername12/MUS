@@ -702,6 +702,7 @@ function setupSharePostModal() {
   const closeShareModalBtn = document.getElementById("closeShareModal");
   const cancelPostBtn = document.getElementById("cancelPostBtn");
   const form = document.getElementById("sharePostForm");
+  const photoInput = document.getElementById("postPhoto");
 
   if (!shareModal || !form) {
     return;
@@ -730,6 +731,20 @@ function setupSharePostModal() {
     cancelPostBtn.addEventListener("click", closeModal);
   }
 
+  if (photoInput) {
+    photoInput.setAttribute("disabled", "disabled");
+    photoInput.setAttribute("aria-disabled", "true");
+    photoInput.title = "Image uploads are not supported yet.";
+
+    const photoGroup = photoInput.closest(".form-group, .input-group, label");
+    if (photoGroup && !photoGroup.querySelector(".form-helper-text")) {
+      const helper = document.createElement("p");
+      helper.className = "form-helper-text";
+      helper.textContent = "Image uploads are not supported yet.";
+      photoGroup.appendChild(helper);
+    }
+  }
+
   window.addEventListener("click", (event) => {
     if (event.target === shareModal) {
       closeModal();
@@ -743,26 +758,27 @@ function setupSharePostModal() {
     const category = document.getElementById("postCategory")?.value;
     const tags = document.getElementById("postTags")?.value.trim();
     const description = document.getElementById("postDescription")?.value.trim();
-    const photo = document.getElementById("postPhoto")?.files?.[0];
 
     if (!title || !description) {
       alert("Please fill out the required fields.");
       return;
     }
 
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("category", category || "General");
-    formData.append("tags", tags || "");
-    formData.append("description", description);
-    if (photo) {
-      formData.append("photo", photo);
-    }
-
     try {
-      const response = await fetch("https://your-backend-url.com/api/posts", {
+      const payload = {
+        title,
+        category: category || "General",
+        tags: tags || "",
+        description
+      };
+
+      const response = await fetch(`${API_BASE_URL}/community-posts`, {
         method: "POST",
-        body: formData
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
