@@ -180,6 +180,127 @@ function formatPollDeadline(deadline) {
   return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+function normalizePollOption(option, index) {
+  const rawVotes =
+    typeof option.voteCount === "number" && Number.isFinite(option.voteCount)
+      ? option.voteCount
+      : typeof option.votes === "number" && Number.isFinite(option.votes)
+        ? option.votes
+        : 0;
+  const voteCount = Math.max(0, Math.round(rawVotes));
+  const rawPercent =
+    typeof option.percent === "number" && !Number.isNaN(option.percent)
+      ? option.percent
+      : null;
+
+  return {
+    ...option,
+    name: sanitizeText(option.name ?? option.label ?? option.option ?? `Option ${index + 1}`),
+    voteCount,
+    percent: rawPercent
+  };
+}
+
+function buildClientPoll(poll, fallbackId) {
+  const rawOptions = Array.isArray(poll?.options) ? poll.options : [];
+  const normalizedOptions = rawOptions.map((option, index) => normalizePollOption(option, index));
+
+  const roundedTotal =
+    typeof poll.totalVotes === "number" && Number.isFinite(poll.totalVotes)
+      ? Math.max(0, Math.round(poll.totalVotes))
+      : null;
+
+  const votesFromOptions = normalizedOptions.reduce((sum, option) => sum + (option.voteCount || 0), 0);
+  const totalVotes = roundedTotal !== null ? roundedTotal : votesFromOptions;
+
+  const optionsWithPercentages = normalizedOptions.map((option) => {
+    if (option.percent !== null) {
+      const bounded = Math.min(Math.max(Math.round(option.percent), 0), 100);
+      return { ...option, percent: bounded };
+    }
+
+    const computedPercent = totalVotes > 0 ? Math.round((option.voteCount / totalVotes) * 100) : 0;
+    return { ...option, percent: computedPercent };
+  });
+
+  return {
+    ...poll,
+    id: poll.id ?? poll.pollId ?? fallbackId,
+    title: sanitizeText(poll.title ?? poll.question ?? "Poll question"),
+    description: sanitizeText(poll.description ?? ""),
+    totalVotes,
+    options: optionsWithPercentages
+  };
+}
+
+function updatePollCardFromState(pollCard, poll) {
+  if (!pollCard) {
+    return;
+  }
+
+  const totalVotesLabel = pollCard.querySelector(".poll-footer span");
+  if (totalVotesLabel) {
+    totalVotesLabel.textContent = `👥 ${poll.totalVotes} total votes`;
+  }
+
+  const optionNodes = pollCard.querySelectorAll(".poll-option");
+  poll.options.forEach((option, index) => {
+    const optionNode = optionNodes[index];
+    if (!optionNode) {
+      return;
+    }
+
+    const percentLabel = optionNode.querySelector(".option-label span:last-child");
+    if (percentLabel) {
+      percentLabel.textContent = `${option.percent}%`;
+    }
+
+    const progressFill = optionNode.querySelector(".progress-fill");
+    if (progressFill) {
+      progressFill.style.width = `${option.percent}%`;
+    }
+  });
+}
+
+function handleSimulatedVote(poll, pollCard) {
+  if (!poll || !Array.isArray(poll.options) || poll.options.length === 0) {
+    window.alert("Voting is unavailable for this poll right now.");
+    return;
+  }
+
+  if (!Number.isFinite(poll.totalVotes)) {
+    poll.totalVotes = poll.options.reduce((sum, option) => sum + (option.voteCount || 0), 0);
+  }
+
+  const optionsList = poll.options.map((option, index) => `${index + 1}. ${option.name}`).join("\n");
+  const response = window.prompt(
+    `Cast your vote for "${poll.title}" by entering an option number:\n${optionsList}`,
+    "1"
+  );
+
+  if (response === null) {
+    return;
+  }
+
+  const trimmed = response.trim();
+  const selectedIndex = Number(trimmed) - 1;
+  if (!Number.isInteger(selectedIndex) || selectedIndex < 0 || selectedIndex >= poll.options.length) {
+    window.alert("Please enter a valid option number from the list.");
+    return;
+  }
+
+  const selectedOption = poll.options[selectedIndex];
+  selectedOption.voteCount += 1;
+  poll.totalVotes += 1;
+
+  poll.options.forEach((option) => {
+    option.percent = poll.totalVotes > 0 ? Math.round((option.voteCount / poll.totalVotes) * 100) : 0;
+  });
+
+  updatePollCardFromState(pollCard, poll);
+  window.alert(`Thanks for voting for "${selectedOption.name}"!`);
+}
+
 function initializePolls(polls = []) {
   const container = document.getElementById("pollContainer");
   const dots = document.getElementById("pollDots");
@@ -191,12 +312,14 @@ function initializePolls(polls = []) {
     return;
   }
 
+  const incomingPolls = Array.isArray(polls) ? polls : [];
+
   if (pollCount) {
-    const count = Math.max(polls.length, 0);
+    const count = incomingPolls.length;
     pollCount.textContent = `${count} Active ${count === 1 ? "Poll" : "Polls"}`;
   }
 
-  if (!Array.isArray(polls) || polls.length === 0) {
+  if (incomingPolls.length === 0) {
     setEmpty(container, "No active polls right now.");
     dots.innerHTML = "";
     if (prevBtn) prevBtn.setAttribute("disabled", "disabled");
@@ -206,20 +329,21 @@ function initializePolls(polls = []) {
 
   container.innerHTML = "";
 
-  polls.forEach((poll) => {
+  incomingPolls.forEach((poll, index) => {
+    const clientPoll = buildClientPoll(poll, `poll-${index + 1}`);
     const pollCard = document.createElement("div");
     pollCard.classList.add("poll-card");
 
-    const deadline = formatPollDeadline(poll.deadline);
-    const totalVotes = poll.totalVotes ?? 0;
-    const options = Array.isArray(poll.options) ? poll.options : [];
-    const description = sanitizeText(poll.description, "");
+    const deadline = formatPollDeadline(clientPoll.deadline);
+    const totalVotes = Number.isFinite(clientPoll.totalVotes) ? clientPoll.totalVotes : 0;
+    const options = Array.isArray(clientPoll.options) ? clientPoll.options : [];
+    const description = clientPoll.description;
 
     pollCard.innerHTML = `
       <div class="poll-header">
         <div class="poll-icon">📈</div>
         <div>
-          <div class="poll-title">${poll.title}</div>
+          <div class="poll-title">${clientPoll.title}</div>
           <div class="poll-subtitle">${options.length} option${options.length === 1 ? "" : "s"} available</div>
         </div>
         <div class="poll-deadline" style="margin-left:auto; color:#b33a3a; font-size:0.85rem;">
@@ -254,9 +378,16 @@ function initializePolls(polls = []) {
     `;
 
     container.appendChild(pollCard);
+
+    updatePollCardFromState(pollCard, clientPoll);
+
+    const voteBtn = pollCard.querySelector(".vote-btn");
+    if (voteBtn) {
+      voteBtn.addEventListener("click", () => handleSimulatedVote(clientPoll, pollCard));
+    }
   });
 
-  renderDots(dots, polls.length);
+  renderDots(dots, incomingPolls.length);
   setupNavigation(prevBtn, nextBtn, container, dots);
 }
 
