@@ -6,6 +6,7 @@ const consentRoutes = require('./routes/consent');
 const dashboardRoutes = require('./routes/dashboard');
 const communityPostsRoutes = require('./routes/communityPosts');
 const pollsRoutes = require('./routes/polls');
+const feedbackRoutes = require('./routes/feedback');
 
 const app = express();
 
@@ -27,5 +28,6 @@ app.use('/api/consent', consentRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/community-posts', communityPostsRoutes);
 app.use('/api/polls', pollsRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 module.exports = app;

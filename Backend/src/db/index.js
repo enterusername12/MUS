@@ -466,6 +466,27 @@ const ensureDatabase = async () => {
       );
 
       await client.query(
+        `CREATE TABLE IF NOT EXISTS feedback_submissions (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          contact_email TEXT,
+          category TEXT NOT NULL,
+          message TEXT NOT NULL,
+          attachment_path TEXT,
+          attachment_original_name TEXT,
+          attachment_mime_type TEXT,
+          attachment_size INTEGER,
+          status TEXT NOT NULL DEFAULT 'pending',
+          moderated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          moderated_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          CONSTRAINT feedback_submissions_status_check
+            CHECK (status IN ('pending', 'in_review', 'resolved'))
+        )`
+      );
+
+      await client.query(
         `CREATE INDEX IF NOT EXISTS campus_events_start_time_idx
            ON campus_events (start_time)`
       );
@@ -483,6 +504,11 @@ const ensureDatabase = async () => {
       await client.query(
         `CREATE INDEX IF NOT EXISTS community_posts_created_at_idx
            ON community_posts (created_at DESC)`
+      );
+
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS feedback_submissions_status_idx
+           ON feedback_submissions (status, created_at DESC)`
       );
 
       await seedDashboardData(client);
