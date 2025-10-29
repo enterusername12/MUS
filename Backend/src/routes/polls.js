@@ -367,9 +367,6 @@ router.post('/', async (req, res) => {
 // Vote on a poll (this wraps your top-level code into a proper async route)
 router.post('/:pollId/vote', async (req, res) => {
   const userId = readJwtUserId(req);
-  if (!userId) {
-    return res.status(401).json({ message: 'Authentication required.' });
-  }
 
   const pollId = toPositiveInt(req.params.pollId);
   if (!pollId) {
@@ -415,7 +412,7 @@ router.post('/:pollId/vote', async (req, res) => {
           VALUES ($1, $2, $3)
           ON CONFLICT ON CONSTRAINT poll_votes_unique_user_poll_idx
           DO UPDATE SET option_id = EXCLUDED.option_id`,
-        [pollId, optionId, userId]
+        [pollId, optionId, userId ?? null]
       );
 
 

@@ -274,18 +274,20 @@ const normalizePollOptions = (options, totalVotes) => {
       null
     );
     const percent = ensureNumber(option.percent, null);
+    const voteCount = votes !== null ? Math.max(0, Math.round(votes)) : 0;
     const resolvedPercent =
       percent !== null
         ? Math.min(Math.max(percent, 0), 100)
         : totalVotes > 0 && votes !== null
-          ? Math.round((votes / totalVotes) * 100)
+          ? Math.round((voteCount / totalVotes) * 100)
           : 0;
 
     return {
       id: ensureString(option.id, `option-${index + 1}`),
       name: ensureString(option.name ?? option.label ?? option.option ?? `Option ${index + 1}`),
       percent: resolvedPercent,
-      optionId: numericOptionId
+      optionId: numericOptionId,
+      voteCount
     };
   });
 
@@ -306,9 +308,14 @@ const normalizePolls = (items) =>
         option.votes ?? option.count ?? option.total ?? option.value ?? option.vote_count,
         0
       );
-      return sum + (votes || 0);
+      const sanitizedVotes = Number.isFinite(votes) ? Math.max(0, Math.round(votes)) : 0;
+      return sum + sanitizedVotes;
     }, 0);
-    const totalVotes = explicitTotal ?? fallbackTotal;
+    const initialTotalVotes = explicitTotal ?? fallbackTotal;
+    const normalizedOptions = normalizePollOptions(options, initialTotalVotes);
+    const totalVotes = Number.isFinite(initialTotalVotes)
+      ? Math.max(0, Math.round(initialTotalVotes))
+      : normalizedOptions.reduce((sum, option) => sum + (option.voteCount ?? 0), 0);
 
     return {
       id: ensureString(poll.id, `poll-${index + 1}`),
@@ -317,7 +324,7 @@ const normalizePolls = (items) =>
       description: ensureString(poll.description ?? poll.prompt ?? ''),
       deadline: toISOString(poll.deadline ?? poll.expires_at ?? poll.endsAt ?? poll.closesAt ?? ''),
       totalVotes,
-      options: normalizePollOptions(options, totalVotes)
+      options: normalizedOptions
     };
   });
 
