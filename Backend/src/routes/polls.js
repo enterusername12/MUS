@@ -285,6 +285,9 @@ const loadPollsWithOptions = async ({ includeInactive = false } = {}) => {
   }));
 };
 
+// ===== Routes =====
+
+// List polls
 router.get('/', async (req, res) => {
   const userId = readJwtUserId(req);
   if (!userId) {
@@ -302,6 +305,7 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Create poll
 router.post('/', async (req, res) => {
   const userId = readJwtUserId(req);
   if (!userId) {
@@ -360,10 +364,11 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.post('/:pollId/votes', async (req, res) => {
+// Vote on a poll (this wraps your top-level code into a proper async route)
+router.post('/:pollId/vote', async (req, res) => {
   const userId = readJwtUserId(req);
   if (!userId) {
-    return res.status(401).json({ message: 'Authentication required to vote in polls.' });
+    return res.status(401).json({ message: 'Authentication required.' });
   }
 
   const pollId = toPositiveInt(req.params.pollId);
@@ -386,11 +391,13 @@ router.post('/:pollId/votes', async (req, res) => {
     const expiresAt = poll.expires_at ? new Date(poll.expires_at) : null;
     const isExpired = expiresAt && !Number.isNaN(expiresAt.valueOf()) && expiresAt <= now;
     if (!poll.is_active || isExpired) {
-      await getPool().query(
-        `DELETE FROM user_calendar_items
-           WHERE user_id = $1 AND source_type = $2 AND source_id = $3`,
-        [userId, POLL_CALENDAR_SOURCE, pollId]
-      );
+      if (userId) {
+        await getPool().query(
+          `DELETE FROM user_calendar_items
+             WHERE user_id = $1 AND source_type = $2 AND source_id = $3`,
+          [userId, POLL_CALENDAR_SOURCE, pollId]
+        );
+      }
       return res.status(400).json({ message: 'This poll is no longer accepting votes.' });
     }
 
@@ -405,14 +412,15 @@ router.post('/:pollId/votes', async (req, res) => {
 
       await client.query(
         `INSERT INTO poll_votes (poll_id, option_id, user_id)
-           VALUES ($1, $2, $3)
-           ON CONFLICT (poll_id, user_id)
-           DO UPDATE SET option_id = EXCLUDED.option_id`,
+          VALUES ($1, $2, $3)
+          ON CONFLICT ON CONSTRAINT poll_votes_unique_user_poll_idx
+          DO UPDATE SET option_id = EXCLUDED.option_id`,
         [pollId, optionId, userId]
       );
 
+
       const deadlineParts = formatCalendarDeadline(expiresAt);
-      if (deadlineParts) {
+      if (userId && deadlineParts) {
         await client.query(
           `INSERT INTO user_calendar_items (
              user_id,
@@ -442,7 +450,7 @@ router.post('/:pollId/votes', async (req, res) => {
             POLL_CALENDAR_SOURCE
           ]
         );
-      } else {
+      } else if (userId) {
         await client.query(
           `DELETE FROM user_calendar_items
              WHERE user_id = $1 AND source_type = $2 AND source_id = $3`,
@@ -464,6 +472,12 @@ router.post('/:pollId/votes', async (req, res) => {
     console.error('Failed to record poll vote', error);
     return res.status(500).json({ message: 'Unable to record vote at this time.' });
   }
+});
+
+router.post('/:pollId/votes', (req, res, next) => {
+  // simple alias to singular route
+  req.url = req.url.replace(/\/votes$/, '/vote');
+  next();
 });
 
 module.exports = router;
