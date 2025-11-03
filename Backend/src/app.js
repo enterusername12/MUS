@@ -7,7 +7,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const communityPostsRoutes = require('./routes/communityPosts');
 const pollsRoutes = require('./routes/polls');
 const feedbackRoutes = require('./routes/feedback');
-
+const recoRoutes = require('./routes/reco');
 const app = express();
 
 app.set('trust proxy', true);
@@ -29,5 +29,5 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/community-posts', communityPostsRoutes);
 app.use('/api/polls', pollsRoutes);
 app.use('/api/feedback', feedbackRoutes);
-
+app.use('/api/reco', recoRoutes);
 module.exports = app;
