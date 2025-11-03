@@ -1,5 +1,49 @@
 // Dashboard widgets are hydrated from the backend API and rendered client-side.
 const API_BASE_URL = "http://localhost:3000/api";
+
+// === AI interaction helpers ===
+function getUserId() {
+  // Adjust if store it differently; this is a safe no-op fallback.
+  // Option A: localStorage
+  const ls = localStorage.getItem("userId");
+  if (ls) return ls;
+
+  // Option B: meta tag injected by backend template (if add it later)
+  const meta = document.querySelector('meta[name="user-id"]');
+  if (meta && meta.content) return meta.content;
+
+  return null; // guests or unknown
+}
+
+async function logEventInteraction(eventId, action) {
+  const userId = getUserId();
+  if (!userId || !eventId) return; // skip for guests or missing id
+  try {
+    await fetch(`${API_BASE_URL.replace(/\/api$/, "")}/api/reco/interact`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        user_id: String(userId),
+        event_id: String(eventId),
+        action
+      })
+    });
+  } catch (_) {
+    // non-blocking; ignore errors
+  }
+}
+
+// One-time IntersectionObserver to log 'view' when a card is on screen
+const _aiViewObserver = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (!entry.isIntersecting) return;
+    const id = entry.target.getAttribute("data-event-id");
+    if (id) logEventInteraction(String(id), "view");
+    _aiViewObserver.unobserve(entry.target); // only log once per card
+  });
+}, { threshold: 0.5 });
+
 // --- Helper to render cards ---
 function sanitizeText(value, fallback = "") {
   if (typeof value !== "string") {
@@ -15,6 +59,22 @@ function renderCards(container, data, type) {
   data.forEach(item => {
     const card = document.createElement("div");
     card.classList.add(type === "news" ? "event-card" : "post-card");
+
+
+    // ✅ Attach the event/post id when present so we can log interactions
+    // backend returns `id` for events/community posts. If it's a different key, map it here.
+    if (item && (item.id || item.event_id || item.post_id)) {
+      const evtId = String(item.id ?? item.event_id ?? item.post_id);
+      card.setAttribute("data-event-id", evtId);
+      // log 'view' when the card is visible
+      _aiViewObserver.observe(card);
+      // log 'click' if the card is clicked (can refine to specific buttons if add them)
+      card.addEventListener("click", (ev) => {
+        // Avoid double-firing if user clicks on a link; still harmless if it does
+        logEventInteraction(evtId, "click");
+      });
+    }
+    
     if (type === "news") {
       const publishedLabel = item.publishedAt
         ? new Date(item.publishedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })

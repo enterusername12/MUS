@@ -1,492 +1,99 @@
-// Dashboard aggregation service that gathers campus data from Postgres with
-// graceful fallbacks for local development or limited environments.
+// src/services/dashboardService.js
+// Dashboard aggregation service: reads AI cached suggestions, hydrates from Postgres, falls back gracefully.
+
+const pool = require('../config/pool');
 const { getPool } = require('../db');
+const { AI_HUB_URL } = require('../config/env');
+
+// Node 18+ has global fetch; add ponyfill for older.
+const fetchHttp = global.fetch || ((...a) => import('node-fetch').then(({ default: f }) => f(...a)));
 
 const DEFAULT_NEWS_LIMIT = 5;
-const DEFAULT_EVENTS_LIMIT = 5;
+const DEFAULT_EVENTS_LIMIT = 8;
 const DEFAULT_POLLS_LIMIT = 2;
 const DEFAULT_SPOTLIGHTS_LIMIT = 3;
 const DEFAULT_REWARD_LIMIT = 5;
 const DEFAULT_CALENDAR_LIMIT = 6;
 
-const FALLBACK_DASHBOARD_DATA = {
-  news: [
-    {
-      id: 'news-1',
-      title: 'STEM Innovation Lab Opens',
-      desc:
-        'Explore the brand-new STEM lab featuring cutting-edge equipment for robotics, coding, and engineering projects.',
-      publishedAt: '2024-10-11T08:00:00.000Z',
-      author: 'Office of Academics'
-    },
-    {
-      id: 'news-2',
-      title: 'Athletics Achieve Regional Victory',
-      desc: 'Congratulations to the MUS Tigers for clinching the regional championship in a thrilling overtime finish.',
-      publishedAt: '2024-10-09T18:30:00.000Z',
-      author: 'Athletics Department'
-    }
-  ],
-  events: [
-    {
-      id: 'event-1',
-      title: 'Film Club Premiere Night',
-      author: 'Film Club',
-      category: 'Event',
-      content:
-        'Join us in the auditorium on Friday for exclusive student-produced films followed by a Q&A with the directors.'
-    },
-    {
-      id: 'event-2',
-      title: 'Robotics Team Showcase',
-      author: 'Robotics Society',
-      category: 'Competition',
-      content: 'See the award-winning robots in action and learn how you can get involved ahead of the state meet.'
-    }
-  ],
-  polls: [
-    {
-      id: 'poll-1',
-      title: 'Which spirit week theme are you most excited about?',
-      options: [
-        { name: 'Retro Day', votes: 120 },
-        { name: 'Class Colors', votes: 95 },
-        { name: 'Future Friday', votes: 60 }
-      ],
-      deadline: '2024-10-18T23:59:59.000Z'
-    },
-    {
-      id: 'poll-2',
-      title: 'Select the next service project focus',
-      options: [
-        { name: 'Community Garden', percent: 45 },
-        { name: 'Literacy Tutoring', percent: 35 },
-        { name: 'Food Bank Support', percent: 20 }
-      ],
-      deadline: '2024-10-25T23:59:59.000Z'
-    }
-  ],
-  spotlights: [
-    {
-      id: 'spotlight-oct',
-      name: 'Jordan Kim',
-      month: '2024-10',
-      points: 1420,
-      award: 'October Spotlight Winner',
-      description: 'Recognized for leading the successful community clean-up initiative.',
-      isCurrent: true
-    },
-    {
-      id: 'spotlight-sep',
-      name: 'Amelia Rivera',
-      month: '2024-09',
-      points: 1310,
-      award: 'Community Service Star',
-      description: 'Coordinated over 200 volunteer hours across campus clubs.'
-    }
-  ],
-  rewardLeaders: {
-    currentUser: {
-      name: 'You',
-      points: 860,
-      progress: '+45 this week'
-    },
-    leaderboard: [
-      { name: 'Jordan Kim', points: 1420 },
-      { name: 'Amelia Rivera', points: 1310 },
-      { name: 'Dev Patel', points: 1215 }
-    ]
-  },
-  calendar: [
-    {
-      date: '2024-10-14',
-      type: 'event',
-      title: 'Spirit Week Kickoff Rally',
-      time: '08:30 AM'
-    },
-    {
-      date: '2024-10-16',
-      type: 'competition',
-      title: 'Regional Robotics Qualifier',
-      time: '05:00 PM'
-    },
-    {
-      date: '2024-10-19',
-      type: 'poll',
-      title: 'Spirit Week Voting Closes',
-      time: '11:59 PM'
-    }
-  ]
+// ---------- small helpers (no large dummy payloads) ----------
+const ensureArray = (v) => (Array.isArray(v) ? v : []);
+const ensureString = (v, fb = '') => (typeof v === 'string' && v.trim() ? v.trim() : fb);
+const ensureNumber = (v, fb = null) => {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string' && v.trim() !== '' && !Number.isNaN(Number(v))) return Number(v);
+  return fb;
 };
-
-const ensureArray = (value) => (Array.isArray(value) ? value : []);
-
-const ensureString = (value, fallback = '') => {
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (trimmed) {
-      return trimmed;
-    }
-  }
-  return fallback;
-};
-
-const ensureNumber = (value, fallback = null) => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (trimmed) {
-      const parsed = Number(trimmed);
-      if (!Number.isNaN(parsed)) {
-        return parsed;
-      }
-    }
-  }
-
-  return fallback;
-};
-
 const toISOString = (value) => {
-  if (!value && value !== 0) {
-    return '';
-  }
-
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-
+  if (value instanceof Date) return value.toISOString();
   if (typeof value === 'number') {
-    const fromNumber = new Date(value);
-    return Number.isNaN(fromNumber.getTime()) ? '' : fromNumber.toISOString();
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? '' : d.toISOString();
   }
-
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return '';
-    }
-
-    const parsed = new Date(trimmed);
-    if (!Number.isNaN(parsed.getTime())) {
-      return parsed.toISOString();
-    }
-
-    return trimmed;
+  if (typeof value === 'string' && value.trim()) {
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? value.trim() : d.toISOString();
   }
-
   return '';
 };
-
 const toDateOnly = (value) => {
   const iso = toISOString(value);
-  if (!iso) {
-    return '';
-  }
-  return iso.slice(0, 10);
+  return iso ? iso.slice(0, 10) : '';
 };
-
 const toTime = (value) => {
-  if (!value && value !== 0) {
-    return '';
-  }
-
-  if (value instanceof Date) {
-    return value.toISOString().slice(11, 16);
-  }
-
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return '';
-    }
-    const parsed = new Date(trimmed);
-    if (!Number.isNaN(parsed.getTime())) {
-      return parsed.toISOString().slice(11, 16);
-    }
-    return trimmed;
-  }
-
-  return '';
+  const iso = toISOString(value);
+  return iso ? iso.slice(11, 16) : '';
 };
-
 const parseLimit = (value, fallback) => {
-  if (value === undefined || value === null) {
-    return fallback;
-  }
-
-  const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed) || parsed <= 0) {
-    return fallback;
-  }
-
-  return parsed;
+  const n = Number.parseInt(value, 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
 };
-
-const normalizeNews = (items) =>
-  ensureArray(items).map((item, index) => ({
-    id: ensureString(item.id, `news-${index + 1}`),
-    title: ensureString(item.title ?? item.headline ?? item.name, `Campus Update ${index + 1}`),
-    desc: ensureString(item.desc ?? item.summary ?? item.description ?? item.body, 'Details coming soon.'),
-    author: ensureString(item.author ?? item.byline ?? item.source ?? ''),
-    publishedAt: toISOString(
-      item.publishedAt ?? item.published_at ?? item.date ?? item.createdAt ?? item.created_at ?? ''
-    )
-  }));
-
-const normalizeEvents = (items) =>
-  ensureArray(items).map((item, index) => ({
-    id: ensureString(item.id, `event-${index + 1}`),
-    title: ensureString(item.title ?? item.name ?? item.headline, `Community Highlight ${index + 1}`),
-    author: ensureString(
-      item.author ??
-        item.organizer ??
-        item.host ??
-        item.createdBy ??
-        item.owner ??
-        item.student_name ??
-        'Community'
-    ),
-    category: ensureString(item.category ?? item.type ?? item.tag ?? 'Event'),
-    content: ensureString(
-      item.content ?? item.description ?? item.summary ?? item.body ?? 'Stay tuned for more details.'
-    )
-  }));
-
 const toTimestamp = (value) => {
   const iso = toISOString(value);
-  if (!iso) {
-    return null;
-  }
-
-  const parsed = Date.parse(iso);
-  return Number.isNaN(parsed) ? null : parsed;
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? null : t;
 };
 
-const normalizePollOptions = (options, totalVotes) => {
-  const normalizedOptions = ensureArray(options).map((option, index) => {
-    const rawOptionId = option.id ?? option.option_id ?? option.optionId;
-    const numericOptionId = ensureNumber(rawOptionId, null);
-    const votes = ensureNumber(
-      option.votes ?? option.count ?? option.total ?? option.value ?? option.vote_count,
-      null
-    );
-    const percent = ensureNumber(option.percent, null);
-    const voteCount = votes !== null ? Math.max(0, Math.round(votes)) : 0;
-    const resolvedPercent =
-      percent !== null
-        ? Math.min(Math.max(percent, 0), 100)
-        : totalVotes > 0 && votes !== null
-          ? Math.round((voteCount / totalVotes) * 100)
-          : 0;
-
-    return {
-      id: ensureString(option.id, `option-${index + 1}`),
-      name: ensureString(option.name ?? option.label ?? option.option ?? `Option ${index + 1}`),
-      percent: resolvedPercent,
-      optionId: numericOptionId,
-      voteCount
-    };
-  });
-
-  return normalizedOptions;
-};
-
-const normalizePolls = (items) =>
-  ensureArray(items).map((poll, index) => {
-    const rawPollId = poll.id ?? poll.poll_id ?? poll.pollId;
-    const numericPollId = ensureNumber(rawPollId, null);
-    const options = ensureArray(poll.options);
-    const explicitTotal = ensureNumber(
-      poll.totalVotes ?? poll.voteCount ?? poll.total_votes ?? poll.votes ?? poll.total,
-      null
-    );
-    const fallbackTotal = options.reduce((sum, option) => {
-      const votes = ensureNumber(
-        option.votes ?? option.count ?? option.total ?? option.value ?? option.vote_count,
-        0
-      );
-      const sanitizedVotes = Number.isFinite(votes) ? Math.max(0, Math.round(votes)) : 0;
-      return sum + sanitizedVotes;
-    }, 0);
-    const initialTotalVotes = explicitTotal ?? fallbackTotal;
-    const normalizedOptions = normalizePollOptions(options, initialTotalVotes);
-    const totalVotes = Number.isFinite(initialTotalVotes)
-      ? Math.max(0, Math.round(initialTotalVotes))
-      : normalizedOptions.reduce((sum, option) => sum + (option.voteCount ?? 0), 0);
-
-    return {
-      id: ensureString(poll.id, `poll-${index + 1}`),
-      pollId: numericPollId,
-      title: ensureString(poll.title ?? poll.question ?? `Poll ${index + 1}`),
-      description: ensureString(poll.description ?? poll.prompt ?? ''),
-      deadline: toISOString(poll.deadline ?? poll.expires_at ?? poll.endsAt ?? poll.closesAt ?? ''),
-      totalVotes,
-      options: normalizedOptions
-    };
-  });
-
-const normalizeSpotlights = (items) => {
-  const normalized = ensureArray(items).map((item, index) => ({
-    id: ensureString(item.id, `spotlight-${index + 1}`),
-    name: ensureString(item.name ?? item.studentName ?? item.student_name ?? item.title ?? 'Student Spotlight'),
-    month: ensureString(
-      item.month ??
-        item.period ??
-        item.cohort ??
-        (item.featured_at ? `${toDateOnly(item.featured_at).slice(0, 7)}` : ''),
-      ''
-    ),
-    points: ensureNumber(item.points ?? item.score ?? item.totalPoints ?? item.rewardPoints, 0),
-    award: ensureString(item.award ?? item.recognition ?? item.honor ?? 'Spotlight Award'),
-    description: ensureString(
-      item.description ?? item.summary ?? item.reason ?? item.achievements ?? 'Keep up the amazing work!'
-    ),
-    isCurrent: Boolean(item.isCurrent ?? item.current ?? item.active ?? item.featured_at)
-  }));
-
-  if (!normalized.some((entry) => entry.isCurrent) && normalized[0]) {
-    normalized[0].isCurrent = true;
-  }
-
-  return normalized;
-};
-
-const normalizeRewardLeaders = (value) => {
-  if (!value || typeof value !== 'object') {
-    return {
-      currentUser: null,
-      leaderboard: []
-    };
-  }
-
-  const currentUserSource =
-    value.currentUser ??
-    value.self ??
-    value.me ??
-    value.user ??
-    value.profile ??
-    null;
-
-  const currentUser = currentUserSource
-    ? {
-        name: ensureString(currentUserSource.name ?? currentUserSource.title ?? ''),
-        points: ensureNumber(
-          currentUserSource.points ??
-            currentUserSource.total ??
-            currentUserSource.score ??
-            currentUserSource.rewardPoints ??
-            currentUserSource.balance,
-          0
-        ),
-        progress: ensureString(
-          currentUserSource.progress ??
-            currentUserSource.delta ??
-            currentUserSource.change ??
-            currentUserSource.trend ??
-            currentUserSource.weeklyChange ??
-            ''
-        )
-      }
-    : null;
-
-  const leaderboardSource =
-    ensureArray(value.leaderboard ?? value.leaders ?? value.entries ?? (Array.isArray(value) ? value : []));
-
-  const leaderboard = leaderboardSource.map((entry, index) => ({
-    id: ensureString(entry.id, `leader-${index + 1}`),
-    name: ensureString(entry.name ?? entry.title ?? entry.student_name ?? `Leader ${index + 1}`),
-    points: ensureNumber(
-      entry.points ?? entry.total ?? entry.score ?? entry.rewardPoints ?? entry.balance ?? entry.points_earned,
-      0
-    ),
-    category: ensureString(entry.category ?? entry.group ?? '')
-  }));
-
-  return {
-    currentUser,
-    leaderboard
-  };
-};
-
-const normalizeCalendar = (items) =>
-  ensureArray(items).map((item, index) => {
-    const rawDate = item.date ?? item.day ?? item.scheduledFor ?? item.start_time ?? item.startTime;
-    const rawTime = item.time ?? item.start_time ?? item.startTime ?? item.startsAt ?? item.timeRange;
-
-    return {
-      id: ensureString(item.id, `calendar-${index + 1}`),
-      date: toDateOnly(rawDate),
-      type: ensureString(item.type ?? item.category ?? item.kind ?? 'event').toLowerCase(),
-      title: ensureString(item.title ?? item.name ?? item.summary ?? item.description ?? ''),
-      time: toTime(rawTime)
-    };
-  });
-
-const fetchLatestNews = async (limit = DEFAULT_NEWS_LIMIT) => {
+// ---------- DB fetchers (schema-aligned) ----------
+async function fetchLatestNews(limit = DEFAULT_NEWS_LIMIT) {
   const { rows } = await getPool().query(
-    `SELECT id, title, summary, body, link, image_url, published_at
+    `SELECT id, title, summary, body, link, image_url, COALESCE(published_at, created_at) AS published_at
        FROM campus_news
-       ORDER BY published_at DESC NULLS LAST, id DESC
+       ORDER BY COALESCE(published_at, created_at) DESC NULLS LAST, id DESC
        LIMIT $1`,
     [limit]
   );
   return rows;
-};
+}
 
-const fetchUpcomingEvents = async (limit = DEFAULT_EVENTS_LIMIT) => {
+async function fetchUpcomingEvents(limit = DEFAULT_EVENTS_LIMIT) {
   const { rows } = await getPool().query(
     `SELECT id, title, description, location, start_time, end_time, image_url
        FROM campus_events
+       WHERE start_time >= NOW()
        ORDER BY start_time ASC NULLS LAST, id ASC
        LIMIT $1`,
     [limit]
   );
   return rows;
-};
+}
 
-const fetchCommunityPosts = async (limit = DEFAULT_EVENTS_LIMIT) => {
+async function fetchPublishedCommunityPosts(limit = DEFAULT_EVENTS_LIMIT) {
   const { rows } = await getPool().query(
     `SELECT id, title, category, description, tags, created_at
        FROM community_posts
+       WHERE moderation_status = 'publish'
        ORDER BY created_at DESC NULLS LAST, id DESC
        LIMIT $1`,
     [limit]
   );
-
-  return rows.map((row) => ({
-    ...row,
-    author: ensureString(row.author, 'Community'),
-    content: row.description,
-    created_at: row.created_at
+  return rows.map((r) => ({
+    ...r,
+    content: r.description,
   }));
-};
+}
 
-const mergeEvents = (campusEvents, communityPosts, limit = DEFAULT_EVENTS_LIMIT) => {
-  const withSortKey = [
-    ...ensureArray(campusEvents).map((event) => ({
-      ...event,
-      __sortTimestamp:
-        toTimestamp(event.start_time ?? event.startTime ?? event.created_at ?? event.createdAt) ?? 0
-    })),
-    ...ensureArray(communityPosts).map((post) => ({
-      ...post,
-      author: ensureString(post.author, 'Community'),
-      __sortTimestamp: toTimestamp(post.created_at ?? post.createdAt) ?? 0
-    }))
-  ];
-
-  withSortKey.sort((a, b) => b.__sortTimestamp - a.__sortTimestamp);
-
-  return withSortKey.slice(0, limit).map((item) => {
-    const { __sortTimestamp, ...rest } = item;
-    return rest;
-  });
-};
-
-const fetchActivePolls = async (limit = DEFAULT_POLLS_LIMIT) => {
+async function fetchActivePolls(limit = DEFAULT_POLLS_LIMIT) {
   const { rows: polls } = await getPool().query(
     `SELECT id, title, description, is_active, expires_at, created_at
        FROM polls
@@ -496,44 +103,189 @@ const fetchActivePolls = async (limit = DEFAULT_POLLS_LIMIT) => {
        LIMIT $1`,
     [limit]
   );
+  if (!polls.length) return [];
 
-  if (polls.length === 0) {
-    return [];
-  }
-
-  const pollIds = polls.map((poll) => poll.id);
+  const ids = polls.map((p) => p.id);
   const { rows: options } = await getPool().query(
-    `SELECT
-         o.id,
-         o.poll_id,
-         o.label,
-         o.created_at,
-         COUNT(v.id)::INT AS vote_count
+    `SELECT o.id, o.poll_id, o.label, o.created_at, COUNT(v.id)::INT AS vote_count
        FROM poll_options o
        LEFT JOIN poll_votes v ON v.option_id = o.id
-       WHERE o.poll_id = ANY($1::INT[])
-       GROUP BY o.id
-       ORDER BY o.created_at ASC, o.id ASC`,
-    [pollIds]
+      WHERE o.poll_id = ANY($1::INT[])
+      GROUP BY o.id
+      ORDER BY o.created_at ASC, o.id ASC`,
+    [ids]
   );
-
-  const optionsByPoll = options.reduce((acc, option) => {
-    const voteCount = Number(option.vote_count) || 0;
-    const formatted = { ...option, vote_count: voteCount, name: option.label };
-    if (!acc[option.poll_id]) {
-      acc[option.poll_id] = [];
-    }
-    acc[option.poll_id].push(formatted);
+  const byPoll = options.reduce((acc, o) => {
+    const arr = acc[o.poll_id] || (acc[o.poll_id] = []);
+    arr.push({ id: o.id, name: o.label, vote_count: Number(o.vote_count) || 0 });
     return acc;
   }, {});
+  return polls.map((p) => ({ ...p, options: byPoll[p.id] || [] }));
+}
 
-  return polls.map((poll) => ({
-    ...poll,
-    options: optionsByPoll[poll.id] || []
+// ---------- Hydration helpers (preserve order from AI) ----------
+async function fetchEventsByIdsInOrder(eventIds) {
+  if (!eventIds?.length) return [];
+  const ids = eventIds.map(Number);
+  const { rows } = await pool.query(`SELECT * FROM campus_events WHERE id = ANY($1::int[])`, [ids]);
+  if (!rows.length) return [];
+  const map = new Map(rows.map((r) => [String(r.id), r]));
+  return eventIds
+    .map((id) => map.get(String(id)))
+    .filter(Boolean);
+}
+
+async function fetchNewsByIdsInOrder(newsIds) {
+  if (!newsIds?.length) return [];
+  const ids = newsIds.map(Number);
+  const { rows } = await pool.query(
+    `SELECT id, title, summary, body, link, image_url, COALESCE(published_at, created_at) AS published_at
+       FROM campus_news
+      WHERE id = ANY($1::int[])`,
+    [ids]
+  );
+  if (!rows.length) return [];
+  const map = new Map(rows.map((r) => [String(r.id), r]));
+  return newsIds
+    .map((id) => map.get(String(id)))
+    .filter(Boolean);
+}
+
+async function fetchPostsByIdsInOrder(postIds) {
+  if (!postIds?.length) return [];
+  const ids = postIds.map(Number);
+  const { rows } = await pool.query(
+    `SELECT id, title, category, description, tags, created_at
+       FROM community_posts
+      WHERE moderation_status = 'publish' AND id = ANY($1::int[])`,
+    [ids]
+  );
+  if (!rows.length) return [];
+  const map = new Map(rows.map((r) => [String(r.id), { ...r, content: r.description }]));
+  return postIds
+    .map((id) => map.get(String(id)))
+    .filter(Boolean);
+}
+
+async function fetchPollsByIdsInOrder(pollIds) {
+  if (!pollIds?.length) return [];
+  const ids = pollIds.map(Number);
+  // base polls
+  const { rows: polls } = await pool.query(
+    `SELECT id, title, description, is_active, expires_at, created_at
+       FROM polls
+      WHERE id = ANY($1::int[])`,
+    [ids]
+  );
+  if (!polls.length) return [];
+
+  // options
+  const { rows: options } = await pool.query(
+    `SELECT o.id, o.poll_id, o.label, COUNT(v.id)::INT AS vote_count
+       FROM poll_options o
+       LEFT JOIN poll_votes v ON v.option_id = o.id
+      WHERE o.poll_id = ANY($1::int[])
+      GROUP BY o.id
+      ORDER BY o.id ASC`,
+    [ids]
+  );
+  const byPoll = options.reduce((acc, o) => {
+    const arr = acc[o.poll_id] || (acc[o.poll_id] = []);
+    arr.push({ id: o.id, name: o.label, vote_count: Number(o.vote_count) || 0 });
+    return acc;
+  }, {});
+  const map = new Map(polls.map((p) => [String(p.id), { ...p, options: byPoll[p.id] || [] }]));
+  return pollIds
+    .map((id) => map.get(String(id)))
+    .filter(Boolean);
+}
+
+// ---------- Normalizers for UI ----------
+const normalizeNews = (items) =>
+  ensureArray(items).map((item, i) => ({
+    id: String(item.id ?? `news-${i + 1}`),
+    title: ensureString(item.title, `Campus Update ${i + 1}`),
+    desc: ensureString(item.summary ?? item.body ?? ''),
+    author: ensureString(item.author ?? ''),
+    publishedAt: toISOString(item.published_at ?? item.created_at ?? item.createdAt ?? ''),
+    image_url: item.image_url ?? null,
+    link: item.link ?? null
   }));
-};
 
-const fetchStudentSpotlights = async (limit = DEFAULT_SPOTLIGHTS_LIMIT) => {
+const normalizeEvents = (items) =>
+  ensureArray(items).map((item, i) => ({
+    id: String(item.id ?? `event-${i + 1}`),
+    title: ensureString(item.title, `Event ${i + 1}`),
+    author: ensureString(item.organizer ?? item.host ?? item.author ?? 'Community'),
+    category: ensureString(item.category ?? 'Event'),
+    content: ensureString(item.description ?? ''),
+    start_time: toISOString(item.start_time ?? ''),
+    end_time: toISOString(item.end_time ?? ''),
+    location: ensureString(item.location ?? ''),
+    image_url: item.image_url ?? null
+  }));
+
+const normalizePolls = (items) =>
+  ensureArray(items).map((p, i) => {
+    const options = ensureArray(p.options).map((o, idx) => ({
+      id: String(o.id ?? `opt-${idx + 1}`),
+      name: ensureString(o.name ?? o.label ?? `Option ${idx + 1}`),
+      percent: null,
+      optionId: ensureNumber(o.id, null),
+      voteCount: ensureNumber(o.vote_count, 0)
+    }));
+    const totalVotes = options.reduce((s, o) => s + (o.voteCount || 0), 0);
+    return {
+      id: String(p.id ?? `poll-${i + 1}`),
+      pollId: ensureNumber(p.id, null),
+      title: ensureString(p.title ?? `Poll ${i + 1}`),
+      description: ensureString(p.description ?? ''),
+      deadline: toISOString(p.expires_at ?? p.created_at ?? ''),
+      totalVotes,
+      options
+    };
+  });
+
+// ---------- AI Hub (cached) ----------
+async function fetchAICachedSuggestions(userId, { kHeadline = 12, kPosts = 6, kPolls = 6 } = {}) {
+  if (!userId) return null;
+  const qs = new URLSearchParams({
+    user_id: String(userId),
+    k_headline: String(kHeadline),
+    k_posts: String(kPosts),
+    k_polls: String(kPolls)
+  });
+
+  const url = `${AI_HUB_URL}/recommend_dashboard_cached?${qs.toString()}`;
+  const res = await fetchHttp(url);
+  if (!res.ok) {
+    // fall back silently
+    return null;
+  }
+  const data = await res.json();
+  // data: { headline:[{content_type,content_id,rank,score?}], posts:[{content_id,...}], polls:[{content_id,...}] }
+  return data;
+}
+
+// ---------- Merge campus events + posts for a single stream (optional) ----------
+function mergeEvents(campusEvents, communityPosts, limit = DEFAULT_EVENTS_LIMIT) {
+  const arr = [
+    ...ensureArray(campusEvents).map((e) => ({
+      ...e,
+      __t: toTimestamp(e.start_time ?? e.created_at),
+    })),
+    ...ensureArray(communityPosts).map((p) => ({
+      ...p,
+      __t: toTimestamp(p.created_at),
+      author: ensureString(p.author ?? 'Community')
+    }))
+  ];
+  arr.sort((a, b) => (b.__t || 0) - (a.__t || 0));
+  return arr.slice(0, limit).map(({ __t, ...x }) => x);
+}
+
+// ---------- Optional: calendar, spotlights, reward leaders (unchanged logic) ----------
+async function fetchStudentSpotlights(limit = DEFAULT_SPOTLIGHTS_LIMIT) {
   const { rows } = await getPool().query(
     `SELECT id, student_name, major, class_year, achievements, quote, image_url, featured_at
        FROM student_spotlights
@@ -542,9 +294,9 @@ const fetchStudentSpotlights = async (limit = DEFAULT_SPOTLIGHTS_LIMIT) => {
     [limit]
   );
   return rows;
-};
+}
 
-const fetchRewardLeaders = async (limit = DEFAULT_REWARD_LIMIT) => {
+async function fetchRewardLeaders(limit = DEFAULT_REWARD_LIMIT) {
   const { rows } = await getPool().query(
     `SELECT id, student_name, points, category, updated_at
        FROM reward_points
@@ -552,71 +304,14 @@ const fetchRewardLeaders = async (limit = DEFAULT_REWARD_LIMIT) => {
        LIMIT $1`,
     [limit]
   );
-
   return {
-    leaderboard: rows.map((row) => ({
-      id: row.id,
-      name: row.student_name,
-      points: row.points,
-      category: row.category,
-      updatedAt: row.updated_at
+    leaderboard: rows.map((r) => ({
+      id: r.id, name: r.student_name, points: r.points, category: r.category, updatedAt: r.updated_at
     }))
   };
-};
+}
 
-const combineDateTimeToTimestamp = (dateValue, timeValue) => {
-  const isoDate = toISOString(dateValue);
-  if (!isoDate) {
-    return null;
-  }
-
-  const baseDate = isoDate.slice(0, 10);
-  if (!baseDate) {
-    return null;
-  }
-
-  const baseline = Date.parse(`${baseDate}T00:00:00`);
-  if (Number.isNaN(baseline)) {
-    return null;
-  }
-
-  if (timeValue === undefined || timeValue === null || timeValue === '') {
-    return baseline;
-  }
-
-  if (timeValue instanceof Date) {
-    const isoTime = timeValue.toISOString().slice(11, 19);
-    const parsed = Date.parse(`${baseDate}T${isoTime}`);
-    return Number.isNaN(parsed) ? baseline : parsed;
-  }
-
-  if (typeof timeValue === 'string') {
-    const trimmed = timeValue.trim();
-    if (!trimmed) {
-      return baseline;
-    }
-
-    const normalized =
-      trimmed.length === 5
-        ? `${trimmed}:00`
-        : trimmed.length === 8
-          ? trimmed
-          : trimmed;
-
-    const parsed = Date.parse(`${baseDate}T${normalized}`);
-    if (!Number.isNaN(parsed)) {
-      return parsed;
-    }
-  }
-
-  if (typeof timeValue === 'number' && Number.isFinite(timeValue)) {
-    return baseline + timeValue;
-  }
-
-  return baseline;
-};
-
-const fetchCalendarItems = async (limit = DEFAULT_CALENDAR_LIMIT, userId = null) => {
+async function fetchCalendarItems(limit = DEFAULT_CALENDAR_LIMIT, userId = null) {
   const baseQuery = getPool().query(
     `SELECT id, title, description, start_time, end_time, location, category, link
        FROM calendar_items
@@ -630,66 +325,30 @@ const fetchCalendarItems = async (limit = DEFAULT_CALENDAR_LIMIT, userId = null)
       ? getPool().query(
           `SELECT id, user_id, source_type, source_id, title, date, time, category
              FROM user_calendar_items
-             WHERE user_id = $1
-             ORDER BY date ASC NULLS LAST, time ASC NULLS LAST, id ASC
-             LIMIT $2`,
+            WHERE user_id = $1
+            ORDER BY date ASC NULLS LAST, time ASC NULLS LAST, id ASC
+            LIMIT $2`,
           [userId, limit]
         )
       : Promise.resolve({ rows: [] });
 
-  const [baseResult, userResult] = await Promise.all([baseQuery, userQuery]);
+  const [baseRes, userRes] = await Promise.all([baseQuery, userQuery]);
 
   const combined = [
-    ...baseResult.rows.map((row) => ({
-      ...row,
-      __sortTimestamp: toTimestamp(row.start_time),
-      type: row.category ?? 'event'
-    })),
-    ...ensureArray(userResult.rows).map((row) => ({
-      id: `user-calendar-${row.id}`,
-      title: row.title,
-      date: row.date,
-      time: row.time,
-      category: row.category ?? row.source_type,
-      type: row.category ?? row.source_type,
-      source_type: row.source_type,
-      source_id: row.source_id,
-      __sortTimestamp: combineDateTimeToTimestamp(row.date, row.time)
+    ...baseRes.rows.map((r) => ({ ...r, __t: toTimestamp(r.start_time), type: r.category ?? 'event' })),
+    ...ensureArray(userRes.rows).map((r) => ({
+      id: `user-calendar-${r.id}`,
+      title: r.title, date: r.date, time: r.time, category: r.category ?? r.source_type, type: r.category ?? r.source_type,
+      source_type: r.source_type, source_id: r.source_id,
+      __t: toTimestamp(`${toDateOnly(r.date)}T${ensureString(r.time, '00:00')}:00`)
     }))
   ];
 
-  combined.sort((a, b) => {
-    const aTime = a.__sortTimestamp ?? Number.POSITIVE_INFINITY;
-    const bTime = b.__sortTimestamp ?? Number.POSITIVE_INFINITY;
-    if (aTime !== bTime) {
-      return aTime - bTime;
-    }
-    return String(a.id).localeCompare(String(b.id));
-  });
-
-  return combined.slice(0, limit).map((item) => {
-    const { __sortTimestamp, ...rest } = item;
-    return rest;
-  });
-};
-
-async function safeLoadSection(loader, fallback) {
-  if (typeof loader !== 'function') {
-    return fallback;
-  }
-
-  try {
-    const result = await loader();
-    if (result === undefined || result === null) {
-      return fallback;
-    }
-    return result;
-  } catch (error) {
-    console.error('Dashboard data loader failed:', error);
-    return fallback;
-  }
+  combined.sort((a, b) => (a.__t ?? Number.POSITIVE_INFINITY) - (b.__t ?? Number.POSITIVE_INFINITY));
+  return combined.slice(0, limit).map(({ __t, ...x }) => x);
 }
 
+// ---------- Public API ----------
 async function getDashboardData(options = {}) {
   const {
     loaders: overrideLoaders = {},
@@ -697,7 +356,7 @@ async function getDashboardData(options = {}) {
     userId = null
   } = options;
 
-  const effectiveLimits = {
+  const limits = {
     news: parseLimit(limitOverrides.newsLimit, DEFAULT_NEWS_LIMIT),
     events: parseLimit(limitOverrides.eventsLimit, DEFAULT_EVENTS_LIMIT),
     polls: parseLimit(limitOverrides.pollsLimit, DEFAULT_POLLS_LIMIT),
@@ -706,45 +365,75 @@ async function getDashboardData(options = {}) {
     calendar: parseLimit(limitOverrides.calendarLimit, DEFAULT_CALENDAR_LIMIT)
   };
 
-  const defaultLoaders = {
-    news: () => fetchLatestNews(effectiveLimits.news),
-    events: () =>
-      (async () => {
-        const [campusEvents, communityPosts] = await Promise.all([
-          fetchUpcomingEvents(effectiveLimits.events),
-          fetchCommunityPosts(effectiveLimits.events)
-        ]);
+  // 1) Ask AI cache (fast path)
+  const ai = await fetchAICachedSuggestions(userId).catch(() => null);
 
-        return mergeEvents(campusEvents, communityPosts, effectiveLimits.events);
-      })(),
-    polls: () => fetchActivePolls(effectiveLimits.polls),
-    spotlights: () => fetchStudentSpotlights(effectiveLimits.spotlights),
-    rewardLeaders: () => fetchRewardLeaders(effectiveLimits.rewards),
-    calendar: () => fetchCalendarItems(effectiveLimits.calendar, userId)
-  };
+  // 2) If we have cache, hydrate IDs preserving order. Otherwise, fallback to simple DB queries.
+  let headlineEvents = [];
+  let headlineNews = [];
+  let posts = [];
+  let polls = [];
 
-  const loaders = {
-    ...defaultLoaders,
-    ...overrideLoaders
-  };
+  if (ai && ai.headline) {
+    const eventIds = ai.headline.filter(it => it.content_type === 'event').map(it => it.content_id);
+    const newsIds = ai.headline.filter(it => it.content_type === 'news').map(it => it.content_id);
+    const postIds = (ai.posts || []).map(it => it.content_id);
+    const pollIds = (ai.polls || []).map(it => it.content_id);
 
-  const [newsRaw, eventsRaw, pollsRaw, spotlightsRaw, rewardLeadersRaw, calendarRaw] =
-    await Promise.all([
-      safeLoadSection(loaders.news, FALLBACK_DASHBOARD_DATA.news),
-      safeLoadSection(loaders.events, FALLBACK_DASHBOARD_DATA.events),
-      safeLoadSection(loaders.polls, FALLBACK_DASHBOARD_DATA.polls),
-      safeLoadSection(loaders.spotlights, FALLBACK_DASHBOARD_DATA.spotlights),
-      safeLoadSection(loaders.rewardLeaders, FALLBACK_DASHBOARD_DATA.rewardLeaders),
-      safeLoadSection(loaders.calendar, FALLBACK_DASHBOARD_DATA.calendar)
+    // hydrate in parallel
+    const [eventsHydrated, newsHydrated, postsHydrated, pollsHydrated] = await Promise.all([
+      fetchEventsByIdsInOrder(eventIds),
+      fetchNewsByIdsInOrder(newsIds),
+      fetchPostsByIdsInOrder(postIds),
+      fetchPollsByIdsInOrder(pollIds)
     ]);
 
+    headlineEvents = eventsHydrated;
+    headlineNews = newsHydrated;
+    posts = postsHydrated;
+    polls = pollsHydrated;
+  } else {
+    // Fallbacks (minimal, no dummy content)
+    [headlineNews, headlineEvents, posts, polls] = await Promise.all([
+      fetchLatestNews(limits.news),
+      fetchUpcomingEvents(limits.events),
+      fetchPublishedCommunityPosts(limits.events),
+      fetchActivePolls(limits.polls)
+    ]);
+  }
+
+  // 3) Merge events + posts into a single feed slot for the UI (optional)
+  const mergedEvents = mergeEvents(
+    normalizeEvents(headlineEvents),
+    normalizeEvents(posts.map(p => ({ ...p, description: p.content }))), // reuse normalizer
+    limits.events
+  );
+
+  // 4) Build response (no heavy fake data)
+  const [spotlights, rewards, calendar] = await Promise.all([
+    fetchStudentSpotlights(limits.spotlights).catch(() => []),
+    fetchRewardLeaders(limits.rewards).catch(() => ({ leaderboard: [] })),
+    fetchCalendarItems(limits.calendar, userId).catch(() => [])
+  ]);
+
   return {
-    news: normalizeNews(newsRaw),
-    events: normalizeEvents(eventsRaw),
-    polls: normalizePolls(pollsRaw),
-    spotlights: normalizeSpotlights(spotlightsRaw),
-    rewardLeaders: normalizeRewardLeaders(rewardLeadersRaw),
-    calendar: normalizeCalendar(calendarRaw),
+    news: normalizeNews(headlineNews),
+    events: mergedEvents,
+    polls: normalizePolls(polls),
+    spotlights: spotlights.map((s) => ({
+      id: String(s.id),
+      name: ensureString(s.student_name ?? 'Student'),
+      month: ensureString(s.featured_at ? toDateOnly(s.featured_at).slice(0, 7) : ''),
+      points: 0,
+      award: 'Spotlight',
+      description: ensureString(s.achievements ?? s.quote ?? ''),
+      isCurrent: Boolean(s.featured_at)
+    })),
+    rewardLeaders: {
+      currentUser: null,
+      leaderboard: ensureArray(rewards.leaderboard)
+    },
+    calendar,
     generatedAt: new Date().toISOString()
   };
 }
@@ -752,21 +441,14 @@ async function getDashboardData(options = {}) {
 module.exports = {
   getDashboardData,
   __private: {
-    FALLBACK_DASHBOARD_DATA,
     ensureArray,
     ensureString,
     ensureNumber,
     parseLimit,
-    safeLoadSection,
-    normalizeNews,
-    normalizeEvents,
-    normalizePolls,
-    normalizeSpotlights,
-    normalizeRewardLeaders,
-    normalizeCalendar,
-    combineDateTimeToTimestamp,
     toISOString,
     toDateOnly,
-    toTime
+    toTime,
+    toTimestamp,
+    fetchAICachedSuggestions: fetchAICachedSuggestions
   }
 };
