@@ -81,10 +81,10 @@ async function fetchUpcomingEvents(limit = DEFAULT_EVENTS_LIMIT) {
 async function fetchPublishedCommunityPosts(limit = DEFAULT_EVENTS_LIMIT) {
   const { rows } = await getPool().query(
     `SELECT id, title, category, description, tags, created_at
-       FROM community_posts
-       WHERE moderation_status = 'publish'
-       ORDER BY created_at DESC NULLS LAST, id DESC
-       LIMIT $1`,
+    FROM community_posts
+    WHERE moderation_status = 'publish'
+    ORDER BY created_at DESC NULLS LAST, id DESC
+    LIMIT $1`,
     [limit]
   );
   return rows.map((r) => ({
@@ -156,8 +156,8 @@ async function fetchPostsByIdsInOrder(postIds) {
   const ids = postIds.map(Number);
   const { rows } = await pool.query(
     `SELECT id, title, category, description, tags, created_at
-       FROM community_posts
-      WHERE moderation_status = 'publish' AND id = ANY($1::int[])`,
+    FROM community_posts
+    WHERE moderation_status = 'publish' AND id = ANY($1::int[])`,
     [ids]
   );
   if (!rows.length) return [];
