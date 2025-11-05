@@ -1,8 +1,0 @@
-{
-  "model": "cardiffnlp/twitter-roberta-base-sentiment-latest",
-  "device": "cuda",
-  "thresholds": { "block": 0.70, "queue": 0.40 },
-  "maxTextLength": 2000,
-  "allow_origins": ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173"],
-  "log_to_file": true
-}

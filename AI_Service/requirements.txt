@@ -1,0 +1,16 @@
+fastapi==0.115.5
+uvicorn[standard]==0.32.0
+pydantic==2.9.2
+python-dotenv==1.0.1
+
+# Moderation (sentiment/“toxicity” proxy)
+transformers==4.45.2
+numpy==1.26.4
+
+# Recommender
+sentence-transformers==3.0.1
+pandas==2.2.2
+psycopg[binary]==3.2.1
+
+# Torch: install the right build for your machine separately if you want GPU.
+# pip install --index-url https://download.pytorch.org/whl/cu118 torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1

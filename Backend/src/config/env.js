@@ -1,3 +1,4 @@
+// src/config/env.js
 require('dotenv').config();
 
 const readEnv = (key) => {
@@ -17,6 +18,9 @@ const OTP_IP_COOLDOWN_MS = parsePositiveNumber(process.env.OTP_IP_COOLDOWN_MS, 2
 const PORT = parsePositiveNumber(process.env.PORT, 3000);
 const JWT_SECRET = readEnv('JWT_SECRET') || 'change-me-in-production';
 
+const AI_HUB_URL    = readEnv('AI_HUB_URL') || 'http://localhost:8020';
+const AI_TIMEOUT_MS = parsePositiveNumber(process.env.AI_TIMEOUT_MS, 12_000);
+
 module.exports = {
   readEnv,
   parsePositiveNumber,
@@ -24,5 +28,10 @@ module.exports = {
   OTP_EMAIL_COOLDOWN_MS,
   OTP_IP_COOLDOWN_MS,
   PORT,
-  JWT_SECRET
+  JWT_SECRET,
+  AI_HUB_URL,
+  AI_TIMEOUT_MS,
 };
+
+
+

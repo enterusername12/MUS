@@ -1,0 +1,24 @@
+{
+  "cors": {
+    "allow_origins": ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173"]
+  },
+
+  "moderation": {
+    "model": "cardiffnlp/twitter-roberta-base-sentiment-latest",
+    "device": "cuda",
+    "thresholds": { "block": 0.70, "queue": 0.40 },
+    "maxTextLength": 2000,
+    "fileLogging": true
+  },
+
+  "reco": {
+    "model": "sentence-transformers/all-MiniLM-L6-v2",
+    "device": "cuda",
+    "alpha": 0.6,
+    "lambda_decay": 0.02,
+    "max_events": 500,
+    "future_only_default": true
+  },
+
+  "db_url": "postgresql://mydb_7juo_user:u20hH1rFWLrekZRWThYRPxqQP4bbWUu7@dpg-d3mg8fidbo4c73brfjc0-a.oregon-postgres.render.com/mydb_7juo"
+}

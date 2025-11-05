@@ -1,5 +1,0 @@
-{"action": "publish", "reason": "toxic:0.00", "toxic_prob": 0.004, "latency_ms": 172, "meta": {"source": "community_post"}}
-{"action": "publish", "reason": "neg:0.01", "toxic_prob": 0.0057, "latency_ms": 187, "meta": {"source": "community_post"}}
-{"action": "block", "reason": "neg:0.93", "toxic_prob": 0.934, "latency_ms": 15, "meta": {"source": "community_post"}}
-{"action": "block", "reason": "neg:0.90", "toxic_prob": 0.8985, "latency_ms": 16, "meta": {"source": "community_post"}}
-{"action": "block", "reason": "neg:0.93", "toxic_prob": 0.9277, "latency_ms": 192, "meta": {"source": "community_post"}}
