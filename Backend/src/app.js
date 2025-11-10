@@ -8,6 +8,7 @@ const communityPostsRoutes = require('./routes/communityPosts');
 const pollsRoutes = require('./routes/polls');
 const feedbackRoutes = require('./routes/feedback');
 const recoRoutes = require('./routes/reco');
+const merchRoutes = require('./routes/merchandise');
 const app = express();
 
 app.set('trust proxy', true);
@@ -30,4 +31,5 @@ app.use('/api/community-posts', communityPostsRoutes);
 app.use('/api/polls', pollsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/reco', recoRoutes);
+app.use('/api/merch', merchRoutes);
 module.exports = app;
