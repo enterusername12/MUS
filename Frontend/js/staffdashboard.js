@@ -312,4 +312,3 @@ const eventContainer = document.getElementById("eventContainer");
     });
   });
 });
-

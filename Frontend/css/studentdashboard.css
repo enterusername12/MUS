@@ -876,43 +876,37 @@ main {
 /* ================================================
    MOBILE MENU (only active under 768px)
 =================================================== */
-/* ================================================
-   📱 MOBILE MENU (only active under 768px)
-=================================================== */
 
-/* Default hamburger button (hidden on desktop) */
+/* Hide toggle button on desktop */
 .menu-toggle {
   display: none;
   background: none;
   border: none;
   font-size: 26px;
-  color: #E12744; /* 🔴 Change this color to match your theme */
+  color: white;
   cursor: pointer;
   margin-left: auto;
 }
 
 /* Hide nav links on mobile by default */
 @media (max-width: 768px) {
-  /* Show hamburger on mobile */
   .menu-toggle {
     display: block;
   }
 
-  /* Hide links initially */
   .nav-links {
     display: none;
     flex-direction: column;
     width: 100%;
-    background: rgba(0, 0, 0, 0.85); /* ✅ darker semi-transparent dropdown */
+    background: rgba(0, 0, 0, 0.2);
     position: absolute;
-    top: 80px; /* matches your nav height */
+    top: 80px; /* same as your nav height */
     left: 0;
     padding: 10px 0;
     z-index: 999;
-    backdrop-filter: blur(6px);
+    backdrop-filter: blur(5px);
   }
 
-  /* When active (JS toggles `.show`) */
   .nav-links.show {
     display: flex;
     animation: slideDown 0.3s ease;
@@ -924,14 +918,13 @@ main {
     color: white;
     width: 100%;
     text-align: left;
-    text-decoration: none;
   }
 
   .nav-links a:hover {
     background-color: rgba(255, 255, 255, 0.1);
   }
 
-  /* slide down animation */
+  /* Animation */
   @keyframes slideDown {
     from {
       opacity: 0;
@@ -944,11 +937,12 @@ main {
   }
 }
 
-/* ================================================
+
+/* ===============================
    📱 MOBILE NAV + HEADER FIX
-=================================================== */
+================================= */
 @media (max-width: 768px) {
-  /* stack items neatly */
+  /* ✅ NAV: stack properly and center items */
   .nav-menu {
     flex-direction: row;
     justify-content: space-between;
@@ -967,9 +961,10 @@ main {
     margin-left: auto;
   }
 
+  /* ✅ Fix the nav-links dropdown */
   .nav-links {
     position: absolute;
-    top: 70px;
+    top: 70px; /* below nav */
     left: 0;
     width: 100%;
     background: rgba(0, 0, 0, 0.85);
@@ -987,7 +982,7 @@ main {
     text-align: left;
   }
 
-  /* Header adjustments */
+  /* ✅ HEADER ALIGNMENT FIX */
   .main-header {
     flex-direction: column;
     align-items: flex-start;

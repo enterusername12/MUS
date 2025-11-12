@@ -59,7 +59,9 @@
 
 <button id="otpFlowBtn" class="ghost-btn"><span class="icon">✉️</span> Sign in with OTP</button>
 
-<p class="help">Forgot password? <a href="forgotpassword.html">reset password</a></p>
+
+<p class="help">Need help? <a href="#" id="contactSupport">Contact Support</a></p>
+<p class="help">Forgot password? <a href="forgotpassword.html">Reset Password</a></p>
 </section>
 
 
@@ -114,24 +116,6 @@
 
 
 <script src="js/script.js"></script>
-
-<script>
-function openModal(id) {
-  document.getElementById(id).style.display = 'block';
-}
-
-function closeModal(id) {
-  document.getElementById(id).style.display = 'none';
-}
-
-// Close modal when clicking outside the box
-window.onclick = function(event) {
-  if (event.target.classList.contains('modal')) {
-    event.target.style.display = 'none';
-  }
-}
-</script>
-
 
 </body>
 </html>

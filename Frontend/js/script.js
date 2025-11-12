@@ -1,18 +1,76 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // Automatically switch between local and deployed backend
-  const isLocal =
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1';
-
-  const API_BASE_URL = isLocal
-    ? 'http://localhost:3000/api'                // local backend
-    : 'https://mus-g0um.onrender.com/api';       // Render backend
+  const API_BASE_URL = 'http://localhost:3000/api';
 
   let pendingOtpEmail = sessionStorage.getItem('pendingOtpEmail');
+  const otpEmailInput = document.getElementById('otpEmail');
+  const otpEntrySection = document.getElementById('otpEntrySection');
+  const otpInstructions = document.getElementById('otpInstructions');
+  const defaultOtpInstruction = otpInstructions?.textContent || '';
+  const otpCodeInput = document.getElementById('otpCode');
+  const verifyOtpBtn = document.getElementById('verifyOtpBtn');
 
-  // ... (rest of your script below)
+  const showOtpEntrySection = ({ message, resetCode = false, focusCode = false } = {}) => {
+    if (!otpEntrySection) {
+      return;
+    }
+    if (otpInstructions) {
+      otpInstructions.textContent = message || defaultOtpInstruction;
+    }
+    otpEntrySection.hidden = false;
+    if (resetCode && otpCodeInput) {
+      otpCodeInput.value = '';
+    }
+    if (focusCode && otpCodeInput) {
+      otpCodeInput.focus();
+    }
+  };
 
+  const hideOtpEntrySection = () => {
+    if (!otpEntrySection) {
+      return;
+    }
+    otpEntrySection.hidden = true;
+    if (otpInstructions) {
+      otpInstructions.textContent = defaultOtpInstruction;
+    }
+    if (otpCodeInput) {
+      otpCodeInput.value = '';
+    }
+  };
 
+  const completeOtpVerification = (result = {}) => {
+    const { message, user, redirectPath } = result || {};
+    const extraMessages = [];
+    if (message) {
+      extraMessages.push(message);
+    }
+
+    const userRole = (user?.role || '').toString().toLowerCase();
+    if (userRole.includes('student')) {
+      const studentId = user?.studentId || '';
+      const officialEmail = (user?.email || '').trim();
+      if (studentId) {
+        const normalizedStudentId = studentId.toString().toUpperCase();
+        const generatedEmail = `${normalizedStudentId}@murdoch.edu.au`;
+        extraMessages.push(
+          `Your Murdoch student ID is ${normalizedStudentId}. Your official email is ${generatedEmail}.`
+        );
+      } else if (officialEmail) {
+        extraMessages.push(`Your Murdoch student email is ${officialEmail}.`);
+      }
+    }
+
+    sessionStorage.removeItem('pendingOtpEmail');
+    pendingOtpEmail = null;
+    if (otpEmailInput) {
+      otpEmailInput.value = '';
+    }
+    hideOtpEntrySection();
+    const alertMessage =
+      extraMessages.join('\n\n') || 'Your account has been verified successfully.';
+    alert(alertMessage);
+    window.location.href = redirectPath || 'index.html';
+  };
 
   // Handle tab switching between Sign In and Create Account
   document.querySelectorAll('.tab').forEach((tab) => {
@@ -27,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
-//
+
   // Password visibility toggle on the sign-in page
   const togglePassword = document.getElementById('togglePassword');
   const passwordInput = document.getElementById('password');
@@ -58,24 +116,58 @@ document.addEventListener('DOMContentLoaded', () => {
   const savePrefs = document.getElementById('save-preferences');
   const form = document.getElementById('preferences-form');
 
-  const storedConsent = localStorage.getItem('userConsent');
-  if (!storedConsent && banner) {
-    banner.style.display = 'block';
-  }
+  const parseStoredConsent = () => {
+    try {
+      const raw = localStorage.getItem('userConsent');
+      if (!raw) {
+        return null;
+      }
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+      console.warn('Unable to parse stored consent preferences.', error);
+      return null;
+    }
+  };
+
+  const applyPreferencesToForm = (preferences = {}) => {
+    if (!form) return;
+    const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach((checkbox) => {
+      const { name } = checkbox;
+      let value;
+      if (name === 'essential') {
+        value = true;
+      } else if (Object.prototype.hasOwnProperty.call(preferences, name)) {
+        value = Boolean(preferences[name]);
+      } else {
+        value = checkbox.defaultChecked;
+      }
+      checkbox.checked = value;
+    });
+  };
+
+  const setBannerVisibility = (shouldShow) => {
+    if (!banner) return;
+    banner.style.display = shouldShow ? 'block' : 'none';
+  };
+
+  let currentConsent = parseStoredConsent();
+  applyPreferencesToForm(currentConsent || {});
+  setBannerVisibility(!currentConsent);
 
   if (acceptBtn) {
     acceptBtn.addEventListener('click', () => {
-      localStorage.setItem(
-        'userConsent',
-        JSON.stringify({
-          essential: true,
-          analytics: true,
-          email: true,
-          payment: true,
-          ai: true
-        })
-      );
-      if (banner) banner.style.display = 'none';
+      currentConsent = {
+        essential: true,
+        analytics: true,
+        email: true,
+        payment: true,
+        ai: true
+      };
+      localStorage.setItem('userConsent', JSON.stringify(currentConsent));
+      applyPreferencesToForm(currentConsent);
+      setBannerVisibility(false);
       if (modal) modal.style.display = 'none';
     });
   }
@@ -93,15 +185,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (savePrefs && form) {
-    savePrefs.addEventListener('click', () => {
-      const data = {};
-      new FormData(form).forEach((value, key) => {
-        data[key] = true;
+    savePrefs.addEventListener('click', (event) => {
+      event.preventDefault();
+      const preferences = {};
+      form.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+        const { name } = checkbox;
+        const value = name === 'essential' ? true : Boolean(checkbox.checked);
+        checkbox.checked = value;
+        preferences[name] = value;
       });
-      localStorage.setItem('userConsent', JSON.stringify(data));
+      localStorage.setItem('userConsent', JSON.stringify(preferences));
+      currentConsent = preferences;
       if (modal) modal.style.display = 'none';
-      if (banner) banner.style.display = 'none';
-      alert('Your preferences have been saved.');
+      setBannerVisibility(false);
     });
   }
 
@@ -126,24 +222,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const setButtonBusy = (button, busyText) => {
     if (!button) return () => {};
     const original = button.textContent;
-    button.dataset.originalText = original;
+
     button.disabled = true;
-    button.classList.add('is-loading');
     if (busyText) {
       button.textContent = busyText;
     }
 
     return () => {
       button.disabled = false;
-      button.classList.remove('is-loading');
-      button.textContent = button.dataset.originalText || original;
+      button.textContent = original;
     };
   };
 
-  // Sign-in handler ---------------------------------------------------------
+  // Sign-in handler -----------------------------------------------------------
   const signInBtn = document.getElementById('signInBtn');
   if (signInBtn) {
-    signInBtn.addEventListener('click', async () => {
+    signInBtn.addEventListener('click', async (event) => {
+      event.preventDefault();
+
       const email = document.getElementById('email')?.value.trim();
       const password = document.getElementById('password')?.value;
       const role = document.getElementById('roleSelect')?.value || '';
@@ -164,7 +260,61 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('musAuthUser', JSON.stringify(result.user));
         alert('Login successful!');
         console.info('Authenticated user:', result.user);
-        // Redirect to dashboard/home once available
+
+        const redirectMap = {
+          student: '/Frontend/studentdashboard.html',
+          'guest / visitor': '/Frontend/guestdashboard.html',
+          guest: '/Frontend/guestdashboard.html',
+          visitor: '/Frontend/guestdashboard.html',
+          staff: '/Frontend/staffdashboard.html',
+          'staff (admin only)': '/Frontend/staffdashboard.html',
+          admin: '/Frontend/staffdashboard.html',
+          'admin (admin only)': '/Frontend/staffdashboard.html'
+        };
+
+        const normalizePath = (path) => {
+          if (!path) return null;
+
+          const trimmedPath = path.trim();
+          if (!trimmedPath) return null;
+
+          if (/^https?:\/\//i.test(trimmedPath)) {
+            return trimmedPath;
+          }
+
+          if (trimmedPath.startsWith('/')) {
+            try {
+              return new URL(trimmedPath, window.location.origin).href;
+            } catch (error) {
+              console.warn('Unable to resolve redirect path:', path, error);
+              return trimmedPath;
+            }
+          }
+
+          const withoutLeadingSlash = trimmedPath.replace(/^\/+/, '');
+          const ensuredFrontendPath = withoutLeadingSlash.toLowerCase().startsWith('frontend/')
+            ? withoutLeadingSlash
+            : `Frontend/${withoutLeadingSlash}`;
+          const ensuredWithLeadingSlash = ensuredFrontendPath.startsWith('/')
+            ? ensuredFrontendPath
+            : `/${ensuredFrontendPath}`;
+
+          try {
+            return new URL(ensuredWithLeadingSlash, window.location.origin).href;
+          } catch (error) {
+            console.warn('Unable to resolve redirect path:', path, error);
+            return ensuredWithLeadingSlash;
+          }
+        };
+
+        const normalizedRole = (result.user?.role || role || '').trim().toLowerCase();
+        const rawRedirectPath =
+          result.redirectPath ||
+          redirectMap[normalizedRole] ||
+          '/Frontend/studentdashboard.html';
+        const redirectPath = normalizePath(rawRedirectPath) || rawRedirectPath;
+
+        window.location.href = redirectPath;
       } catch (error) {
         alert(error.message);
       } finally {
@@ -180,8 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const role = document.getElementById('createRole')?.value || '';
       const firstName = document.getElementById('firstName')?.value.trim();
       const lastName = document.getElementById('lastName')?.value.trim();
-      const email = document.getElementById('createEmail')?.value.trim();
-      const studentId = document.getElementById('studentId')?.value.trim();
+      const personalEmail = document.getElementById('personalEmail')?.value.trim();
       const phone = document.getElementById('phone')?.value.trim();
       const password = document.getElementById('createPassword')?.value;
       const confirmPassword = document.getElementById('confirmPassword')?.value;
@@ -194,71 +343,49 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Please enter your first and last names.');
         return;
       }
-      if (!email) {
-        alert('Please enter your email.');
+      if (!personalEmail) {
+        alert('Please enter your personal email.');
         return;
       }
-      const normalizedEmail = email.toLowerCase();
-      if (role === 'Student') {
-        if (normalizedEmail.endsWith('@gmail.com')) {
-          alert(
-            'Student accounts cannot be created with Gmail addresses. Please use your Murdoch University student email (e.g., name@murdoch.edu.au).'
-          );
-          return;
-        }
-
-        const emailDomain = normalizedEmail.split('@')[1] || '';
-        const isMurdochDomain =
-          emailDomain === 'murdoch.edu.au' || emailDomain.endsWith('.murdoch.edu.au');
-
-        if (!isMurdochDomain) {
-          alert(
-            'Please use your Murdoch University student email address (e.g., name@murdoch.edu.au) to create a student account.'
-          );
-          return;
-        }
+      if (!phone) {
+        alert('Please enter your phone number.');
+        return;
       }
-
-      if (!password || password.length < 8) {
-        alert('Password must be at least 8 characters.');
+      if (!password || !confirmPassword) {
+        alert('Please enter and confirm your password.');
         return;
       }
       if (password !== confirmPassword) {
         alert('Passwords do not match.');
         return;
       }
+      if (password.length < 8) {
+        alert('Password must be at least 8 characters long.');
+        return;
+      }
 
-      const resetButton = setButtonBusy(createBtn, 'Creating...');
+      const resetButton = setButtonBusy(createBtn, 'Creating Account...');
       try {
         const result = await postJSON('/auth/register', {
           role,
           firstName,
           lastName,
-          email,
-          studentId,
+          personalEmail,
           phone,
           password,
           confirmPassword
         });
-        sessionStorage.setItem('pendingOtpEmail', email);
-        pendingOtpEmail = email;
+        sessionStorage.setItem('pendingOtpEmail', personalEmail);
+        pendingOtpEmail = personalEmail;
 
-        let message = 'Account created successfully!';
+        let message = result?.message || 'Registration received. Please verify your email to continue.';
         if (result?.otp?.message) {
           message += `\n\n${result.otp.message}`;
         }
 
         alert(message);
 
-        if (result?.otp?.sent) {
-          const proceed = confirm('Would you like to enter the verification code now?');
-          if (proceed) {
-            window.location.href = 'otp.html';
-            return;
-          }
-        }
-
-        window.location.href = 'index.html';
+        window.location.href = 'otp.html';
       } catch (error) {
         alert(error.message);
       } finally {
@@ -278,8 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const sendOtpBtn = document.getElementById('sendOtpBtn');
   if (sendOtpBtn) {
     sendOtpBtn.addEventListener('click', async () => {
-      const emailInput = document.getElementById('otpEmail');
-      const email = emailInput?.value.trim() || pendingOtpEmail || '';
+      const email = otpEmailInput?.value.trim() || pendingOtpEmail || '';
       if (!email) {
         alert('Please enter your email.');
         return;
@@ -287,37 +413,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const resetButton = setButtonBusy(sendOtpBtn, 'Sending...');
       try {
-        if (emailInput && !emailInput.value) {
-          emailInput.value = email;
-        }
+        const response = await postJSON('/auth/request-otp', { email });
+        const message = response?.message || `A verification code has been sent to ${email}.`;
+
         sessionStorage.setItem('pendingOtpEmail', email);
         pendingOtpEmail = email;
-        await postJSON('/auth/request-otp', { email });
-        alert(`A verification code has been sent to ${email}.`);
 
-        const code = prompt('Enter the 6-digit code we emailed to you:');
-        if (!code) {
-          alert('Verification cancelled. You can request another code when you are ready.');
-          return;
+        if (otpEmailInput && !otpEmailInput.value) {
+          otpEmailInput.value = email;
         }
 
-        const trimmedCode = code.trim();
-        if (!trimmedCode) {
-          alert('Please enter the code to continue.');
-          return;
-        }
-
-        if (!/^\d{6}$/.test(trimmedCode)) {
-          alert('The verification code should be a 6-digit number.');
-          return;
-        }
-
-        const result = await postJSON('/auth/verify-otp', { email, code: trimmedCode });
-        localStorage.setItem('musAuthToken', result.token);
-        localStorage.setItem('musAuthUser', JSON.stringify(result.user));
-        sessionStorage.removeItem('pendingOtpEmail');
-        alert('OTP verified! You are signed in.');
-        window.location.href = 'index.html';
+        alert(message);
+        showOtpEntrySection({
+          message: `${message} Enter the code below to continue.`,
+          resetCode: true,
+          focusCode: true
+        });
       } catch (error) {
         alert(error.message);
       } finally {
@@ -326,9 +437,47 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const otpEmailInput = document.getElementById('otpEmail');
+  if (verifyOtpBtn) {
+    verifyOtpBtn.addEventListener('click', async () => {
+      const email = otpEmailInput?.value.trim() || pendingOtpEmail || '';
+      if (!email) {
+        alert('Please enter your email before verifying your code.');
+        return;
+      }
+
+      const code = otpCodeInput?.value.trim();
+      if (!code) {
+        alert('Please enter the verification code.');
+        otpCodeInput?.focus();
+        return;
+      }
+
+      if (!/^\d{6}$/.test(code)) {
+        alert('The verification code should be a 6-digit number.');
+        otpCodeInput?.focus();
+        return;
+      }
+
+      const resetButton = setButtonBusy(verifyOtpBtn, 'Verifying...');
+      try {
+        const result = await postJSON('/auth/verify-otp', { email, code });
+        localStorage.setItem('musAuthToken', result.token);
+        localStorage.setItem('musAuthUser', JSON.stringify(result.user));
+        completeOtpVerification(result);
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        resetButton();
+      }
+    });
+  }
+
   if (otpEmailInput && !otpEmailInput.value && pendingOtpEmail) {
     otpEmailInput.value = pendingOtpEmail;
+  }
+
+  if (pendingOtpEmail) {
+    showOtpEntrySection();
   }
 
   // Contact support dummy links
@@ -340,5 +489,3 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
-
-//..

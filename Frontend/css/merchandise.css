@@ -366,7 +366,7 @@ body {
   position: fixed;
   inset: 0;
   background: rgba(15,15,15,0.55);
-  display: flex;
+  display: none;
   justify-content: center;
   align-items: center;
   z-index: 100;
