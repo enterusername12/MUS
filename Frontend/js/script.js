@@ -359,10 +359,11 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Passwords do not match.');
         return;
       }
-      if (password.length < 8) {
-        alert('Password must be at least 8 characters long.');
+      if (!password.match(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/)) {
+        alert('Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.');
         return;
       }
+
 
       const resetButton = setButtonBusy(createBtn, 'Creating Account...');
       try {
