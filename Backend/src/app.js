@@ -9,6 +9,9 @@ const pollsRoutes = require('./routes/polls');
 const feedbackRoutes = require('./routes/feedback');
 const recoRoutes = require('./routes/reco');
 const merchRoutes = require('./routes/merchandise');
+const limiter = require('./middleware/rateLimit');
+const postLimiter = require('./middleware/rateLimit');
+
 const app = express();
 
 app.set('trust proxy', true);
@@ -24,11 +27,10 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.use('/api/auth', authRoutes);
 app.use('/api/consent', consentRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/community-posts', communityPostsRoutes);
-app.use('/api/polls', pollsRoutes);
+app.use('/api/community-posts', postLimiter, communityPostsRoutes);
+app.use('/api/polls',limiter, pollsRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/reco', recoRoutes);
 app.use('/api/merch', merchRoutes);
