@@ -33,8 +33,8 @@ const ROLE_REDIRECTS = {
   guest: '/Frontend/guestdashboard.html',
   staff: '/Frontend/staffdashboard.html',
   'staff (admin only)': '/Frontend/staffdashboard.html',
-  admin: '/Frontend/staffdashboard.html',
-  'admin (admin only)': '/Frontend/staffdashboard.html'
+  admin: '/Frontend/masteradmin.html',
+  'admin (admin only)': '/Frontend/masteradmin.html'
 };
 
 const respondWithError = (res, statusCode, message) => {
