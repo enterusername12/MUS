@@ -383,21 +383,24 @@ async function listOrders({ status } = {}) {
   }));
 }
 
-async function createProduct({
-  name,
-  sku,
-  description,
-  category,
-  price,
-  stockQty,
-  isActive = true,
-  isFeatured = false,
-  userId
-}) {
+async function createProduct(payload = {}) {
+  const {
+    name,
+    sku,
+    description,
+    category,
+    price,
+    stockQty,
+    isActive = true,
+    isFeatured = false,
+    userId
+  } = payload;
   const trimmedName = sanitizeTrimmedString(name);
   const trimmedSku = sanitizeTrimmedString(sku);
   const trimmedCategory = sanitizeTrimmedString(category);
   const trimmedDescription = sanitizeTrimmedString(description);
+  const providedImageUrl = payload.imageUrl ?? payload.image_url;
+  const normalizedImageUrl = providedImageUrl !== undefined ? normalizeImageUrl(providedImageUrl) : null;
 
   if (!trimmedName) {
     throw new MerchandiseError('Product name is required.');
@@ -421,10 +424,10 @@ async function createProduct({
   const result = await getPool().query(
     {
       text: `INSERT INTO merch_products (
-               name, sku, description, category, price, stock_qty, is_active, is_featured, created_by, updated_by, created_at, updated_at
+                              name, sku, description, category, price, stock_qty, is_active, is_featured, image_url, created_by, updated_by, created_at, updated_at
              )
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9, NOW(), NOW())
-             RETURNING id, name, sku, description, category, price, stock_qty, is_active, is_featured, created_at, updated_at, created_by, updated_by`,
+                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10, NOW(), NOW())
+             RETURNING id, name, sku, description, category, price, stock_qty, is_active, is_featured, image_url, created_at, updated_at, created_by, updated_by`,
       values: [
         trimmedName,
         trimmedSku,
@@ -434,6 +437,7 @@ async function createProduct({
         normalizedStock,
         Boolean(isActive),
         Boolean(isFeatured),
+        normalizedImageUrl,
         Number.isInteger(userId) ? userId : null
       ]
     }
@@ -494,6 +498,12 @@ async function updateProduct(id, fields) {
     values.push(normalizedPrice);
   }
 
+  if (fields.imageUrl !== undefined || fields.image_url !== undefined) {
+    const normalizedImageUrl = normalizeImageUrl(fields.imageUrl ?? fields.image_url);
+    updates.push(`image_url = $${index++}`);
+    values.push(normalizedImageUrl);
+  }
+
   if (fields.stockQty !== undefined || fields.stock_qty !== undefined) {
     const stock = Number(fields.stockQty ?? fields.stock_qty);
     if (!Number.isInteger(stock) || stock < 0) {
@@ -531,7 +541,7 @@ async function updateProduct(id, fields) {
       text: `UPDATE merch_products
                SET ${updates.join(', ')}
              WHERE id = $${index}
-             RETURNING id, name, sku, description, category, price, stock_qty, is_active, is_featured, created_at, updated_at, created_by, updated_by`,
+              RETURNING id, name, sku, description, category, price, stock_qty, is_active, is_featured, image_url, created_at, updated_at, created_by, updated_by`,
       values
     }
   );

@@ -244,23 +244,86 @@ const seedMerchandiseData = async (client) => {
   if (Number(rows[0]?.count || 0) > 0) return;
 
   const products = [
-    { name: 'Campus Guide Book', sku: 'MU-CAMPUS-GUIDE', description: 'Essential guide for new students with maps and resources.', category: 'Books', price: 12.99, stockQty: 150, isFeatured: false },
-    { name: 'University Hoodie', sku: 'MU-HOODIE', description: 'Warm pullover with Murdoch logo.', category: 'Apparel', price: 49.0, stockQty: 80, isFeatured: true },
-    { name: 'Event Ticket', sku: 'MU-EVENT-TICKET', description: 'Access to annual campus festival and activities.', category: 'Tickets', price: 25.0, stockQty: 200, isFeatured: false },
-    { name: 'Enamel Pin', sku: 'MU-ENAMEL-PIN', description: 'Collectible enamel pin.', category: 'Accessories', price: 6.5, stockQty: 300, isFeatured: false },
-    { name: 'Stationery Set', sku: 'MU-STATIONERY-SET', description: 'Notebook and pen set.', category: 'Stationery', price: 9.75, stockQty: 250, isFeatured: false },
-    { name: 'Campus Tote Bag', sku: 'MU-TOTE-BAG', description: 'Canvas tote with MU print.', category: 'Accessories', price: 15.0, stockQty: 120, isFeatured: true }
+  {
+      name: 'Campus Guide Book',
+      sku: 'MU-CAMPUS-GUIDE',
+      description: 'Essential guide for new students with maps and resources.',
+      category: 'Books',
+      price: 12.99,
+      stockQty: 150,
+      isFeatured: false,
+      imageUrl: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=600&q=80'
+    },
+    {
+      name: 'University Hoodie',
+      sku: 'MU-HOODIE',
+      description: 'Warm pullover with Murdoch logo.',
+      category: 'Apparel',
+      price: 49.0,
+      stockQty: 80,
+      isFeatured: true,
+      imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=600&q=80'
+    },
+    {
+      name: 'Event Ticket',
+      sku: 'MU-EVENT-TICKET',
+      description: 'Access to annual campus festival and activities.',
+      category: 'Tickets',
+      price: 25.0,
+      stockQty: 200,
+      isFeatured: false,
+      imageUrl: 'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&w=600&q=80'
+    },
+    {
+      name: 'Enamel Pin',
+      sku: 'MU-ENAMEL-PIN',
+      description: 'Collectible enamel pin.',
+      category: 'Accessories',
+      price: 6.5,
+      stockQty: 300,
+      isFeatured: false,
+      imageUrl: 'https://images.unsplash.com/photo-1475180098004-ca77a66827be?auto=format&fit=crop&w=600&q=80'
+    },
+    {
+      name: 'Stationery Set',
+      sku: 'MU-STATIONERY-SET',
+      description: 'Notebook and pen set.',
+      category: 'Stationery',
+      price: 9.75,
+      stockQty: 250,
+      isFeatured: false,
+      imageUrl: 'https://images.unsplash.com/photo-1503602642458-232111445657?auto=format&fit=crop&w=600&q=80'
+    },
+    {
+      name: 'Campus Tote Bag',
+      sku: 'MU-TOTE-BAG',
+      description: 'Canvas tote with MU print.',
+      category: 'Accessories',
+      price: 15.0,
+      stockQty: 120,
+      isFeatured: true,
+      imageUrl: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=600&q=80'
+    }
   ];
 
   for (const product of products) {
     await client.query(
       `INSERT INTO merch_products (
-         name, sku, description, category, price, stock_qty,
+         name, sku, description, category, price, stock_qty, image_url,
          is_active, is_featured, created_at, updated_at
        )
-       VALUES ($1, $2, $3, $4, $5, $6, TRUE, $7, NOW(), NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8, NOW(), NOW())
        ON CONFLICT (sku) DO NOTHING`,
-      [product.name, product.sku, product.description, product.category, product.price, product.stockQty, product.isFeatured]
+            [
+        product.name,
+        product.sku,
+        product.description,
+        product.category,
+        product.price,
+        product.stockQty,
+        product.imageUrl,
+        product.isFeatured
+      ]
     );
   }
 };
@@ -484,6 +547,7 @@ const ensureDatabase = async () => {
         category TEXT NOT NULL,
         price NUMERIC(10,2) NOT NULL CHECK (price >= 0),
         stock_qty INTEGER NOT NULL DEFAULT 0 CHECK (stock_qty >= 0),
+        image_url TEXT,
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
         is_featured BOOLEAN NOT NULL DEFAULT FALSE,
         created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -492,6 +556,8 @@ const ensureDatabase = async () => {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )`);
 
+      await client.query(`ALTER TABLE merch_products ADD COLUMN IF NOT EXISTS image_url TEXT`);
+      
       // merch_orders
       await client.query(`CREATE TABLE IF NOT EXISTS merch_orders (
         id SERIAL PRIMARY KEY,

@@ -1,3 +1,10 @@
 2025-11-13T17:08:05.518Z [POST] /api/community-posts from ::1 Status: 201, Duration: 212ms
 2025-11-13T17:08:32.892Z [POST] /api/community-posts from ::1 Status: 201, Duration: 1293ms
 2025-11-13T17:08:33.856Z [POST] /api/community-posts from ::1 Status: 201, Duration: 1264ms
+2025-11-14T12:45:35.812Z [POST] /api/merch/orders from ::1 Status: 201, Duration: 2432ms
+2025-11-14T12:47:02.686Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1596ms
+2025-11-14T12:59:53.981Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1669ms
+2025-11-14T13:01:10.604Z [POST] /api/auth/login from ::1 Status: 200, Duration: 553ms
+2025-11-14T13:02:00.651Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1582ms
+2025-11-14T13:02:25.637Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1728ms
+2025-11-14T13:05:38.286Z [POST] /api/auth/login from ::1 Status: 200, Duration: 538ms

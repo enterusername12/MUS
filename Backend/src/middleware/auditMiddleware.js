@@ -10,30 +10,28 @@ if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
 
+// 🔥 Create a write stream → MUCH faster than appendFile
+const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+
 const auditMiddleware = (req, res, next) => {
   // Only log POST requests
   if (req.method !== 'POST') return next();
 
   const startTime = Date.now();
 
-  // Listen to the finish event so we capture status code and response time
- res.on('finish', () => {
-  const duration = Date.now() - startTime;
-  const logEntry = `${new Date().toISOString()} [${req.method}] ${req.originalUrl} from ${req.ip} ` +
-                   `Status: ${res.statusCode}, Duration: ${duration}ms\n`;
-  fs.appendFile(logFile, logEntry, (err) => {
-    if (err) console.error('❌ Failed to write audit log:', err);
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+    const logEntry =
+      `${new Date().toISOString()} [${req.method}] ${req.originalUrl} from ${ip} ` +
+      `Status: ${res.statusCode}, Duration: ${duration}ms\n`;
+
+    // 🔥 NON-BLOCKING logging
+    logStream.write(logEntry);
   });
-});
 
-
-  // Catch errors inside middleware to prevent blocking
-  try {
-    next();
-  } catch (error) {
-    console.error('❌ Audit middleware error:', error);
-    next(error); // pass to Express error handler
-  }
+  next();
 };
 
 module.exports = auditMiddleware;
