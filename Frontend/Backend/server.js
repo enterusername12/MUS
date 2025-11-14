@@ -9,6 +9,8 @@ const nodemailer = require('nodemailer');
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
+const merchRoutes = require('../../Backend/src/routes/merchandise');
+const { ensureDatabase: ensureBackendDatabase } = require('../../Backend/src/db');
 const readEnv = (key) => {
   const value = process.env[key];
   return typeof value === 'string' ? value.trim() : '';
@@ -269,6 +271,7 @@ const app = express();
 app.set('trust proxy', true);
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+app.use('/api/merch', merchRoutes);
 
 // Utility helpers -----------------------------------------------------------
 const queryOne = async (sql, params = []) => {
@@ -627,6 +630,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 ensureDatabase()
+  .then(() => ensureBackendDatabase())
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Authentication server listening on http://localhost:${PORT}`);
