@@ -1,4 +1,26 @@
-const API_BASE = '/api/merch';
+const API_BASE = (() => {
+  const explicit = window.__MU_MERCH_API_BASE__
+    || document?.querySelector?.('meta[name="merch-api-base"]')?.content;
+  if (typeof explicit === 'string' && explicit.trim()) {
+    return explicit.trim().replace(/\/$/, '');
+  }
+
+  const backendOrigin = window.__MU_BACKEND_ORIGIN__ || 'http://localhost:3000';
+  try {
+    const backendURL = new URL(backendOrigin);
+    const pageOrigin = window.location?.origin;
+    if (pageOrigin && pageOrigin !== 'null') {
+      const currentOrigin = new URL(pageOrigin);
+      if (currentOrigin.origin === backendURL.origin) {
+        return '/api/merch';
+      }
+    }
+    return `${backendURL.origin.replace(/\/$/, '')}/api/merch`;
+  } catch (error) {
+    console.warn('Unable to parse backend origin, defaulting to localhost:3000', error);
+    return 'http://localhost:3000/api/merch';
+  }
+})();
 const SORT_PARAM_MAP = {
   'name-asc': 'name_asc',
   'name-desc': 'name_desc',
@@ -102,18 +124,10 @@ function saveCart() {
   localStorage.setItem('mu_cart', JSON.stringify(state.cart));
 }
 
-function buildAuthHeaders({ json = false } = {}) {
+function buildRequestHeaders({ json = false } = {}) {
   const headers = {};
   if (json) {
     headers['Content-Type'] = 'application/json';
-  }
-  try {
-    const token = localStorage.getItem('musAuthToken');
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-  } catch (error) {
-    console.warn('Unable to read auth token.', error);
   }
   return headers;
 }
@@ -203,7 +217,7 @@ async function loadProducts() {
   const url = `${API_BASE}/products${params.toString() ? `?${params.toString()}` : ''}`;
 
   try {
-    const response = await fetch(url, { headers: buildAuthHeaders() });
+    const response = await fetch(url, { headers: buildRequestHeaders() });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       const message = payload?.message || 'Unable to load merchandise right now.';
@@ -841,7 +855,7 @@ async function submitProductForm() {
   try {
     const response = await fetch(url, {
       method,
-      headers: buildAuthHeaders({ json: true }),
+      headers: buildRequestHeaders({ json: true }),
       body: JSON.stringify(payload)
     });
     const data = await response.json().catch(() => ({}));
@@ -1047,7 +1061,7 @@ async function loadOrders() {
   const url = `${API_BASE}/orders${params.toString() ? `?${params.toString()}` : ''}`;
 
   try {
-    const response = await fetch(url, { headers: buildAuthHeaders() });
+    const response = await fetch(url, { headers: buildRequestHeaders() });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       const message = payload?.message || 'Unable to load orders at the moment.';
@@ -1068,7 +1082,7 @@ async function loadOrders() {
 async function submitOrderUpdate(orderId, updates) {
   const response = await fetch(`${API_BASE}/orders/${orderId}`, {
     method: 'PATCH',
-    headers: buildAuthHeaders({ json: true }),
+    headers: buildRequestHeaders({ json: true }),
     body: JSON.stringify(updates)
   });
   const data = await response.json().catch(() => ({}));
