@@ -182,6 +182,29 @@ body {
   }
   .checkout-card{background:#fff;border-radius:14px;padding:18px;box-shadow:var(--shadow);border:1px solid #f0f0f0}
 
+    .orders-section{margin-top:48px;display:flex;flex-direction:column;gap:18px}
+  .orders-header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+  .orders-header h2{margin:0;font-size:28px}
+  .orders-header p{margin:4px 0 0;color:var(--subtext)}
+  .orders-controls{display:flex;align-items:center;gap:12px}
+  .orders-controls .input{width:auto;padding:10px 12px}
+  .orders-list{display:flex;flex-direction:column;gap:16px}
+  .order-card{background:#fff;border-radius:14px;padding:18px;box-shadow:var(--shadow);border:1px solid #f0f0f0;display:flex;flex-direction:column;gap:12px}
+  .order-header{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:16px}
+  .order-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;color:var(--subtext)}
+  .order-items{margin:0;padding-left:18px;color:var(--text)}
+  .order-items li{margin-bottom:4px}
+  .order-form{display:flex;flex-direction:column;gap:12px}
+  .order-form-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+  .order-form-label{flex:0 0 120px;font-weight:600;color:var(--subtext)}
+  .order-form-body{flex:1;display:flex;flex-wrap:wrap;gap:10px}
+  .order-form select,
+  .order-form textarea{padding:10px;border-radius:10px;border:1px solid #e5e5e5;background:#fafafa}
+  .order-form select{min-width:180px}
+  .order-form textarea{flex:1;min-height:70px}
+  .order-toggle{display:flex;align-items:center;gap:6px;font-weight:600;color:var(--subtext)}
+  .order-feedback{font-weight:600}
+
   /* ---------- Forms ---------- */
   .form-row{display:flex;gap:12px}
   .input{width:100%;padding:14px;border-radius:10px;border:1px solid #eee;background:#fafafa}
@@ -198,6 +221,12 @@ body {
     .grid{grid-template-columns:1fr}
     .cart-drawer{width:92%}
   }
+  @media (max-width:768px){
+    .orders-header{align-items:flex-start}
+    .orders-controls{width:100%;flex-wrap:wrap}
+    .orders-controls .input{flex:1;min-width:160px}
+    .orders-controls button{width:100%;max-width:180px}
+  }  
   @media (max-width:700px){
     .header h1{font-size:28px}
     .controls{grid-template-columns:1fr;gap:12px}
