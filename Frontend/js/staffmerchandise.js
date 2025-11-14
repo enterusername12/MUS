@@ -124,10 +124,18 @@ function saveCart() {
   localStorage.setItem('mu_cart', JSON.stringify(state.cart));
 }
 
-function buildRequestHeaders({ json = false } = {}) {
+function buildAuthHeaders({ json = false } = {}) {
   const headers = {};
   if (json) {
     headers['Content-Type'] = 'application/json';
+  }
+  try {
+    const token = localStorage.getItem('musAuthToken');
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (error) {
+    console.warn('Unable to access auth token.', error);
   }
   return headers;
 }
@@ -217,7 +225,7 @@ async function loadProducts() {
   const url = `${API_BASE}/products${params.toString() ? `?${params.toString()}` : ''}`;
 
   try {
-    const response = await fetch(url, { headers: buildRequestHeaders() });
+    const response = await fetch(url, { headers: buildAuthHeaders() });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       const message = payload?.message || 'Unable to load merchandise right now.';
@@ -855,7 +863,7 @@ async function submitProductForm() {
   try {
     const response = await fetch(url, {
       method,
-      headers: buildRequestHeaders({ json: true }),
+      headers: buildAuthHeaders({ json: true }),
       body: JSON.stringify(payload)
     });
     const data = await response.json().catch(() => ({}));
@@ -1061,7 +1069,7 @@ async function loadOrders() {
   const url = `${API_BASE}/orders${params.toString() ? `?${params.toString()}` : ''}`;
 
   try {
-    const response = await fetch(url, { headers: buildRequestHeaders() });
+    const response = await fetch(url, { headers: buildAuthHeaders() });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       const message = payload?.message || 'Unable to load orders at the moment.';
@@ -1082,7 +1090,7 @@ async function loadOrders() {
 async function submitOrderUpdate(orderId, updates) {
   const response = await fetch(`${API_BASE}/orders/${orderId}`, {
     method: 'PATCH',
-    headers: buildRequestHeaders({ json: true }),
+    headers: buildAuthHeaders({ json: true }),
     body: JSON.stringify(updates)
   });
   const data = await response.json().catch(() => ({}));
