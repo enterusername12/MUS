@@ -194,18 +194,35 @@
     <label class="label">Product Name *</label>
     <input class="input" id="editName" placeholder="Product name" />
 
+    <label class="label">SKU *</label>
+    <input class="input" id="editSku" placeholder="Unique SKU" />
+
     <label class="label">Category *</label>
-    <select class="input" id="editCategory">
-      <option>Books</option>
-      <option>Apparel</option>
-      <option>Tickets</option>
-    </select>
+    <input class="input" id="editCategory" placeholder="Category" list="editCategoryOptions" />
+    <datalist id="editCategoryOptions">
+      <option value="Books"></option>
+      <option value="Apparel"></option>
+      <option value="Tickets"></option>
+      <option value="Accessories"></option>
+      <option value="Stationery"></option>
+    </datalist>
 
     <label class="label">Price *</label>
     <input class="input" id="editPrice" placeholder="0.00" />
 
+    <label class="label">Stock Quantity *</label>
+    <input class="input" id="editStock" type="number" min="0" value="0" />
+
     <label class="label">Description *</label>
     <textarea class="input" id="editDesc" rows="3" maxlength="300" placeholder="Description"></textarea>
+
+        <div class="label">Status</div>
+    <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--subtext)">
+      <input type="checkbox" id="editIsActive" checked style="width:auto" />
+      <span>Active</span>
+    </label>
+
+    <div id="editError" style="display:none;margin:12px 0;padding:12px;border-radius:10px;background:#fce8e6;color:#b3261e;font-weight:600"></div>
 
     <div style="display:flex;gap:12px;margin-top:16px;">
       <button id="saveProduct" class="btn-primary" style="flex:1">Save Changes</button>
@@ -214,6 +231,30 @@
   </div>
 </div>
 
+
+  <!-- Orders Management -->
+  <section class="orders-section" id="ordersSection">
+    <div class="orders-header">
+      <div>
+        <h2>Merchandise Orders</h2>
+        <p>Review purchases and update fulfilment or payment status.</p>
+      </div>
+      <div class="orders-controls">
+        <label for="orderStatusFilter" class="label" style="margin:0">Status</label>
+        <select id="orderStatusFilter" class="input" style="max-width:220px">
+          <option value="all">All</option>
+          <option value="pending">Pending</option>
+          <option value="processing">Processing</option>
+          <option value="ready_for_pickup">Ready for Pickup</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <button id="refreshOrders" class="btn-ghost" type="button">Refresh</button>
+      </div>
+    </div>
+    <div id="ordersList" class="orders-list"></div>
+  </section>
+  
   <!-- ✅ Footer -->
   <footer class="footer">
     <div class="footer-right">

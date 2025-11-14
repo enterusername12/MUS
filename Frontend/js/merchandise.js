@@ -1,4 +1,26 @@
-const API_BASE = '/api/merch';
+const API_BASE = (() => {
+  const explicit = window.__MU_MERCH_API_BASE__
+    || document?.querySelector?.('meta[name="merch-api-base"]')?.content;
+  if (typeof explicit === 'string' && explicit.trim()) {
+    return explicit.trim().replace(/\/$/, '');
+  }
+
+  const backendOrigin = window.__MU_BACKEND_ORIGIN__ || 'http://localhost:3000';
+  try {
+    const backendURL = new URL(backendOrigin);
+    const pageOrigin = window.location?.origin;
+    if (pageOrigin && pageOrigin !== 'null') {
+      const currentOrigin = new URL(pageOrigin);
+      if (currentOrigin.origin === backendURL.origin) {
+        return '/api/merch';
+      }
+    }
+    return `${backendURL.origin.replace(/\/$/, '')}/api/merch`;
+  } catch (error) {
+    console.warn('Unable to parse backend origin, defaulting to localhost:3000', error);
+    return 'http://localhost:3000/api/merch';
+  }
+})();
 
 function loadStoredCart() {
   try {
