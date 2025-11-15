@@ -58,20 +58,26 @@ class PgStore:
 
     # ===== EVENTS =====
     def fetch_events(self, future_only: bool = True, limit: Optional[int] = None) -> List[EventRow]:
-        where = "WHERE start_time >= now()" if future_only else ""
-        lim = f"LIMIT {int(limit)}" if limit else ""
-        sql = f"""
-        SELECT id AS event_id, title, COALESCE(description,'') AS description,
-               start_time, location
-          FROM public.campus_events
-          {where}
-          ORDER BY start_time ASC
-          {lim}
-        """
-        with self._ensure_conn().cursor() as cur:
-            cur.execute(sql)
-            rows = cur.fetchall()
-        return [EventRow(**row) for row in rows]
+        # Consider an event "upcoming/active" if it has not ended yet.
+        # Many rows have start_time NULL or in the past, but end_time is still future.
+            where = "WHERE COALESCE(start_time, end_time) >= now()" if future_only else ""
+            lim = f"LIMIT {int(limit)}" if limit else ""
+            sql = f"""
+            SELECT id AS event_id,
+                title,
+                COALESCE(description,'') AS description,
+                start_time,
+                end_time,
+                location
+            FROM public.campus_events
+            {where}
+            ORDER BY COALESCE(start_time, end_time) ASC NULLS LAST
+            {lim}
+            """
+            with self._ensure_conn().cursor() as cur:
+                cur.execute(sql)
+                rows = cur.fetchall()
+            return rows
 
     def get_event_embedding(self, event_id: int) -> Optional[List[float]]:
         sql = "SELECT event_embedding FROM public.campus_events WHERE id = %s"
