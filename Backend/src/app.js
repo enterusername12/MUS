@@ -13,6 +13,7 @@ const limiter = require('./middleware/rateLimit');
 const postLimiter = require('./middleware/rateLimit');
 const auditRoutes = require('./routes/audit'); // fetch logs
 const auditMiddleware = require('./middleware/auditMiddleware'); // adjust the path
+const competitionRoutes = require('./routes/Competition');
 
 
 
@@ -43,6 +44,7 @@ app.use('/api/reco', recoRoutes);
 app.use('/api/merch', merchRoutes);
 app.use('/api/auth', limiter, authRoutes);
 app.use('/logs', auditRoutes);
+app.use('/api/competition', competitionRoutes);
 
 module.exports = app;
 

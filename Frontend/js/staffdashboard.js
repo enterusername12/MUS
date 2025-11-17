@@ -37,6 +37,57 @@ async function renderPolls() {
     pollContainer.appendChild(card);
   });
 }
+async function fetchDashboardData() {
+  try {
+    const res = await fetch("http://localhost:3000/api/dashboard", {
+      credentials: "include",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("musAuthUser")}`
+      }
+    });
+
+    if (!res.ok) throw new Error(`Failed to fetch dashboard: ${res.status}`);
+    const data = await res.json();
+    return data; // this should be { competitions: [...], polls: [...], events: [...] }
+  } catch (err) {
+    console.error(err);
+    return { competitions: [], polls: [], events: [] };
+  }
+}
+
+async function renderCompetitions() {
+  const competitionContainer = document.getElementById("competitionContainer");
+  competitionContainer.innerHTML = ""; // clear container
+
+  const dashboardData = await fetchDashboardData();
+  const competitions = dashboardData.competitions || [];
+
+  competitions.forEach(comp => {
+    const card = document.createElement("div");
+    card.className = "card competition-card";
+    card.dataset.reward = comp.reward?.points || 0;
+    card.dataset.participationToken = comp.participation?.token || "";
+    card.dataset.rewardToken = comp.reward?.token || "";
+    card.dataset.compId = comp.id;
+
+    card.innerHTML = `
+      <div class="card-header">
+        <span>Competition #${comp.id}</span>
+        <span class="ends">Due: ${comp.due}</span>
+      </div>
+      <h3>${comp.title}</h3>
+      <p>${comp.participation?.participants || 0} participants</p>
+      <p class="reward">Reward: ${comp.reward?.points || 0}</p>
+    `;
+
+    competitionContainer.appendChild(card);
+  });
+}
+
+// Render when DOM is ready
+document.addEventListener("DOMContentLoaded", () => {
+  renderCompetitions();
+});
 
 document.addEventListener("DOMContentLoaded", renderPolls);
 
@@ -65,9 +116,58 @@ document.addEventListener("DOMContentLoaded", async () => {
   const qrTypeDesc = document.getElementById('qrTypeDesc');
   const rewardText = document.getElementById('rewardText');
   const closeQrModal = document.getElementById('closeQrModal');
-
+  const bannerUpload = document.getElementById("bannerUpload");
+  const bannerInput = document.getElementById("bannerInput");
   const addPollOptionBtn = document.getElementById("addPollOption");
   const pollOptionsContainer = document.getElementById("pollOptionsContainer"); // container for inputs
+  bannerUpload.addEventListener("click", () => bannerInput.click());
+
+bannerInput.addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const allowedTypes = ["image/png", "image/jpeg"];
+  if (!allowedTypes.includes(file.type)) {
+    alert("Only PNG and JPG images are allowed!");
+    bannerInput.value = "";
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    alert("File too large! Max 5MB.");
+    bannerInput.value = "";
+    return;
+  }
+
+  // 🔹 UI 預覽
+  const imgURL = URL.createObjectURL(file);
+  const bannerUpload = document.getElementById("bannerUpload");
+  bannerUpload.innerHTML = `<img src="${imgURL}" alt="Banner Preview" style="width:100%; height:auto; border-radius:8px;">`;
+
+  // 🔹 Console 顯示資訊
+  console.log("File object:", file);
+  console.log("Name:", file.name);
+  console.log("Type:", file.type);
+  console.log("Size (bytes):", file.size);
+
+  // 🔹 ArrayBuffer → Uint8Array（瀏覽器版本的「Buffer」）
+  const arrayBuffer = await file.arrayBuffer();
+  const uint8Array = new Uint8Array(arrayBuffer);
+  console.log("First 20 bytes:", uint8Array.slice(0, 20));
+
+  // 🔹 完整二進位
+  // 如果你想把它傳到後端，直接 append Blob 就好
+  const formData = new FormData();
+  formData.append("banner", file, file.name);
+
+  // 示例: 發送到後端
+  // fetch("/api/competition", { method: "POST", body: formData });
+});
+
+// ✅ Create Competition Cards
+
+
+
 
 let pollOptionCount = 2;
 document.getElementById('addPollOption').addEventListener('click', () => {
@@ -98,6 +198,23 @@ document.getElementById('addPollOption').addEventListener('click', () => {
       return [];
     }
   }
+  let hostCount = 1;
+
+  document.getElementById('addHost').addEventListener('click', () => {
+    if (hostCount < 5) {
+      hostCount++;
+
+      const container = document.getElementById('hostContainer');
+
+      const newHost = document.createElement('input');
+      newHost.type = 'text';
+      newHost.name = `host`; // 🟢 必须加，FormData 才会收到
+      newHost.placeholder = `Host ${hostCount} (e.g., Dr. Johnson, Student Council)`;
+      newHost.style.marginTop = '8px';
+
+      container.appendChild(newHost);
+    }
+  });
 
   function renderPolls(polls) {
     pollContainer.innerHTML = "";
@@ -119,7 +236,7 @@ document.getElementById('addPollOption').addEventListener('click', () => {
       pollContainer.appendChild(card);
     });
   }
-
+ 
   function renderCompetitions(comps) {
     competitionContainer.innerHTML = "";
     comps.forEach(comp => {
@@ -220,7 +337,7 @@ document.getElementById('addPollOption').addEventListener('click', () => {
 
       // 重新刷新列表
       if (endpoint.includes("polls")) renderPolls(await fetchData("/api/polls"));
-      else if (endpoint.includes("competitions")) renderCompetitions(await fetchData("/api/competitions"));
+      else if (endpoint.includes("competitions")) renderCompetitions(await fetchData("http://localhost:3000/api/competitio"));
       else if (endpoint.includes("events")) renderEvents(await fetchData("/api/events"));
     } catch (err) {
       console.error(err);
@@ -281,8 +398,71 @@ pollForm.addEventListener("submit", async (e) => {
 
 
 
-  competitionForm.addEventListener("submit", e => { e.preventDefault(); submitForm(competitionForm, "/api/competitions"); });
-  eventForm.addEventListener("submit", e => { e.preventDefault(); submitForm(eventForm, "/api/events"); });
+competitionForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  // 先用 FormData 收集表單文字欄位
+  const formData = new FormData(competitionForm);
+
+  // 收集文字欄位成物件
+  const dataObj = {
+    hosts: formData.getAll("host"),
+    title: formData.get("title"),
+    reward: formData.get("reward"),
+    venue: formData.get("venue"),
+    maxParticipants: parseInt(formData.get("maxParticipants")) || 0,
+    due: formData.get("expiry"),
+    description: formData.get("description"),
+    id: cardId ?? null // 如果有卡片 ID 就帶上
+  };
+
+  // 建立新的 FormData 用於傳送 JSON + banner
+  const sendFormData = new FormData();
+  sendFormData.append("data", JSON.stringify(dataObj));
+
+  // 加入圖片檔案（如果有）
+  const bannerFile = bannerInput.files[0];
+  if (bannerFile) {
+    console.log("=== File Info ===");
+    console.log("Name:", bannerFile.name);
+    console.log("Type:", bannerFile.type);
+    console.log("Size:", bannerFile.size);
+    sendFormData.append("banner", bannerFile, bannerFile.name);
+  } else {
+    console.log("No file selected");
+  }
+
+  // ⚡ 完整列印 FormData 內容
+  console.log("📤 Sending FormData content:");
+  for (let [key, value] of sendFormData.entries()) {
+    if (value instanceof File) {
+      console.log(`${key}: File { name: ${value.name}, type: ${value.type}, size: ${value.size} }`);
+    } else {
+      console.log(`${key}:`, value);
+    }
+  }
+
+  try {
+    const res = await fetch("http://localhost:3000/api/competition", {
+      method: "POST",
+      body: sendFormData // 直接傳 FormData
+      // ⚠️ 不要加 Content-Type，瀏覽器會自動加 multipart/form-data
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+
+    alert("Competition created!");
+    competitionForm.reset();
+    modal.classList.add("hidden");
+
+  } catch (err) {
+    console.error("Competition submit failed:", err);
+    alert("Failed to create competition");
+  }
+});
+
+
+  eventForm.addEventListener("submit", e => { e.preventDefault(); submitForm(eventForm, "http:/localhost:3000/api/events"); });
 
   // ==========================
   // 🔹 Card Actions (Edit / Delete / QR)
@@ -383,24 +563,26 @@ cards.forEach(card => {
       // QR Codes for competitions
       if (type === "competition") {
         const compName = card.querySelector("h3").textContent;
-        const reward = card.dataset.reward || "500 points";
-
+        const comptoken = card.dataset.participationToken;
+        
+        const reward = card.dataset.reward || "-500 point";
+        const rewardToken = card.dataset.rewardToken;
         menu.querySelector(".qr-participate").addEventListener("click", () => {
           qrModal.classList.remove("hidden");
           qrContainer.innerHTML = "";
           qrTitle.textContent = "Participation QR";
           qrTypeDesc.textContent = `Scan to join "${compName}".`;
           rewardText.textContent = "";
-          new QRCode(qrContainer, { text: `/competition/${encodeURIComponent(compName)}/join`, width: 250, height: 250 });
+          new QRCode(qrContainer, { text: `/competition/${encodeURIComponent(comptoken)}/join`, width: 250, height: 250 });
         });
-
+        console.log(comptoken, rewardToken);
         menu.querySelector(".qr-reward").addEventListener("click", () => {
           qrModal.classList.remove("hidden");
           qrContainer.innerHTML = "";
           qrTitle.textContent = "Reward QR";
           qrTypeDesc.textContent = `Scan to claim reward for "${compName}".`;
           rewardText.textContent = `Reward: ${reward}`;
-          new QRCode(qrContainer, { text: `/competition/${encodeURIComponent(compName)}/reward`, width: 250, height: 250 });
+          new QRCode(qrContainer, { text: `/competition/${encodeURIComponent(rewardToken)}/reward`, width: 250, height: 250 });
         });
       }
 

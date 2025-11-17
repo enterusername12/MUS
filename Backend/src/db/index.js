@@ -411,17 +411,22 @@ const ensureDatabase = async () => {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )`);
 
-      // campus_events
-      await client.query(`CREATE TABLE IF NOT EXISTS campus_events (
+      // competition
+      await client.query(`
+      CREATE TABLE IF NOT EXISTS competition (
         id SERIAL PRIMARY KEY,
+        hosts TEXT[],
         title TEXT NOT NULL,
+        reward TEXT,
+        venue TEXT,
+        max_participants INTEGER,
+        due DATE,
         description TEXT,
-        location TEXT,
-        start_time TIMESTAMPTZ NOT NULL,
-        end_time TIMESTAMPTZ,
-        image_url TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )`);
+        banner BYTEA,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
 
       // polls
       await client.query(`CREATE TABLE IF NOT EXISTS polls (

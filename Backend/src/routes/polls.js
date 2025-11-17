@@ -289,15 +289,6 @@ const loadPollsWithOptions = async ({ includeInactive = false } = {}) => {
 
 // List polls
 router.get('/', async (req, res) => {
-  console.log('--- Request Start ---');
-  console.log('URL:', req.originalUrl);
-  console.log('Method:', req.method);
-  console.log('Headers:', req.headers);
-  console.log('Cookies:', req.cookies);
-  console.log('Query:', req.query);
-  console.log('Body:', req.body);
-  console.log('Params:', req.params);
-  console.log('--- Request End ---');
 
   const userId = readJwtUserId(req);
   if (!userId) {
@@ -321,7 +312,6 @@ router.post('/', async (req, res) => {
   console.log('--- Request Start ---');
 
   let pollId = req.body.id ?? null; // If id exists, this is an update
-  console.log('pollId:', pollId);
 
   const authHeader = req.headers['authorization'];
   let userId = null;

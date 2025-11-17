@@ -86,9 +86,11 @@ function renderCards(container, data, type) {
         "Details coming soon."
       );
       card.innerHTML = `
+        ${item.bannerBase64 ? `<img src="${item.bannerBase64}" class="banner-img"/>` : ""}
         <h3>${item.title}</h3>
         ${meta ? `<div class="news-meta">${meta}</div>` : ""}
         <p>${description}</p>
+        <p><p>
       `;
     } else {
       const author = item.author || "Community";
@@ -721,15 +723,15 @@ async function initializeDashboard() {
   if (rewardProgressEl) rewardProgressEl.textContent = "";
 
   try {
-    const params = new URLSearchParams();
-    Object.entries(DASHBOARD_LIMITS).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        params.append(key, value);
-      }
-    });
+    // const params = new URLSearchParams();
+    // Object.entries(DASHBOARD_LIMITS).forEach(([key, value]) => {
+    //   if (value !== undefined && value !== null) {
+    //     params.append(key, value);
+    //   }
+    // });
 
-    const response = await fetch(`${API_BASE_URL}/dashboard?${params.toString()}`, {
-      credentials: "include"
+    const response = await fetch(`${API_BASE_URL}/dashboard`, {
+      // credentials: "include"
     });
     if (!response.ok) {
       throw new Error(`Request failed with status ${response.status}`);
@@ -737,7 +739,7 @@ async function initializeDashboard() {
 
     const data = await response.json();
 
-    initializeNews(data.news || []);
+    initializeNews(data.competitions || []);
     initializeCommunityHighlights(data.events || []);
     initializePolls(data.polls || []);
     initializeCalendar(data.calendar || []);
