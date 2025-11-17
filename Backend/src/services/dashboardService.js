@@ -93,21 +93,21 @@ async function fetchPublishedCommunityPosts(limit = DEFAULT_EVENTS_LIMIT) {
   }));
 }
 
-async function fetchActivePolls(limit = DEFAULT_POLLS_LIMIT) {
+async function fetchActivePolls() {
   const { rows: polls } = await getPool().query(
     `SELECT id, title, description, is_active, expires_at, created_at
        FROM polls
        WHERE is_active = TRUE
          AND (expires_at IS NULL OR expires_at > NOW())
-       ORDER BY COALESCE(expires_at, created_at + INTERVAL '365 days') ASC, created_at DESC
-       LIMIT $1`,
-    [limit]
+       ORDER BY COALESCE(expires_at, created_at + INTERVAL '365 days') ASC, created_at DESC`
+    // removed LIMIT
   );
+
   if (!polls.length) return [];
 
-  const ids = polls.map((p) => p.id);
+  const ids = polls.map(p => p.id);
   const { rows: options } = await getPool().query(
-    `SELECT o.id, o.poll_id, o.label, o.created_at, COUNT(v.id)::INT AS vote_count
+    `SELECT o.id, o.poll_id, o.label, COUNT(v.id)::INT AS vote_count
        FROM poll_options o
        LEFT JOIN poll_votes v ON v.option_id = o.id
       WHERE o.poll_id = ANY($1::INT[])
@@ -115,13 +115,16 @@ async function fetchActivePolls(limit = DEFAULT_POLLS_LIMIT) {
       ORDER BY o.created_at ASC, o.id ASC`,
     [ids]
   );
+
   const byPoll = options.reduce((acc, o) => {
     const arr = acc[o.poll_id] || (acc[o.poll_id] = []);
     arr.push({ id: o.id, name: o.label, vote_count: Number(o.vote_count) || 0 });
     return acc;
   }, {});
-  return polls.map((p) => ({ ...p, options: byPoll[p.id] || [] }));
+
+  return polls.map(p => ({ ...p, options: byPoll[p.id] || [] }));
 }
+
 
 // ---------- Hydration helpers (preserve order from AI) ----------
 async function fetchEventsByIdsInOrder(eventIds) {

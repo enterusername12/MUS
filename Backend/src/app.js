@@ -16,6 +16,7 @@ const auditMiddleware = require('./middleware/auditMiddleware'); // adjust the p
 
 
 
+
 const app = express();
 
 app.set('trust proxy', false);
@@ -33,7 +34,6 @@ app.get('/health', (_req, res) => {
 
 // Apply audit middleware globally (so all routes can log actions)
 app.use(auditMiddleware);
-
 app.use('/api/consent', consentRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/community-posts', postLimiter, communityPostsRoutes);
