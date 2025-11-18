@@ -7,6 +7,13 @@ let pool = new Pool(poolConfig);
 const quoteIdentifier = (value) => `"${String(value).replace(/"/g, '""')}"`;
 const getPool = () => pool;
 
+const setPool = (overridePool) => {
+  if (!overridePool || typeof overridePool.query !== 'function') {
+    throw new Error('setPool requires a Pool-compatible instance.');
+  }
+  pool = overridePool;
+};
+
 /* ------------------ SEEDING FUNCTIONS ------------------ */
 
 const seedDashboardData = async (client) => {
@@ -128,6 +135,7 @@ const seedDashboardData = async (client) => {
   if (toInt(spotlightsCount) === 0) {
     await client.query(
       `INSERT INTO student_spotlights (
+         user_id,
          student_name,
          major,
          class_year,
@@ -138,6 +146,7 @@ const seedDashboardData = async (client) => {
        )
        VALUES
          (
+           NULL,
            'Aisha Rahman',
            'Computer Science',
            'Class of 2025',
@@ -147,6 +156,7 @@ const seedDashboardData = async (client) => {
            NOW() - INTERVAL '5 days'
          ),
          (
+           NULL,
            'Lucas Nguyen',
            'Environmental Science',
            'Class of 2024',
@@ -162,12 +172,45 @@ const seedDashboardData = async (client) => {
     await client.query('SELECT COUNT(*)::INT FROM reward_points')
   ).rows;
   if (toInt(rewardCount) === 0) {
+    const { rows: demoUsers } = await client.query(
+      `SELECT id, first_name, last_name FROM users ORDER BY id ASC LIMIT 1`
+    );
+    const demoUser = demoUsers[0];
+
+    const rewardSeeds = [
+      { student_name: 'Team Thrive', points: 420, category: 'Clubs & Societies', user_id: null },
+      { student_name: 'Sustainability Crew', points: 385, category: 'Community Impact', user_id: null },
+      { student_name: 'Innovation Guild', points: 360, category: 'Entrepreneurship', user_id: null }
+    ];
+
+    if (demoUser && demoUser.id) {
+      const fullName = [demoUser.first_name, demoUser.last_name].filter(Boolean).join(' ').trim() || 'Student Leader';
+      rewardSeeds.push({
+        student_name: `${fullName} Personal Best`,
+        points: 215,
+        category: 'Leadership',
+        user_id: demoUser.id
+      });
+    }
+
+    const valuesPlaceholders = rewardSeeds
+      .map((_, index) => {
+        const baseIndex = index * 4;
+        return `($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3}, $${baseIndex + 4})`;
+      })
+      .join(', ');
+
+    const flatValues = rewardSeeds.flatMap(({ student_name, points, category, user_id }) => [
+      student_name,
+      points,
+      category,
+      user_id
+    ]);
+
     await client.query(
-      `INSERT INTO reward_points (student_name, points, category)
-       VALUES
-         ('Team Thrive', 420, 'Clubs & Societies'),
-         ('Sustainability Crew', 385, 'Community Impact'),
-         ('Innovation Guild', 360, 'Entrepreneurship')`
+      `INSERT INTO reward_points (student_name, points, category, user_id)
+       VALUES ${valuesPlaceholders}`,
+      flatValues
     );
   }
 
@@ -218,6 +261,7 @@ const seedDashboardData = async (client) => {
          source_type,
          source_id,
          title,
+         description,
          date,
          time,
          category
@@ -227,6 +271,7 @@ const seedDashboardData = async (client) => {
          'orientation',
          1,
          'Orientation Week Prep',
+         'Get ready for O-Week activities',
          (NOW() + INTERVAL '7 days')::DATE,
          TO_CHAR(NOW() + INTERVAL '7 days', 'HH24:MI:SS'),
          'reminder'
@@ -411,22 +456,63 @@ const ensureDatabase = async () => {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )`);
 
-      // competition
-      await client.query(`
-      CREATE TABLE IF NOT EXISTS competition (
+      // campus_events
+      await client.query(`CREATE TABLE IF NOT EXISTS campus_events (
         id SERIAL PRIMARY KEY,
-        hosts TEXT[],
         title TEXT NOT NULL,
-        reward TEXT,
-        venue TEXT,
-        max_participants INTEGER,
-        due DATE,
         description TEXT,
-        banner BYTEA,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+        location TEXT,
+        start_time TIMESTAMPTZ NOT NULL,
+        end_time TIMESTAMPTZ,
+        image_url TEXT,
+        is_cancelled BOOLEAN NOT NULL DEFAULT FALSE,
+        max_participants INTEGER CHECK (max_participants > 0),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )`);
 
+      await client.query(`ALTER TABLE campus_events ADD COLUMN IF NOT EXISTS is_cancelled BOOLEAN NOT NULL DEFAULT FALSE`);
+      await client.query(`ALTER TABLE campus_events ADD COLUMN IF NOT EXISTS max_participants INTEGER CHECK (max_participants > 0)`);      
+      await client.query(`ALTER TABLE campus_events ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+
+      // competitions
+      await client.query(`CREATE TABLE IF NOT EXISTS competitions (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT,
+        location TEXT,
+        reward TEXT,
+        start_time TIMESTAMPTZ NOT NULL,
+        end_time TIMESTAMPTZ,
+        image_url TEXT,
+        is_cancelled BOOLEAN NOT NULL DEFAULT FALSE,
+        max_participants INTEGER CHECK (max_participants > 0),        
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )`);
+
+      await client.query(`ALTER TABLE competitions ADD COLUMN IF NOT EXISTS reward TEXT`);
+      await client.query(`ALTER TABLE competitions ADD COLUMN IF NOT EXISTS max_participants INTEGER CHECK (max_participants > 0)`);
+
+      // event_registrations
+      await client.query(`CREATE TABLE IF NOT EXISTS event_registrations (
+        id SERIAL PRIMARY KEY,
+        event_id INTEGER NOT NULL REFERENCES campus_events(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (event_id, user_id)
+      )`);
+
+      // competition_registrations
+      await client.query(`CREATE TABLE IF NOT EXISTS competition_registrations (
+        id SERIAL PRIMARY KEY,
+        competition_id INTEGER NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (competition_id, user_id)
+      )`);
 
       // polls
       await client.query(`CREATE TABLE IF NOT EXISTS polls (
@@ -458,6 +544,7 @@ const ensureDatabase = async () => {
       // student_spotlights
       await client.query(`CREATE TABLE IF NOT EXISTS student_spotlights (
         id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         student_name TEXT NOT NULL,
         major TEXT,
         class_year TEXT,
@@ -468,14 +555,24 @@ const ensureDatabase = async () => {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )`);
 
+      await client.query(`ALTER TABLE student_spotlights
+        ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE`);
+
       // reward_points
       await client.query(`CREATE TABLE IF NOT EXISTS reward_points (
         id SERIAL PRIMARY KEY,
         student_name TEXT NOT NULL,
         points INTEGER NOT NULL,
         category TEXT,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )`);
+
+      await client.query(`ALTER TABLE reward_points
+        ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE`);
+      await client.query(
+        `CREATE INDEX IF NOT EXISTS reward_points_user_id_idx ON reward_points(user_id)`
+      );
 
       // calendar_items
       await client.query(`CREATE TABLE IF NOT EXISTS calendar_items (
@@ -498,6 +595,7 @@ const ensureDatabase = async () => {
         source_type TEXT NOT NULL,
         source_id INTEGER NOT NULL,
         title TEXT NOT NULL,
+        description TEXT,
         date DATE NOT NULL,
         time TEXT,
         category TEXT,
@@ -505,6 +603,8 @@ const ensureDatabase = async () => {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         UNIQUE (user_id, source_type, source_id)
       )`);
+
+      await client.query(`ALTER TABLE user_calendar_items ADD COLUMN IF NOT EXISTS description TEXT`);
 
       // community_posts
       await client.query(`CREATE TABLE IF NOT EXISTS community_posts (
@@ -608,11 +708,91 @@ const ensureDatabase = async () => {
       await client.query(`CREATE INDEX IF NOT EXISTS campus_events_start_time_idx ON campus_events (start_time)`);
       await client.query(`CREATE INDEX IF NOT EXISTS calendar_items_start_time_idx ON calendar_items (start_time)`);
       await client.query(`CREATE INDEX IF NOT EXISTS user_calendar_items_user_id_date_idx ON user_calendar_items (user_id, date, time)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS event_registrations_user_event_idx ON event_registrations (user_id, event_id)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS competition_registrations_user_competition_idx ON competition_registrations (user_id, competition_id)`);
       await client.query(`CREATE INDEX IF NOT EXISTS community_posts_created_at_idx ON community_posts (created_at DESC)`);
       await client.query(`CREATE INDEX IF NOT EXISTS community_posts_moderation_idx ON community_posts (moderation_status, created_at DESC)`);
       await client.query(`CREATE INDEX IF NOT EXISTS feedback_submissions_status_idx ON feedback_submissions (status, created_at DESC)`);
       await client.query(`CREATE INDEX IF NOT EXISTS merch_products_category_idx ON merch_products (category)`);
       await client.query(`CREATE INDEX IF NOT EXISTS merch_orders_status_idx ON merch_orders (status)`);
+
+      await client.query(`CREATE OR REPLACE FUNCTION cleanup_user_calendar_items_for_source()
+        RETURNS TRIGGER AS $$
+        DECLARE
+          source_alias TEXT := TG_ARGV[0];
+        BEGIN
+          IF source_alias IS NULL THEN
+            IF TG_OP = 'DELETE' THEN
+              RETURN OLD;
+            END IF;
+            RETURN NEW;
+          END IF;
+
+          IF TG_OP = 'DELETE' THEN
+            DELETE FROM user_calendar_items
+              WHERE source_type = source_alias
+                AND source_id = OLD.id;
+            IF source_alias = 'event' THEN
+              DELETE FROM event_registrations WHERE event_id = OLD.id;
+            ELSIF source_alias = 'competition' THEN
+              DELETE FROM competition_registrations WHERE competition_id = OLD.id;
+            END IF;
+            RETURN OLD;
+          END IF;
+
+          DELETE FROM user_calendar_items
+            WHERE source_type = source_alias
+              AND source_id = NEW.id;
+          IF source_alias = 'event' THEN
+            DELETE FROM event_registrations WHERE event_id = NEW.id;
+          ELSIF source_alias = 'competition' THEN
+            DELETE FROM competition_registrations WHERE competition_id = NEW.id;
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql`);
+
+      await client.query(`DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_trigger WHERE tgname = 'trg_campus_events_calendar_cleanup_delete'
+          ) THEN
+            CREATE TRIGGER trg_campus_events_calendar_cleanup_delete
+              AFTER DELETE ON campus_events
+              FOR EACH ROW
+              EXECUTE FUNCTION cleanup_user_calendar_items_for_source('event');
+          END IF;
+
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_trigger WHERE tgname = 'trg_campus_events_calendar_cleanup_cancel'
+          ) THEN
+            CREATE TRIGGER trg_campus_events_calendar_cleanup_cancel
+              AFTER UPDATE OF is_cancelled ON campus_events
+              FOR EACH ROW
+              WHEN (NEW.is_cancelled = TRUE AND COALESCE(OLD.is_cancelled, FALSE) = FALSE)
+              EXECUTE FUNCTION cleanup_user_calendar_items_for_source('event');
+          END IF;
+
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_trigger WHERE tgname = 'trg_competitions_calendar_cleanup_delete'
+          ) THEN
+            CREATE TRIGGER trg_competitions_calendar_cleanup_delete
+              AFTER DELETE ON competitions
+              FOR EACH ROW
+              EXECUTE FUNCTION cleanup_user_calendar_items_for_source('competition');
+          END IF;
+
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_trigger WHERE tgname = 'trg_competitions_calendar_cleanup_cancel'
+          ) THEN
+            CREATE TRIGGER trg_competitions_calendar_cleanup_cancel
+              AFTER UPDATE OF is_cancelled ON competitions
+              FOR EACH ROW
+              WHEN (NEW.is_cancelled = TRUE AND COALESCE(OLD.is_cancelled, FALSE) = FALSE)
+              EXECUTE FUNCTION cleanup_user_calendar_items_for_source('competition');
+          END IF;
+        END
+      $$`);
 
       await seedDashboardData(client);
       await seedMerchandiseData(client);
@@ -637,4 +817,4 @@ const ensureDatabase = async () => {
   }
 };
 
-module.exports = { getPool, ensureDatabase };
+module.exports = { getPool, ensureDatabase, setPool };
