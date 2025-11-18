@@ -1,14 +1,116 @@
 // Dashboard widgets are hydrated from the backend API and rendered client-side.
 const API_BASE_URL = "http://localhost:3000/api";
+const LOGIN_PAGE_PATH = "/Frontend/index.html";
+
+let _authRedirectInProgress = false;
+
+const registrationState = {
+  events: new Set(),
+  competitions: new Set()
+};
+
+const EVENT_JOIN_SELECTOR = '[data-join-event-id]';
+
+function updateJoinButtonState(button, joined) {
+  if (!button) return;
+  if (joined) {
+    button.dataset.joined = 'true';
+    button.classList.add('joined');
+    button.textContent = 'Joined';
+  } else {
+    button.dataset.joined = 'false';
+    button.classList.remove('joined');
+    button.textContent = 'Join Event';
+  }
+}
+
+function refreshRegistrationButtons() {
+  document.querySelectorAll(EVENT_JOIN_SELECTOR).forEach((button) => {
+    const eventId = button.getAttribute('data-join-event-id');
+    updateJoinButtonState(button, registrationState.events.has(String(eventId)));
+  });
+}
+
+function resolveLoginUrl() {
+  try {
+    return new URL(LOGIN_PAGE_PATH, window.location.origin).href;
+  } catch (error) {
+    console.warn("Unable to resolve login URL, falling back to relative path.", error);
+    return LOGIN_PAGE_PATH;
+  }
+}
+
+function redirectToLogin(reason) {
+  if (_authRedirectInProgress) {
+    return;
+  }
+  _authRedirectInProgress = true;
+  if (reason) {
+    console.warn(reason);
+  }
+  try {
+    localStorage.removeItem("musAuthToken");
+    localStorage.removeItem("musAuthUser");
+    localStorage.removeItem("userId");
+  } catch (error) {
+    console.warn("Unable to clear auth storage during redirect.", error);
+  }
+  window.location.href = resolveLoginUrl();
+}
+
+function getStoredAuthToken() {
+  try {
+    return localStorage.getItem("musAuthToken");
+  } catch (error) {
+    console.warn("Unable to access auth token in storage.", error);
+    return null;
+  }
+}
+
+function requireAuthToken() {
+  const token = getStoredAuthToken();
+  if (!token) {
+    redirectToLogin("Missing authentication token. Redirecting to sign in.");
+    return null;
+  }
+  return token;
+}
+
+function buildAuthHeaders({ token, json = false } = {}) {
+  const headers = {};
+  if (json) {
+    headers["Content-Type"] = "application/json";
+  }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+function handleUnauthorizedResponse(message) {
+  redirectToLogin(message || "Session expired. Please sign in again.");
+}
 
 // === AI interaction helpers ===
 function getUserId() {
+  // Option A: stored auth payload
+  const rawAuthUser = localStorage.getItem("musAuthUser");
+  if (rawAuthUser) {
+    try {
+      const parsed = JSON.parse(rawAuthUser);
+      if (parsed && parsed.id != null) {
+        return String(parsed.id);
+      }
+    } catch (_) {
+      // fall through to other strategies
+    }
+  }
   // Adjust if store it differently; this is a safe no-op fallback.
-  // Option A: localStorage
+  // Option B: localStorage
   const ls = localStorage.getItem("userId");
   if (ls) return ls;
 
-  // Option B: meta tag injected by backend template (if add it later)
+  // Option C: meta tag injected by backend template (if add it later)
   const meta = document.querySelector('meta[name="user-id"]');
   if (meta && meta.content) return meta.content;
 
@@ -18,10 +120,14 @@ function getUserId() {
 async function logEventInteraction(eventId, action) {
   const userId = getUserId();
   if (!userId || !eventId) return; // skip for guests or missing id
+  const token = getStoredAuthToken();
+  if (!token) {
+    return;
+  }
   try {
-    await fetch(`${API_BASE_URL.replace(/\/api$/, "")}/api/reco/interact`, {
+      const response = await fetch(`${API_BASE_URL.replace(/\/api$/, "")}/api/reco/interact`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildAuthHeaders({ token, json: true }),
       credentials: "include",
       body: JSON.stringify({
         user_id: String(userId),
@@ -29,6 +135,9 @@ async function logEventInteraction(eventId, action) {
         action
       })
     });
+      if (response.status === 401) {
+        handleUnauthorizedResponse("Interaction logging is unauthorized. Redirecting to sign in.");
+      }
   } catch (_) {
     // non-blocking; ignore errors
   }
@@ -54,142 +163,121 @@ function sanitizeText(value, fallback = "") {
   return trimmed || fallback;
 }
 
-function showEventDetailUI() {
-  // Create modal if it doesn't exist
-  let modal = document.getElementById("eventDetailModal");
-  if (!modal) {
-    modal = document.createElement("div");
-    modal.id = "eventDetailModal";
-    Object.assign(modal.style, {
-      position: "fixed",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      background: "rgba(0,0,0,0.5)",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: 9999
-    });
+function formatEventSchedule(startTime, endTime) {
+  if (!startTime) {
+    return "";
+  }
+  const startDate = new Date(startTime);
+  if (Number.isNaN(startDate.getTime())) {
+    return "";
+  }
+  const startLabel = startDate.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
 
-modal.innerHTML = `
-  <div id="modalContent">
-    <span id="closeEventModal">&times;</span>
-
-    <h2>Participate</h2>
-    <p>Upload/paste the QR image to Participate:</p>
-
-    <input type="file" id="qrInput" accept="image/*" />
-    <button id="submitQR">Submit QR Code</button>
-
-    <p id="qrResult"></p>
-  </div>
-`;
-
-
-    document.body.appendChild(modal);
-
-    // Close modal
-    modal.querySelector("#closeEventModal").onclick = () => modal.style.display = "none";
-    modal.onclick = (e) => { if (e.target === modal) modal.style.display = "none"; };
-
-    // QR input change
-    const qrInput = modal.querySelector("#qrInput");
-    const qrResult = modal.querySelector("#qrResult");
-
-    qrInput.addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function() {
-        const img = new Image();
-        img.onload = function() {
-          // Scale large images to max 400px to improve QR detection
-          const maxDim = 400;
-          let scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
-          const canvas = document.createElement("canvas");
-          canvas.width = img.width * scale;
-          canvas.height = img.height * scale;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imageData.data, canvas.width, canvas.height);
-
-          if (code) {
-            qrResult.textContent = `Token: ${code.data}`;
-            console.log("QR token:", code.data);
-          } else {
-            qrResult.textContent = "Could not read QR code. Try a clearer image.";
-          }
-        };
-        img.src = reader.result;
-      };
-      reader.readAsDataURL(file);
-    });
+  if (!endTime) {
+    return startLabel;
   }
 
-  modal.style.display = "flex";
+  const endDate = new Date(endTime);
+  if (Number.isNaN(endDate.getTime())) {
+    return startLabel;
+  }
+
+  const sameDay = startDate.toDateString() === endDate.toDateString();
+  const endLabel = endDate.toLocaleString(undefined, sameDay
+    ? { hour: "numeric", minute: "2-digit" }
+    : { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }
+  );
+  return sameDay ? `${startLabel} – ${endLabel}` : `${startLabel} – ${endLabel}`;
 }
-
-
-
 
 function renderCards(container, data, type) {
   container.innerHTML = "";
   data.forEach(item => {
     const card = document.createElement("div");
     card.classList.add(type === "news" ? "event-card" : "post-card");
-    card.style.cursor = "pointer"; // make card visually clickable
-    card.style.border = "1px solid #ccc";
-    card.style.padding = "10px";
-    card.style.marginBottom = "10px";
-    card.style.borderRadius = "5px";
-    card.style.background = "#fff";
 
-    const evtId = String(item.id ?? item.event_id ?? item.post_id ?? "");
 
-    if (evtId) {
+    // ✅ Attach the event/post id when present so we can log interactions
+    // backend returns `id` for events/community posts. If it's a different key, map it here.
+    if (item && (item.id || item.event_id || item.post_id)) {
+      const evtId = String(item.id ?? item.event_id ?? item.post_id);
       card.setAttribute("data-event-id", evtId);
+      // log 'view' when the card is visible
       _aiViewObserver.observe(card);
-      card.addEventListener("click", () => {
+      // log 'click' if the card is clicked (can refine to specific buttons if add them)
+      card.addEventListener("click", (ev) => {
+        // Avoid double-firing if user clicks on a link; still harmless if it does
         logEventInteraction(evtId, "click");
-        showEventDetailUI(item); // show modal on click
       });
     }
-    console.log(item.participation);
+    
     if (type === "news") {
       const publishedLabel = item.publishedAt
         ? new Date(item.publishedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })
         : "";
-      const authorLabel = item.author ? item.author : "";
+      const authorLabel = item.author ? `<span class="news-author">${item.author}</span>` : "";
       const meta = [authorLabel, publishedLabel].filter(Boolean).join(" • ");
-      const description = item.desc ?? item.description ?? item.summary ?? item.body ?? "Details coming soon.";
-
+      const description = sanitizeText(
+        item.desc ?? item.description ?? item.summary ?? item.body,
+        "Details coming soon."
+      );
       card.innerHTML = `
-        ${item.bannerBase64 ? `<img src="${item.bannerBase64}" style="width:100%; border-radius:5px; margin-bottom:10px;">` : ""}
         <h3>${item.title}</h3>
-        ${meta ? `<div style="color:#666; margin-bottom:5px;">${meta}</div>` : ""}
+        ${meta ? `<div class="news-meta">${meta}</div>` : ""}
         <p>${description}</p>
       `;
     } else {
-      const author = item.author || "Community";
-      const category = item.category || "General";
-      const title = item.title ?? item.heading ?? "";
-      const content = item.content ?? item.description ?? item.summary ?? item.body ?? "Stay tuned for more details.";
+    const author = item.author || "Community";
+    const category = item.category || "General";
+    const title = sanitizeText(item.title ?? item.heading ?? "");
+    const content = sanitizeText(
+      item.content ?? item.description ?? item.summary ?? item.body,
+      "Stay tuned for more details."
+    );
+    const isCampusEvent = Boolean(item.start_time);
 
+    if (isCampusEvent) {
+      const eventId = String(item.id ?? "");
+      const schedule = formatEventSchedule(item.start_time, item.end_time);
+      const location = sanitizeText(item.location ?? "");
+      card.classList.add('campus-event-card');
       card.innerHTML = `
-        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-          <div>${author}</div>
-          <div style="background:#eee; padding:2px 6px; border-radius:3px;">${category}</div>
+        <div class="post-header">
+          <div class="post-author">${author}</div>
+          <div class="category-badge">${category}</div>
         </div>
-        ${title ? `<h3>${title}</h3>` : ""}
-        <p>${content}</p>
+        ${title ? `<h3 class="post-title">${title}</h3>` : ""}
+        ${schedule ? `<p class="event-schedule">🗓️ ${schedule}</p>` : ""}
+        ${location ? `<p class="event-location">📍 ${location}</p>` : ""}
+        <p class="post-content">${content}</p>
+        <div class="event-actions">
+          <button type="button" class="join-event-btn" data-join-event-id="${eventId}">Join Event</button>
+        </div>
+      `;
+      const joinButton = card.querySelector('.join-event-btn');
+      if (joinButton) {
+        updateJoinButtonState(joinButton, registrationState.events.has(eventId));
+        joinButton.addEventListener('click', (event) => {
+          event.stopPropagation();
+          handleEventJoinToggle(eventId, joinButton);
+        });
+      }
+    } else {
+      card.innerHTML = `
+        <div class="post-header">
+          <div class="post-author">${author}</div>
+          <div class="category-badge">${category}</div>
+        </div>
+        ${title ? `<h3 class="post-title">${title}</h3>` : ""}
+        <p class="post-content">${content}</p>
       `;
     }
-
+  }
     container.appendChild(card);
   });
 }
@@ -216,6 +304,83 @@ function renderDots(dotContainer, count) {
       Array.from(dotContainer.children).forEach(d => d.classList.remove("active"));
       dot.classList.add("active");
     });
+  }
+}
+
+async function registerForEvent(eventId) {
+  const token = requireAuthToken();
+  if (!token) {
+    throw new Error('Authentication required.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/events/${encodeURIComponent(eventId)}/register`, {
+    method: 'POST',
+    headers: buildAuthHeaders({ token }),
+    credentials: 'include'
+  });
+
+  if (response.status === 401) {
+    handleUnauthorizedResponse('Session expired while joining this event.');
+    throw new Error('Session expired.');
+  }
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Unable to register for this event.');
+  }
+  return payload;
+}
+
+async function unregisterFromEvent(eventId) {
+  const token = requireAuthToken();
+  if (!token) {
+    throw new Error('Authentication required.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/events/${encodeURIComponent(eventId)}/register`, {
+    method: 'DELETE',
+    headers: buildAuthHeaders({ token }),
+    credentials: 'include'
+  });
+
+  if (response.status === 401) {
+    handleUnauthorizedResponse('Session expired while leaving this event.');
+    throw new Error('Session expired.');
+  }
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Unable to update your registration right now.');
+  }
+  return payload;
+}
+
+async function handleEventJoinToggle(eventId, button) {
+  if (!eventId || !button) {
+    return;
+  }
+
+  const joined = registrationState.events.has(String(eventId));
+  button.disabled = true;
+  button.textContent = joined ? 'Leaving…' : 'Joining…';
+
+  try {
+    if (joined) {
+      await unregisterFromEvent(eventId);
+    } else {
+      await registerForEvent(eventId);
+    }
+    await refreshUserCalendarItems({ silent: true });
+  } catch (error) {
+    console.error('Failed to update event registration', error);
+    alert(error?.message || 'Unable to update your registration right now.');
+  } finally {
+    button.disabled = false;
+    refreshRegistrationButtons();
   }
 }
 
@@ -537,10 +702,33 @@ function initializePolls(polls = []) {
 
 const calendarState = {
   items: [],
+  baseItems: [],
+  userItems: [],
   currentDate: new Date(),
   typeColors: {},
   initialized: false
 };
+
+let userCalendarItems = [];
+
+function syncRegistrationStateFromCalendar() {
+  registrationState.events.clear();
+  registrationState.competitions.clear();
+
+  userCalendarItems.forEach((item) => {
+    if (!item || !item.source_type || item.source_id == null) {
+      return;
+    }
+    const sourceId = String(item.source_id);
+    if (item.source_type === 'event') {
+      registrationState.events.add(sourceId);
+    } else if (item.source_type === 'competition') {
+      registrationState.competitions.add(sourceId);
+    }
+  });
+
+  refreshRegistrationButtons();
+}
 
 const CALENDAR_COLOR_PALETTE = [
   "#22c55e",
@@ -551,6 +739,33 @@ const CALENDAR_COLOR_PALETTE = [
   "#0ea5e9",
   "#facc15"
 ];
+
+const MAX_VISIBLE_CALENDAR_EVENTS = 3;
+
+function applyAlphaToColor(hexColor, alpha = 0.2) {
+  if (!hexColor || typeof hexColor !== "string" || !hexColor.startsWith("#")) {
+    return hexColor;
+  }
+
+  let hex = hexColor.slice(1);
+  if (hex.length === 3) {
+    hex = hex
+      .split("")
+      .map((char) => char + char)
+      .join("");
+  }
+
+  const numeric = Number.parseInt(hex, 16);
+  if (Number.isNaN(numeric)) {
+    return hexColor;
+  }
+
+  const r = (numeric >> 16) & 255;
+  const g = (numeric >> 8) & 255;
+  const b = numeric & 255;
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 function resolveCalendarColor(type) {
   const normalizedType = type || "event";
@@ -575,22 +790,36 @@ function updateCalendarLegend() {
     return;
   }
 
-  const entries = Object.entries(calendarState.typeColors);
-  if (entries.length === 0) {
-    legend.innerHTML = '<span class="legend-empty">Event types will appear here.</span>';
+  const categories = Array.isArray(calendarState.items)
+    ? Array.from(new Set(calendarState.items.map((item) => item.type || item.category || "event")))
+    : [];
+
+  legend.innerHTML = "";
+
+  const placeholder = document.createElement("span");
+  placeholder.className = "legend-empty";
+  placeholder.textContent = "Event types will appear here.";
+  legend.appendChild(placeholder);
+
+  if (categories.length === 0) {
     return;
   }
 
-  legend.innerHTML = entries
-    .map(
-      ([type, color]) => `
-        <span>
-          <span class="dot" style="background-color:${color};"></span>
-          ${formatCalendarTypeLabel(type)}
-        </span>
-      `
-    )
-    .join("");
+  categories.forEach((type) => {
+    const color = resolveCalendarColor(type);
+    const wrapper = document.createElement("span");
+
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    dot.style.backgroundColor = color;
+
+    const label = document.createElement("span");
+    label.textContent = formatCalendarTypeLabel(type);
+
+    wrapper.appendChild(dot);
+    wrapper.appendChild(label);
+    legend.appendChild(wrapper);
+  });
 }
 
 function renderCalendar() {
@@ -602,25 +831,44 @@ function renderCalendar() {
   }
 
   const { currentDate, items } = calendarState;
+  const calendarItems = Array.isArray(items) ? items : [];
 
   grid.innerHTML = "";
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
+  const hasItems = calendarItems.length > 0;
+
   monthYear.textContent = currentDate.toLocaleString("default", { month: "long", year: "numeric" });
 
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
+  let emptyBanner = document.getElementById("calendarEmptyBanner");
+  if (!emptyBanner) {
+    emptyBanner = document.createElement("div");
+    emptyBanner.id = "calendarEmptyBanner";
+    emptyBanner.classList.add("empty-state", "calendar-empty-banner");
+    grid.insertAdjacentElement("afterend", emptyBanner);
+  }
+  emptyBanner.textContent = "No events on the calendar yet.";
+  emptyBanner.style.display = hasItems ? "none" : "block";
+
   for (let i = 0; i < firstDay; i++) {
     const empty = document.createElement("div");
+    empty.classList.add("day", "placeholder");
     grid.appendChild(empty);
   }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   for (let day = 1; day <= daysInMonth; day++) {
     const cell = document.createElement("div");
     cell.classList.add("day");
+    cell.setAttribute("role", "gridcell");
+    cell.tabIndex = 0;
 
     const dateLabel = document.createElement("div");
     dateLabel.classList.add("date");
@@ -628,9 +876,15 @@ function renderCalendar() {
 
     const dotsContainer = document.createElement("div");
     dotsContainer.classList.add("indicators");
+    dotsContainer.setAttribute("aria-hidden", "true");
 
     const fullDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const eventsToday = items.filter((item) => item.date === fullDate);
+    const eventsToday = calendarItems.filter((item) => item.date === fullDate);
+    const cellDate = new Date(year, month, day);
+
+    if (cellDate.toDateString() === today.toDateString()) {
+      cell.classList.add("today");
+    }
 
     eventsToday.forEach((event) => {
       const dot = document.createElement("div");
@@ -646,10 +900,113 @@ function renderCalendar() {
 
     cell.appendChild(dateLabel);
     cell.appendChild(dotsContainer);
+
+    if (eventsToday.length > 0) {
+      const accentColor = resolveCalendarColor(eventsToday[0].type);
+      cell.classList.add("has-events");
+      cell.style.setProperty("--event-accent", applyAlphaToColor(accentColor, 0.35));
+      cell.dataset.eventCount = eventsToday.length;
+
+      const chipsWrapper = document.createElement("div");
+      chipsWrapper.classList.add("event-chips");
+
+      eventsToday.slice(0, MAX_VISIBLE_CALENDAR_EVENTS).forEach((event) => {
+        const color = resolveCalendarColor(event.type);
+        const chip = document.createElement("div");
+        chip.classList.add("event-chip");
+        chip.style.setProperty("--chip-color", color);
+        chip.style.backgroundColor = applyAlphaToColor(color, 0.15);
+        chip.style.borderColor = applyAlphaToColor(color, 0.4);
+        chip.style.borderLeftColor = color;
+        chip.title = event.time ? `${event.title} — ${event.time}` : event.title;
+
+        const chipDot = document.createElement("span");
+        chipDot.classList.add("chip-dot");
+        chipDot.style.backgroundColor = color;
+
+        const chipTitle = document.createElement("span");
+        chipTitle.classList.add("chip-title");
+        chipTitle.textContent = event.title;
+
+        chip.appendChild(chipDot);
+        chip.appendChild(chipTitle);
+
+        if (event.time) {
+          const chipTime = document.createElement("span");
+          chipTime.classList.add("chip-time");
+          chipTime.textContent = event.time;
+          chip.appendChild(chipTime);
+        }
+
+        chipsWrapper.appendChild(chip);
+      });
+
+      if (eventsToday.length > MAX_VISIBLE_CALENDAR_EVENTS) {
+        const moreChip = document.createElement("div");
+        moreChip.classList.add("event-chip", "more-chip");
+        moreChip.textContent = `+${eventsToday.length - MAX_VISIBLE_CALENDAR_EVENTS} more`;
+        chipsWrapper.appendChild(moreChip);
+      }
+
+      cell.appendChild(chipsWrapper);
+    } else {
+      cell.classList.add("no-events");
+      const freeLabel = document.createElement("div");
+      freeLabel.classList.add("free-day");
+      freeLabel.textContent = "No events";
+      cell.appendChild(freeLabel);
+    }
+
+    const ariaDate = cellDate.toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "long",
+      day: "numeric"
+    });
+    const ariaSummary =
+      eventsToday.length === 0
+        ? "No events scheduled."
+        : `${eventsToday.length} ${eventsToday.length === 1 ? "event" : "events"}: ${eventsToday
+            .map((event) => event.title)
+            .join(", ")}.`;
+    cell.setAttribute("aria-label", `${ariaDate}. ${ariaSummary}`);
+
     grid.appendChild(cell);
   }
 
   updateCalendarLegend();
+}
+
+const isUserCalendarItem = (item) => typeof item?.id === "string" && item.id.startsWith("user-calendar-");
+
+function normalizeCalendarItems(items = []) {
+  return Array.isArray(items)
+    ? items
+        .map((item) => ({
+          ...item,
+          date: item.date ?? "",
+          type: (item.type || item.category || "event").toLowerCase()
+        }))
+        .filter((item) => item.date)
+    : [];
+}
+
+function mapUserCalendarItemForCalendar(item = {}) {
+  const category = item.category || item.source_type || "event";
+  return {
+    id: `user-calendar-${item.id}`,
+    title: item.title || "Calendar Item",
+    date: item.date || "",
+    time: item.time || "",
+    category,
+    type: (category || "event").toLowerCase(),
+    source_type: item.source_type,
+    source_id: item.source_id
+  };
+}
+
+function syncCalendarItems() {
+  calendarState.items = [...calendarState.baseItems, ...calendarState.userItems];
+  renderCalendar();
 }
 
 function initializeCalendar(items = []) {
@@ -662,19 +1019,12 @@ function initializeCalendar(items = []) {
     return;
   }
 
-  calendarState.items = Array.isArray(items)
-    ? items
-        .map((item) => ({
-          ...item,
-          date: item.date ?? "",
-          type: (item.type || "event").toLowerCase()
-        }))
-        .filter((item) => item.date)
-    : [];
+  const normalizedItems = normalizeCalendarItems(items);
+  calendarState.baseItems = normalizedItems.filter((item) => !isUserCalendarItem(item));
+  calendarState.userItems = normalizedItems.filter((item) => isUserCalendarItem(item));
 
   calendarState.currentDate = new Date();
   calendarState.typeColors = {};
-  updateCalendarLegend();
 
   if (!calendarState.initialized) {
     if (prevMonthBtn) {
@@ -694,41 +1044,516 @@ function initializeCalendar(items = []) {
     calendarState.initialized = true;
   }
 
-  if (calendarState.items.length === 0) {
-    grid.innerHTML = `<div class="empty-state">No events on the calendar yet.</div>`;
-    monthYear.textContent = new Date().toLocaleString("default", { month: "long", year: "numeric" });
-    updateCalendarLegend();
+  syncCalendarItems();
+}
+
+const getCalendarSortTimestamp = (item) => {
+  if (!item?.date) {
+    return Number.POSITIVE_INFINITY;
+  }
+  const dateTime = `${item.date}T${item.time ? `${item.time}:00` : '00:00:00'}`;
+  const parsed = new Date(dateTime);
+  return Number.isNaN(parsed.valueOf()) ? Number.POSITIVE_INFINITY : parsed.valueOf();
+};
+
+function formatCalendarItemDate(date, time, category) {
+  if (!date) {
+    return category ? `Date TBD • ${category}` : 'Date to be announced';
+  }
+
+  const parsedDate = new Date(`${date}T00:00:00`);
+  const readableDate = Number.isNaN(parsedDate.valueOf())
+    ? date
+    : parsedDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+
+  const timeLabel = time ? time : 'All day';
+  const categoryLabel = category ? ` • ${category}` : '';
+  return `${readableDate} · ${timeLabel}${categoryLabel}`;
+}
+
+function renderCalendarItemsList() {
+  const listEl = document.getElementById('calendarItemsList');
+  if (!listEl) {
     return;
   }
 
-  renderCalendar();
+  listEl.querySelectorAll('.calendar-item-row, .empty-state').forEach((node) => node.remove());
+
+  if (!Array.isArray(userCalendarItems) || userCalendarItems.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'empty-state';
+    empty.textContent = 'Add your first custom reminder to see it here.';
+    listEl.appendChild(empty);
+    return;
+  }
+
+  const sortedItems = [...userCalendarItems].sort((a, b) => getCalendarSortTimestamp(a) - getCalendarSortTimestamp(b));
+
+  sortedItems.forEach((item) => {
+    const row = document.createElement('div');
+    row.className = 'calendar-item-row';
+
+    const meta = document.createElement('div');
+    meta.className = 'calendar-item-meta';
+
+    const titleEl = document.createElement('p');
+    titleEl.className = 'calendar-item-title';
+    titleEl.textContent = item.title || 'Calendar item';
+    meta.appendChild(titleEl);
+
+    const detailsEl = document.createElement('p');
+    detailsEl.className = 'calendar-item-details';
+    detailsEl.textContent = formatCalendarItemDate(item.date, item.time, item.category || item.source_type);
+    meta.appendChild(detailsEl);
+
+    const actions = document.createElement('div');
+    actions.className = 'calendar-item-actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'edit-btn';
+    editBtn.dataset.calendarAction = 'edit';
+    editBtn.dataset.itemId = String(item.id);
+    editBtn.textContent = 'Edit';
+    actions.appendChild(editBtn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'danger';
+    deleteBtn.dataset.calendarAction = 'delete';
+    deleteBtn.dataset.itemId = String(item.id);
+    deleteBtn.textContent = 'Delete';
+    actions.appendChild(deleteBtn);
+
+    row.appendChild(meta);
+    row.appendChild(actions);
+    listEl.appendChild(row);
+  });
 }
 
-function loadStudentSpotlight(data) {
+async function refreshUserCalendarItems({ silent = false } = {}) {
+  try {
+    const token = requireAuthToken();
+    if (!token) {
+      return;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/calendar`, {
+      headers: buildAuthHeaders({ token }),
+      credentials: 'include'
+    });
+
+    if (response.status === 401) {
+      handleUnauthorizedResponse('Session expired while loading calendar items.');
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error('Failed to load calendar items');
+    }
+
+    const data = await response.json();
+    userCalendarItems = Array.isArray(data.items) ? data.items : [];
+    syncRegistrationStateFromCalendar();
+    calendarState.userItems = userCalendarItems.map((item) => mapUserCalendarItemForCalendar(item));
+    syncCalendarItems();
+    renderCalendarItemsList();
+  } catch (error) {
+    console.error('Failed to refresh calendar items', error);
+    if (!silent) {
+      alert('Unable to load your personal calendar items right now.');
+    }
+  }
+}
+
+function setupCalendarModal() {
+  const modal = document.getElementById('calendarModal');
+  const openBtn = document.getElementById('openCalendarModal');
+  const closeBtn = document.getElementById('closeCalendarModal');
+  const cancelBtn = document.getElementById('calendarCancelBtn');
+  const form = document.getElementById('calendarForm');
+  const titleInput = document.getElementById('calendarTitle');
+  const dateInput = document.getElementById('calendarDate');
+  const timeInput = document.getElementById('calendarTime');
+  const categoryInput = document.getElementById('calendarCategory');
+  const idInput = document.getElementById('calendarItemId');
+  const modalTitle = document.getElementById('calendarModalTitle');
+  const saveBtn = document.getElementById('calendarSaveBtn');
+  const itemsList = document.getElementById('calendarItemsList');
+
+  if (!modal || !openBtn || !closeBtn || !form) {
+    return;
+  }
+
+  let feedbackRow = null;
+  let confirmRow = null;
+  let feedbackTimer = null;
+  let pendingDeleteId = null;
+
+  const ensureFeedbackRow = () => {
+    if (!itemsList) {
+      return null;
+    }
+    if (!feedbackRow) {
+      feedbackRow = document.createElement('div');
+      feedbackRow.className = 'calendar-feedback-row calendar-status-row hidden status-info';
+      feedbackRow.innerHTML = `
+        <div class="calendar-feedback-content">
+          <p class="calendar-feedback-message"></p>
+        </div>
+        <button type="button" class="calendar-feedback-dismiss" aria-label="Dismiss message">&times;</button>
+      `;
+      const dismissBtn = feedbackRow.querySelector('.calendar-feedback-dismiss');
+      dismissBtn.addEventListener('click', () => hideFeedback());
+      itemsList.prepend(feedbackRow);
+    }
+    return feedbackRow;
+  };
+
+  const clearFeedbackTimer = () => {
+    if (feedbackTimer) {
+      clearTimeout(feedbackTimer);
+      feedbackTimer = null;
+    }
+  };
+
+  const hideFeedback = () => {
+    clearFeedbackTimer();
+    if (feedbackRow) {
+      feedbackRow.classList.add('hidden');
+    }
+  };
+
+  const showFeedback = (message, type = 'info', { persistent = false } = {}) => {
+    const row = ensureFeedbackRow();
+    if (!row) {
+      return;
+    }
+    clearFeedbackTimer();
+    row.classList.remove('status-info', 'status-success', 'status-error');
+    row.classList.add(`status-${type}`);
+    const messageEl = row.querySelector('.calendar-feedback-message');
+    if (messageEl) {
+      messageEl.textContent = message;
+    }
+    row.classList.remove('hidden');
+    if (!persistent) {
+      feedbackTimer = window.setTimeout(() => hideFeedback(), 4500);
+    }
+  };
+
+  const ensureConfirmRow = () => {
+    if (!itemsList) {
+      return null;
+    }
+    if (!confirmRow) {
+      confirmRow = document.createElement('div');
+      confirmRow.className = 'calendar-confirm-row calendar-status-row hidden';
+      confirmRow.innerHTML = `
+        <p class="calendar-confirm-message"></p>
+        <div class="calendar-confirm-actions">
+          <button type="button" class="calendar-confirm-cancel" data-confirm-cancel>Keep Event</button>
+          <button type="button" class="danger" data-confirm-delete>Delete</button>
+        </div>
+      `;
+      const cancelBtnEl = confirmRow.querySelector('[data-confirm-cancel]');
+      const deleteBtnEl = confirmRow.querySelector('[data-confirm-delete]');
+      cancelBtnEl?.addEventListener('click', () => {
+        hideDeleteConfirmation();
+      });
+      deleteBtnEl?.addEventListener('click', () => {
+        if (pendingDeleteId) {
+          handleDelete(pendingDeleteId);
+        }
+      });
+      itemsList.prepend(confirmRow);
+    }
+    return confirmRow;
+  };
+
+  const hideDeleteConfirmation = () => {
+    const row = ensureConfirmRow();
+    if (!row) {
+      return;
+    }
+    const deleteBtnEl = row.querySelector('[data-confirm-delete]');
+    deleteBtnEl?.removeAttribute('disabled');
+    row.classList.add('hidden');
+    pendingDeleteId = null;
+  };
+
+  const showDeleteConfirmation = (itemId) => {
+    const row = ensureConfirmRow();
+    if (!row) {
+      return;
+    }
+    pendingDeleteId = itemId;
+    const item = userCalendarItems.find((calendarItem) => String(calendarItem.id) === String(itemId));
+    const title = item?.title || 'this event';
+    const messageEl = row.querySelector('.calendar-confirm-message');
+    if (messageEl) {
+      messageEl.textContent = `Delete "${title}"? This can't be undone.`;
+    }
+    const deleteBtnEl = row.querySelector('[data-confirm-delete]');
+    deleteBtnEl?.removeAttribute('disabled');
+    row.classList.remove('hidden');
+  };
+
+  const resetInlineNotices = () => {
+    hideFeedback();
+    hideDeleteConfirmation();
+  };
+
+  const setDefaultDate = () => {
+    if (dateInput) {
+      const today = new Date();
+      today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+      dateInput.value = today.toISOString().slice(0, 10);
+    }
+  };
+
+  const setFormState = (item = null) => {
+    if (!titleInput || !dateInput || !timeInput || !categoryInput) {
+      return;
+    }
+    hideDeleteConfirmation();
+
+    if (item) {
+      idInput.value = item.id;
+      titleInput.value = item.title || '';
+      dateInput.value = item.date || '';
+      timeInput.value = item.time || '';
+      categoryInput.value = item.category || '';
+      modalTitle.textContent = 'Edit Calendar Event';
+      saveBtn.textContent = 'Update Event';
+    } else {
+      idInput.value = '';
+      form.reset();
+      setDefaultDate();
+      modalTitle.textContent = 'Add Custom Event';
+      saveBtn.textContent = 'Save Event';
+    }
+  };
+
+  const closeModal = () => {
+    modal.classList.add('hidden');
+    setFormState(null);
+    resetInlineNotices();
+  };
+
+  const openModal = async () => {
+    modal.classList.remove('hidden');
+    resetInlineNotices();
+    renderCalendarItemsList();
+    await refreshUserCalendarItems({ silent: false });
+    setFormState(null);
+  };
+
+  async function handleDelete(itemId) {
+    if (!itemId) {
+      return;
+    }
+
+    const token = requireAuthToken();
+    if (!token) {
+      return;
+    }
+
+    const row = ensureConfirmRow();
+    const deleteBtnEl = row?.querySelector('[data-confirm-delete]');
+    deleteBtnEl?.setAttribute('disabled', 'disabled');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/calendar/${itemId}`, {
+        method: 'DELETE',
+        headers: buildAuthHeaders({ token }),
+        credentials: 'include'
+      });
+
+      if (response.status === 401) {
+        handleUnauthorizedResponse('Session expired while deleting a calendar event.');
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error('Failed to delete calendar event');
+      }
+
+      await refreshUserCalendarItems({ silent: false });
+      if (idInput.value === String(itemId)) {
+        setFormState(null);
+      }
+      hideDeleteConfirmation();
+      showFeedback('Calendar event deleted.', 'success');
+    } catch (error) {
+      console.error('Unable to delete calendar item', error);
+      showFeedback('Unable to delete this event right now.', 'error', { persistent: true });
+    } finally {
+      deleteBtnEl?.removeAttribute('disabled');
+    }
+  }
+
+  openBtn.addEventListener('click', () => {
+    openModal();
+  });
+  closeBtn.addEventListener('click', closeModal);
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', closeModal);
+  }
+
+  window.addEventListener('click', (event) => {
+    if (event.target === modal) {
+      closeModal();
+    }
+  });
+
+  if (itemsList) {
+    itemsList.addEventListener('click', (event) => {
+      const actionBtn = event.target?.closest('button[data-calendar-action]');
+      if (!actionBtn) {
+        return;
+      }
+
+      const itemId = actionBtn.dataset.itemId;
+      if (!itemId) {
+        return;
+      }
+
+      if (actionBtn.dataset.calendarAction === 'edit') {
+        const existing = userCalendarItems.find((item) => String(item.id) === String(itemId));
+        if (existing) {
+          setFormState(existing);
+        }
+      } else if (actionBtn.dataset.calendarAction === 'delete') {
+        showDeleteConfirmation(itemId);
+      }
+    });
+  }
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const title = titleInput.value.trim();
+    const date = dateInput.value;
+
+    if (!title || !date) {
+      showFeedback('Please provide a title and date for your event.', 'error');
+      return;
+    }
+
+    const payload = {
+      title,
+      date,
+      time: timeInput.value,
+      category: categoryInput.value.trim()
+    };
+
+    const token = requireAuthToken();
+    if (!token) {
+      return;
+    }
+
+    const editingId = idInput.value ? Number(idInput.value) : null;
+    const url = editingId ? `${API_BASE_URL}/calendar/${editingId}` : `${API_BASE_URL}/calendar`;
+
+    try {
+      const response = await fetch(url, {
+        method: editingId ? 'PUT' : 'POST',
+        headers: buildAuthHeaders({ token, json: true }),
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+
+      if (response.status === 401) {
+        handleUnauthorizedResponse('Session expired while saving your calendar event.');
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error('Failed to save calendar event');
+      }
+
+      await response.json();
+      await refreshUserCalendarItems({ silent: false });
+      setFormState(null);
+      showFeedback(editingId ? 'Calendar event updated.' : 'Calendar event added!', 'success');
+    } catch (error) {
+      console.error('Unable to save calendar event', error);
+      showFeedback('Unable to save this event right now.', 'error', { persistent: true });
+    }
+  });
+}
+
+function loadStudentSpotlight(payload) {
   const nameEl = document.getElementById("spotlightName");
   const monthEl = document.getElementById("spotlightMonth");
   const pointsEl = document.getElementById("spotlightPoints");
   const awardEl = document.getElementById("spotlightAward");
   const descriptionEl = document.getElementById("spotlightDescription");
+  const highlightListEl = document.getElementById("spotlightHighlightList");
+  const highlightEmptyEl = document.getElementById("spotlightHighlightEmpty");
 
   if (!nameEl || !monthEl || !pointsEl || !awardEl || !descriptionEl) {
     return;
   }
 
-  if (!data) {
+  const highlights = Array.isArray(payload?.highlights) ? payload.highlights : [];
+  const personalSpotlight = payload?.personal || null;
+  const primarySpotlight = personalSpotlight || highlights[0] || null;
+  const inspirationHighlights = personalSpotlight ? highlights : highlights.slice(1);
+
+  if (!primarySpotlight) {
     nameEl.textContent = "Student Spotlight";
-    monthEl.textContent = "";
+    monthEl.textContent = "Community inspiration";
     pointsEl.textContent = "";
     awardEl.textContent = "";
     descriptionEl.textContent = "No spotlight selected.";
-    return;
+    } else {
+    const isPersonal = Boolean(personalSpotlight);
+    nameEl.textContent = primarySpotlight.name || "Student Spotlight";
+    monthEl.textContent = primarySpotlight.month
+      ? `${formatSpotlightMonth(primarySpotlight.month)} Spotlight`
+      : isPersonal
+        ? "Your Spotlight"
+        : "Community Spotlight";
+    pointsEl.textContent = isPersonal ? "You're being celebrated!" : "Campus inspiration";
+    awardEl.textContent = isPersonal ? "Personal Spotlight" : (primarySpotlight.award || "Spotlight");
+    descriptionEl.textContent = primarySpotlight.description || "Keep shining bright.";
   }
 
-  nameEl.textContent = data.name;
-  monthEl.textContent = data.month ? `${formatSpotlightMonth(data.month)} Spotlight` : "Student Spotlight";
-  pointsEl.textContent = data.points ? `${data.points} points earned` : "";
-  awardEl.textContent = data.award || "";
-  descriptionEl.textContent = data.description || "";
+  if (highlightListEl) {
+    highlightListEl.innerHTML = "";
+    inspirationHighlights.forEach((item) => {
+      const listItem = document.createElement("li");
+      listItem.className = "spotlight-highlight-item";
+
+      const name = document.createElement("p");
+      name.className = "spotlight-highlight-name";
+      name.textContent = item.name || "Student";
+      listItem.appendChild(name);
+
+      const metaParts = [item.major, item.classYear].filter(Boolean);
+      if (metaParts.length) {
+        const meta = document.createElement("p");
+        meta.className = "spotlight-highlight-meta";
+        meta.textContent = metaParts.join(" • ");
+        listItem.appendChild(meta);
+      }
+
+      if (item.description) {
+        const detail = document.createElement("p");
+        detail.className = "spotlight-highlight-detail";
+        detail.textContent = item.description;
+        listItem.appendChild(detail);
+      }
+
+      highlightListEl.appendChild(listItem);
+    });
+  }
+
+  if (highlightEmptyEl) {
+    highlightEmptyEl.style.display = inspirationHighlights.length ? "none" : "block";
+  }
 }
 
 function formatSpotlightMonth(month) {
@@ -745,27 +1570,44 @@ function formatSpotlightMonth(month) {
   return month;
 }
 
+function formatRewardUpdatedAt(updatedAt) {
+  if (!updatedAt) {
+    return null;
+  }
+
+  const parsedDate = new Date(updatedAt);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  return parsedDate.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 function loadRewardPoints(reward) {
   const pointsEl = document.getElementById("rewardPoints");
   const progressEl = document.getElementById("rewardProgress");
 
   if (!pointsEl || !progressEl) return;
 
-  if (!reward) {
+  if (!reward || !reward.currentUser) {
     pointsEl.textContent = "0 Points";
-    progressEl.textContent = "";
+    progressEl.textContent = "Start earning points to unlock rewards.";
     return;
   }
 
-  const points =
-    reward.points ??
-    (reward.currentUser && reward.currentUser.points !== undefined ? reward.currentUser.points : 0);
-  const progress =
-    reward.progress ??
-    (reward.currentUser && reward.currentUser.progress !== undefined ? reward.currentUser.progress : "");
+  const currentUser = reward.currentUser;
+  const points = typeof currentUser.points === "number" ? currentUser.points : Number(currentUser.points) || 0;
+  const fallbackProgress = () => {
+    if (points > 0) {
+      const formattedDate = formatRewardUpdatedAt(currentUser.updatedAt);
+      return formattedDate ? `Last updated ${formattedDate}` : "Lifetime points earned";
+    }
+    return "Start earning points to unlock rewards.";
+  };
+  const progress = currentUser.progress || fallbackProgress();
 
   pointsEl.textContent = `${points} Points`;
-  progressEl.textContent = progress || "";
+  progressEl.textContent = progress;
 }
 
 const DASHBOARD_LIMITS = {
@@ -805,31 +1647,48 @@ async function initializeDashboard() {
   if (rewardProgressEl) rewardProgressEl.textContent = "";
 
   try {
-    // const params = new URLSearchParams();
-    // Object.entries(DASHBOARD_LIMITS).forEach(([key, value]) => {
-    //   if (value !== undefined && value !== null) {
-    //     params.append(key, value);
-    //   }
-    // });
-
-    const response = await fetch(`${API_BASE_URL}/dashboard`, {
-      // credentials: "include"
+    const params = new URLSearchParams();
+    Object.entries(DASHBOARD_LIMITS).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        params.append(key, value);
+      }
     });
+
+    const token = requireAuthToken();
+    if (!token) {
+      return;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/dashboard?${params.toString()}`, {
+    credentials: "include",
+      headers: buildAuthHeaders({ token })
+    });
+    if (response.status === 401) {
+      handleUnauthorizedResponse("Dashboard data request was unauthorized. Redirecting to sign in.");
+      return;
+    }
     if (!response.ok) {
       throw new Error(`Request failed with status ${response.status}`);
     }
 
     const data = await response.json();
 
-    initializeNews(data.competitions || []);
-    initializeCommunityHighlights(data.events || []);
+    const campusNews = Array.isArray(data.news) ? data.news : [];
+    const campusEvents = Array.isArray(data.campusEvents) ? data.campusEvents : [];
+    const communityHighlights = Array.isArray(data.communityHighlights) ? data.communityHighlights : [];
+
+    const newsAndEvents = [...campusNews, ...campusEvents];
+
+    initializeNews(newsAndEvents);
+    initializeCommunityHighlights(communityHighlights);
     initializePolls(data.polls || []);
     initializeCalendar(data.calendar || []);
 
-    const spotlight = Array.isArray(data.spotlights) ? data.spotlights[0] : null;
-    loadStudentSpotlight(spotlight);
+    loadStudentSpotlight(data.spotlights || null);
 
     loadRewardPoints(data.rewardLeaders || null);
+
+    await refreshUserCalendarItems({ silent: true });
   } catch (error) {
     console.error("Failed to load dashboard data", error);
     setError(eventsContainer, "Unable to load campus news.");
@@ -916,14 +1775,22 @@ function setupSharePostModal() {
         description
       };
 
+      const token = requireAuthToken();
+      if (!token) {
+        return;
+      }
+
       const response = await fetch(`${API_BASE_URL}/community-posts`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: buildAuthHeaders({ token, json: true }),
         credentials: "include",
         body: JSON.stringify(payload)
       });
+
+      if (response.status === 401) {
+        handleUnauthorizedResponse("Unable to share post because your session expired.");
+        return;
+      }
 
       if (!response.ok) {
         throw new Error("Failed to share post");
@@ -943,4 +1810,5 @@ function setupSharePostModal() {
 document.addEventListener("DOMContentLoaded", () => {
   initializeDashboard();
   setupSharePostModal();
+  setupCalendarModal();
 });
