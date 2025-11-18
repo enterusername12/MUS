@@ -1,6 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
   const API_BASE_URL = 'http://localhost:3000/api';
 
+  const persistAuthUser = (user) => {
+    if (user) {
+      localStorage.setItem('musAuthUser', JSON.stringify(user));
+      if (user.id != null) {
+        localStorage.setItem('userId', String(user.id));
+      } else {
+        localStorage.removeItem('userId');
+      }
+    } else {
+      localStorage.removeItem('musAuthUser');
+      localStorage.removeItem('userId');
+    }
+  };
+
   let pendingOtpEmail = sessionStorage.getItem('pendingOtpEmail');
   const otpEmailInput = document.getElementById('otpEmail');
   const otpEntrySection = document.getElementById('otpEntrySection');
@@ -257,7 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const result = await postJSON('/auth/login', { email, password, role });
         localStorage.setItem('musAuthToken', result.token);
-        localStorage.setItem('musAuthUser', JSON.stringify(result.user));
+        persistAuthUser(result.user);
         alert('Login successful!');
         console.info('Authenticated user:', result.user);
 
@@ -463,7 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const result = await postJSON('/auth/verify-otp', { email, code });
         localStorage.setItem('musAuthToken', result.token);
-        localStorage.setItem('musAuthUser', JSON.stringify(result.user));
+        persistAuthUser(result.user);
         completeOtpVerification(result);
       } catch (error) {
         alert(error.message);
