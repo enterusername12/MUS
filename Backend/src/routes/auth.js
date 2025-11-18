@@ -518,6 +518,8 @@ router.post('/verify-otp', async (req, res) => {
         [normalizedEmail]
       );
 
+
+
       if (!user) {
         return respondWithError(res, 404, 'No account found for this email.');
       }
@@ -625,6 +627,7 @@ router.post('/verify-otp', async (req, res) => {
 
     const userRow = insertResult.rows[0];
 
+
     const token = jwt.sign(
       {
         sub: userRow.id,
@@ -637,8 +640,18 @@ router.post('/verify-otp', async (req, res) => {
 
     const normalizedRole = trimOrEmpty(userRow.role).toLowerCase();
     const redirectPath = ROLE_REDIRECTS[normalizedRole] || DEFAULT_REDIRECT_PATH;
-
+    //console.log('User registered with ID:', userRow.id);
     deleteOtpRecord(normalizedEmail);
+        
+    // Insert a reward row for the new user
+    await getPool().query(
+      `INSERT INTO reward_points (user_id, points)
+      VALUES ($1, 0)
+      ON CONFLICT (user_id) DO NOTHING`,
+      [userRow.id]
+    );
+
+
 
     res.json({
       success: true,
@@ -655,6 +668,8 @@ router.post('/verify-otp', async (req, res) => {
         studentId: userRow.student_id || '',
         phone: userRow.phone || ''
       }
+
+      
     });
   } catch (error) {
     if (error?.code === '23505') {
@@ -740,5 +755,7 @@ router.post('/login', async (req, res) => {
     respondWithError(res, 500, 'An unexpected error occurred while signing in.');
   }
 });
+
+
 
 module.exports = router;

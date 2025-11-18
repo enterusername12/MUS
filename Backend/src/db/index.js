@@ -158,18 +158,7 @@ const seedDashboardData = async (client) => {
     );
   }
 
-  const [{ count: rewardCount }] = (
-    await client.query('SELECT COUNT(*)::INT FROM reward_points')
-  ).rows;
-  if (toInt(rewardCount) === 0) {
-    await client.query(
-      `INSERT INTO reward_points (student_name, points, category)
-       VALUES
-         ('Team Thrive', 420, 'Clubs & Societies'),
-         ('Sustainability Crew', 385, 'Community Impact'),
-         ('Innovation Guild', 360, 'Entrepreneurship')`
-    );
-  }
+ 
 
   const [{ count: calendarCount }] = (
     await client.query('SELECT COUNT(*)::INT FROM calendar_items')
@@ -469,13 +458,15 @@ const ensureDatabase = async () => {
       )`);
 
       // reward_points
-      await client.query(`CREATE TABLE IF NOT EXISTS reward_points (
-        id SERIAL PRIMARY KEY,
-        student_name TEXT NOT NULL,
-        points INTEGER NOT NULL,
-        category TEXT,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )`);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS reward_points (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+          points INTEGER NOT NULL DEFAULT 0,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
+
 
       // calendar_items
       await client.query(`CREATE TABLE IF NOT EXISTS calendar_items (
