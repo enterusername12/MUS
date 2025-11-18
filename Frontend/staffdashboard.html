@@ -9,6 +9,7 @@
 
 <body>
   <nav class="nav">
+       <!-- Hamburger button (only shows on mobile) -->
     <button class="menu-toggle">☰</button>
     <div class="nav-menu">
       <img src="assets/logo.png" alt="Murdoch University" class="logo">
@@ -50,87 +51,35 @@
     <div class="underheader">
       <h2>Manage Events</h2>
     </div>
+
+    <div class="event-container" id="eventContainer">
+      <!-- Event cards dynamically inserted here -->
+       </div>
+  </section>
+    </div>
+
+  </section>
+
+
+<!-- Modal for Create Poll/Competition -->
+<div id="createModal" class="modal hidden">
+  <div class="modal-content">
+    <button class="close-modal" id="closeModal">×</button>
+    
+    <div class="modal-header">
+      <h3>Staff Dashboard → Create</h3>
+      <h2>Create New Poll or Competition</h2>
+      <p id="modalDescription">Create and manage polls by entering a title, expiry date, and context. Add multiple selection options for students to participate.</p>
+    </div>
     <div class="event-container" id="eventContainer"></div>
   </section>
 
-  <!-- Modal for Create Poll/Competition/Event -->
-  <div id="createModal" class="modal hidden">
-    <div class="modal-content">
-      <button class="close-modal" id="closeModal">×</button>
-      
-      <div class="modal-header">
-        <h3>Staff Dashboard → Create</h3>
-        <h2>Create New Poll, Competition, or Event</h2>
-        <p id="modalDescription">Create and manage polls by entering a title, expiry date, and context. Add multiple selection options for students to participate.</p>
-      </div>
-
-      <div class="tab-buttons">
-        <button class="tab-btn active" data-tab="poll">Poll</button>
-        <button class="tab-btn" data-tab="competition">Competition</button>
-        <button class="tab-btn" data-tab="event">Event</button>
-      </div>
-
-      <!-- Poll Form -->
-      <form id="pollForm" class="form-content active">
-        <section class="form-section">
-          <h4>Poll Details</h4>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Title *</label>
-              <input type="text" name="title" placeholder="e.g., Favorite Campus Event" required>
-            </div>
-            <div class="form-group">
-              <label>Expiry Date *</label>
-              <input type="date" name="expiry" required>
-            </div>
-          </div>
-        </section>
-
-        <section class="form-section">
-          <h4>Poll Question</h4>
-          <div class="form-group">
-            <label>Context / Question *</label>
-            <textarea name="question" placeholder="What is this poll about? Describe the purpose of the poll..." rows="4" required></textarea>
-          </div>
-        </section>
-
-        <section class="form-section">
-          <div class="section-header">
-            <h4>Poll Options</h4>
-            <button type="button" class="add-option-btn" id="addPollOption">+ Add More Selection</button>
-          </div>
-          <div id="pollOptionsContainer">
-            <div class="form-group">
-              <label>Option 1 *</label>
-              <input type="text" name="options" placeholder="e.g., Event A" required>
-            </div>
-            <div class="form-group">
-              <label>Option 2 *</label>
-              <input type="text" name="options" placeholder="e.g., Event B" required>
-            </div>
-          </div>
-          <p class="form-hint">At least 2 options required. Maximum 10 options allowed.</p>
-        </section>
-
-        <div class="form-actions">
-          <button type="button" class="btn-discard">Discard</button>
-          <button type="submit" class="btn-post">Post</button>
-        </div>
-      </form>
-
-      <!-- Competition Form -->
-      <form id="competitionForm" class="form-content">
-        <section class="form-section">
-          <h4>Competition Details</h4>
-          
-          <div class="form-group">
-            <label>Host(s) *</label>
-            <div class="host-container" id="hostContainer">
-              <input type="text" name="host" placeholder="Host 1 (e.g., Dr. Smith, Admin Team)" required>
-            </div>
-            <button type="button" class="add-host-btn" id="addHost">+ Add Host</button>
-            <p class="form-hint">At least 1 host required. Maximum 5 hosts allowed.</p>
-          </div>
+    <!-- Tab Buttons -->
+    <div class="tab-buttons">
+      <button class="tab-btn active" data-tab="poll">Poll</button>
+      <button class="tab-btn" data-tab="competition">Competition</button>
+      <button class="tab-btn" data-tab="event">Event</button>
+    </div>
 
           <div class="form-group">
             <label>Title *</label>
@@ -251,22 +200,93 @@
           <button type="button" class="btn-discard">Discard</button>
           <button type="submit" class="btn-create">Create</button>
         </div>
+      </section>
+
+      <div class="form-actions">
+        <button type="button" class="btn-discard">Discard</button>
+        <button type="submit" class="btn-create">Create</button>
+      </div>
+    </form>
+
+     <!-- Event Form -->
+      <form id="eventForm" class="form-content">
+        <section class="form-section">
+          <h4>Event Details</h4>
+
+          <div class="form-group">
+            <label>Event Type *</label>
+            <select required>
+              <option value="">Select type...</option>
+              <option>Mentorship Program</option>
+              <option>Peer Mentorship</option>
+              <option>Volunteering Opportunity</option>
+              <option>Employment Opportunity</option>
+              <option>Workshop</option>
+              <option>Seminar</option>
+              <option>Networking Event</option>
+              <option>Social Activity</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Title *</label>
+            <input type="text" placeholder="e.g., Resume Workshop 2025" required>
+          </div>
+
+          <div class="form-group">
+            <label>Date *</label>
+            <input type="date" required>
+          </div>
+
+          <div class="form-group">
+            <label>Venue *</label>
+            <input type="text" placeholder="e.g., Online (Zoom) / Library Room 203" required>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4>Description & Poster</h4>
+
+          <div class="form-group">
+            <label>Event Poster</label>
+            <div class="upload-area">
+              <div class="upload-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 15V3M12 3L8 7M12 3L16 7M2 17L2 19C2 20.1046 2.89543 21 4 21L20 21C21.1046 21 22 20.1046 22 19V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <p><strong>+ Upload Poster</strong></p>
+              <p class="upload-hint">PNG, JPG up to 5MB. Recommended: 1000x1500px</p>
+              <input type="file" accept="image/png,image/jpeg" hidden>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Description * <span class="char-count" id="eventCharCount">0/500</span></label>
+            <textarea id="eventDesc" placeholder="Describe the event details..." rows="5" maxlength="500" required></textarea>
+          </div>
+        </section>
+
+        <div class="form-actions">
+          <button type="button" class="btn-discard">Discard</button>
+          <button type="submit" class="btn-create">Create</button>
+        </div>
       </form>
-    </div>
+
   </div>
 
-  <!-- QR Modal -->
-  <div id="qrModal" class="modal hidden">
-    <div class="modal-content">
-      <button id="closeQrModal" class="close-btn">&times;</button>
-      <h2 id="qrTitle">Competition QR</h2>
-      <p id="qrTypeDesc">Scan this QR to participate or claim rewards.</p>
-      <div id="qrContainer" style="margin: 20px auto;"></div>
-      <p id="rewardText" style="font-weight: bold; margin-top: 10px;"></p>
-    </div>
+
+<!-- 🧱 QR Modal -->
+<div id="qrModal" class="modal hidden">
+  <div class="modal-content">
+    <button id="closeQrModal" class="close-btn">&times;</button>
+    <h2 id="qrTitle">Competition QR</h2>
+    <p id="qrTypeDesc">Scan this QR to participate or claim rewards.</p>
+    <div id="qrContainer" style="margin: 20px auto;"></div>
+    <p id="rewardText" style="font-weight: bold; margin-top: 10px;"></p>
   </div>
 
-  <!-- Footer -->
+  <!-- ✅ Footer -->
   <footer class="footer">
     <div class="footer-right">
       <img src="assets/crest.png" alt="Murdoch Crest" class="crest">
@@ -288,15 +308,17 @@
 
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
   <script src="js/staffdashboard.js"></script>
-  <script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const menuToggle = document.querySelector(".menu-toggle");
-    const nav = document.querySelector(".nav");
 
-    menuToggle.addEventListener("click", () => {
-      nav.classList.toggle("active");
-    });
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const menuToggle = document.querySelector(".menu-toggle");
+  const nav = document.querySelector(".nav");
+
+  menuToggle.addEventListener("click", () => {
+    nav.classList.toggle("active");
   });
-  </script>
+});
+</script>
+
 </body>
 </html>
