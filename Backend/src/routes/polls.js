@@ -168,8 +168,8 @@ const normalizeBoolean = (value, fallback = false) => {
 const readPollPayload = (body = {}) => {
   const title = typeof body.title === 'string' ? body.title.trim() : '';
   const descriptionSource =
-    typeof body.question === 'string'
-      ? body.question
+    typeof body.description === 'string'
+      ? body.description
       : typeof body.question === 'string'
         ? body.question
         : '';
@@ -180,9 +180,9 @@ const readPollPayload = (body = {}) => {
     return { error: 'Poll title is required.' };
   }
 
-  // if (!description) {
-  //   return { error: 'Poll description is required.' };
-  // }
+  if (!description) {
+    return { error: 'Poll description is required.' };
+  }
 
   if (optionsError) {
     return { error: optionsError };
@@ -190,14 +190,14 @@ const readPollPayload = (body = {}) => {
 
   const expiresAt = parseExpiresAt(body.expiresAt ?? body.expires_at);
   if (body.expiresAt !== undefined || body.expires_at !== undefined) {
-    // if (!expiresAt) {
-    //   return { error: 'expiresAt must be a valid ISO date/time string or YYYY-MM-DD.' };
-    // }
+    if (!expiresAt) {
+      return { error: 'expiresAt must be a valid ISO date/time string or YYYY-MM-DD.' };
+    }
 
     const now = new Date();
-    // if (expiresAt <= now) {
-    //   return { error: 'expiresAt must be set in the future.' };
-    // }
+    if (expiresAt <= now) {
+      return { error: 'expiresAt must be set in the future.' };
+    }
   }
 
   const isActive = normalizeBoolean(body.isActive ?? body.is_active, true);
@@ -289,7 +289,6 @@ const loadPollsWithOptions = async ({ includeInactive = false } = {}) => {
 
 // List polls
 router.get('/', async (req, res) => {
-
   const userId = readJwtUserId(req);
   if (!userId) {
     return res.status(401).json({ message: 'Authentication required.' });
@@ -306,25 +305,9 @@ router.get('/', async (req, res) => {
   }
 });
 
-
 // Create poll
 router.post('/', async (req, res) => {
-  console.log('--- Request Start ---');
-
-  let pollId = req.body.id ?? null; // If id exists, this is an update
-
-  const authHeader = req.headers['authorization'];
-  let userId = null;
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.slice(7); // remove "Bearer "
-    try {
-      const user = JSON.parse(token); // parse token into object
-      userId = user.id;
-    } catch (err) {
-      console.error("Failed to parse Authorization header:", token, err);
-    }
-  }
-
+  const userId = readJwtUserId(req);
   if (!userId) {
     return res.status(401).json({ message: 'Authentication required.' });
   }
@@ -344,38 +327,25 @@ router.post('/', async (req, res) => {
     try {
       await client.query('BEGIN');
 
-      if (!pollId) {
-        // CREATE NEW POLL
-        const pollInsert = await client.query(
-          `INSERT INTO polls (title, description, is_active, expires_at)
-             VALUES ($1, $2, $3, $4)
-             RETURNING id`,
-          [payload.title, payload.description, payload.isActive, payload.expiresAt]
-        );
-        pollId = pollInsert.rows[0]?.id;
-        if (!pollId) throw new Error('Failed to determine new poll id.');
-      } else {
-        // UPDATE EXISTING POLL
-        await client.query(
-          `UPDATE polls
-             SET title = $1,
-                 description = $2,
-                 is_active = $3,
-                 expires_at = $4
-           WHERE id = $5`,
-          [payload.title, payload.description, payload.isActive, payload.expiresAt, pollId]
-        );
+      const pollInsert = await client.query(
+        `INSERT INTO polls (title, description, is_active, expires_at)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id`,
+        [payload.title, payload.description, payload.isActive, payload.expiresAt]
+      );
 
-        // Replace options by deleting old ones
-        await client.query(`DELETE FROM poll_options WHERE poll_id = $1`, [pollId]);
+      const pollId = pollInsert.rows[0]?.id;
+      if (!pollId) {
+        throw new Error('Failed to determine new poll id.');
       }
 
-      // INSERT OPTIONS
       const optionValues = payload.optionLabels.map((label, index) => `($1, $${index + 2})`).join(', ');
-      await client.query({
-        text: `INSERT INTO poll_options (poll_id, label) VALUES ${optionValues}`,
-        values: [pollId, ...payload.optionLabels]
-      });
+      await client.query(
+        {
+          text: `INSERT INTO poll_options (poll_id, label) VALUES ${optionValues}`,
+          values: [pollId, ...payload.optionLabels]
+        }
+      );
 
       await client.query('COMMIT');
 
@@ -383,17 +353,16 @@ router.post('/', async (req, res) => {
       return res.status(201).json({ poll });
     } catch (error) {
       await client.query('ROLLBACK');
-      console.error('Failed to create/update poll', error);
-      return res.status(500).json({ message: 'Unable to create or update poll at this time.' });
+      console.error('Failed to create poll', error);
+      return res.status(500).json({ message: 'Unable to create poll at this time.' });
     } finally {
       client.release();
     }
   } catch (error) {
-    console.error('Error while handling poll create/update', error);
-    return res.status(500).json({ message: 'Unable to create or update poll at this time.' });
+    console.error('Error while handling poll creation', error);
+    return res.status(500).json({ message: 'Unable to create poll at this time.' });
   }
 });
-
 
 // Vote on a poll (this wraps your top-level code into a proper async route)
 router.post('/:pollId/vote', async (req, res) => {
@@ -416,8 +385,7 @@ router.post('/:pollId/vote', async (req, res) => {
     }
 
     const now = new Date();
-    const expiresAt = poll.expiry ? new Date(poll.expiry) : null;
-
+    const expiresAt = poll.expires_at ? new Date(poll.expires_at) : null;
     const isExpired = expiresAt && !Number.isNaN(expiresAt.valueOf()) && expiresAt <= now;
     if (!poll.is_active || isExpired) {
       if (userId) {
@@ -503,42 +471,10 @@ router.post('/:pollId/vote', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (!id) return res.status(400).json({ error: 'Invalid ID' });
-
-  try {
-    const pool = getPool();
-    await pool.query('DELETE FROM polls WHERE id = $1', [id]);
-    res.status(200).json({ success: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to delete poll' });
-  }
+router.post('/:pollId/votes', (req, res, next) => {
+  // simple alias to singular route
+  req.url = req.url.replace(/\/votes$/, '/vote');
+  next();
 });
-
-
-
-// // Alias /votes → /vote
-// router.post('/:pollId/votes', async (req, res) => {
-//   const voteHandler = router.stack.find(
-//     layer => layer.route && layer.route.path === '/:pollId/vote'
-//   )?.route.stack[0].handle;
-
-//   if (!voteHandler) {
-//     return res.status(500).json({ message: 'Vote handler not found.' });
-//   }
-
-//   try {
-//     await voteHandler(req, res); // ✅ 用 await
-//   } catch (err) {
-//     console.error('Error in vote alias handler:', err);
-//     if (!res.headersSent) {       // ✅ 確認還沒送 headers 才回 response
-//       return res.status(500).json({ message: 'Unable to record vote at this time.' });
-//     }
-//   }
-// });
-
-
 
 module.exports = router;
