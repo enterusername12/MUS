@@ -199,3 +199,15 @@
 2025-11-18T02:44:55.374Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1813ms
 2025-11-18T05:13:08.952Z [POST] /api/auth/login from ::1 Status: 200, Duration: 572ms
 2025-11-18T10:18:16.491Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1619ms
+2025-11-18T11:45:02.309Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1481ms
+2025-11-18T12:38:14.991Z [POST] /competition/register from ::1 Status: 404, Duration: 2ms
+2025-11-18T12:40:13.617Z [POST] /competition/register from ::1 Status: 404, Duration: 1ms
+2025-11-18T12:40:26.251Z [POST] /competition/register from ::1 Status: 404, Duration: 1ms
+2025-11-18T12:41:30.485Z [POST] /competition/register from ::1 Status: 404, Duration: 0ms
+2025-11-18T12:42:54.059Z [POST] /api/competition/register from ::1 Status: 500, Duration: 525ms
+2025-11-18T12:46:59.588Z [POST] /api/competition/register from ::1 Status: 500, Duration: 503ms
+2025-11-18T12:49:13.303Z [POST] /api/competition/register from ::1 Status: 500, Duration: 695ms
+2025-11-18T12:51:04.095Z [POST] /api/competition/register from ::1 Status: 500, Duration: 685ms
+2025-11-18T12:52:49.155Z [POST] /api/competition/register from ::1 Status: 500, Duration: 636ms
+2025-11-18T12:58:35.705Z [POST] /api/competition/register from ::1 Status: 500, Duration: 478ms
+2025-11-18T12:59:35.047Z [POST] /api/competition from ::1 Status: 200, Duration: 3141ms

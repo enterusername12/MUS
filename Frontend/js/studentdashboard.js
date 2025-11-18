@@ -54,10 +54,10 @@ function sanitizeText(value, fallback = "") {
   return trimmed || fallback;
 }
 
-function showEventDetailUI() {
-  let modal = document.getElementById("eventDetailModal");
+function showEventDetailUI(item) {
+  if (!item) return;
 
-  // Create modal if it doesn't exist
+  let modal = document.getElementById("eventDetailModal");
   if (!modal) {
     modal = document.createElement("div");
     modal.id = "eventDetailModal";
@@ -77,95 +77,115 @@ function showEventDetailUI() {
     modal.innerHTML = `
       <div id="modalContent" style="background:white;padding:20px;border-radius:10px;position:relative;">
         <span id="closeEventModal" style="cursor:pointer;position:absolute;top:10px;right:10px;font-size:24px;">&times;</span>
-
         <h2>Participate</h2>
         <p>Upload/paste the QR image to Participate:</p>
-
         <input type="file" id="qrInput" accept="image/*" />
         <button id="submitQR">Submit QR Code</button>
-
         <p id="qrResult"></p>
       </div>
     `;
-
     document.body.appendChild(modal);
-
-    let qrFile = null;
-
-    const qrInput = modal.querySelector("#qrInput");
-    const qrResult = modal.querySelector("#qrResult");
-    const submitQR = modal.querySelector("#submitQR");
-
-    // 收文件
-    qrInput.addEventListener("change", (e) => {
-      qrFile = e.target.files[0];
-    });
-
-    // 按钮 → 执行解析
-    submitQR.addEventListener("click", () => {
-      if (!qrFile) {
-        qrResult.textContent = "Please upload an image first.";
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = function () {
-        const img = new Image();
-
-        img.onload = function () {
-          const maxDim = 400;
-          let scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
-
-          const canvas = document.createElement("canvas");
-          canvas.width = img.width * scale;
-          canvas.height = img.height * scale;
-
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imageData.data, canvas.width, canvas.height);
-
-          if (code) {
-            qrResult.textContent = `Token: ${code.data}`;
-            console.log("QR token:", code.data);
-          } else {
-            qrResult.textContent = "Could not read QR code. Try a clearer image.";
-          }
-        };
-
-        img.src = reader.result;
-      };
-
-      reader.readAsDataURL(qrFile);
-    });
-
-    modal.querySelector("#closeEventModal").onclick = () => {
-      modal.style.display = "none";
-    };
-
-    modal.onclick = (e) => {
-      if (e.target === modal) modal.style.display = "none";
-    };
-
-    const observer = new MutationObserver(() => {
-      if (modal.style.display === "none") {
-        qrInput.value = "";
-        qrResult.textContent = "";
-        qrFile = null;
-        // console.log("Modal hidden → QR data cleared.");
-      }
-    });
-
-    observer.observe(modal, {
-      attributes: true,
-      attributeFilter: ["style"]
-    });
   }
 
-  // show modal
   modal.style.display = "flex";
+
+  const qrInput = modal.querySelector("#qrInput");
+  const qrResult = modal.querySelector("#qrResult");
+  const submitQR = modal.querySelector("#submitQR");
+  let qrFile = null;
+
+  qrInput.addEventListener("change", (e) => {
+    qrFile = e.target.files[0];
+  });
+
+  submitQR.onclick = async () => {
+    if (!qrFile) {
+      qrResult.textContent = "Please upload an image first.";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const img = new Image();
+      img.onload = async () => {
+        const maxDim = 400;
+        const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, canvas.width, canvas.height);
+
+        if (!code) {
+          qrResult.textContent = "Could not read QR code. Try a clearer image.";
+          return;
+        }
+
+        const token = code.data;
+        qrResult.textContent = `Token: ${token}`;
+        console.log("QR token:", token);
+
+        // 获取 userId
+        const userId = JSON.parse(localStorage.getItem("musAuthUser"))?.id;
+        if (!userId) {
+          alert("User not logged in!");
+          return;
+        }
+
+        // 获取 competitionId
+        const competitionId = item?.id ?? item?.event_id;
+        if (!competitionId) {
+          alert("Competition ID missing!");
+          return;
+        }
+
+        try {
+
+          const response = await fetch(`${API_BASE_URL.replace(/\/api$/, "")}/api/competition/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId,
+              competitionId,
+
+            })
+          });
+
+          const data = await response.json();
+          console.log("Server response:", data);
+
+          if (data.success) {
+            alert("✅ Registration successful!");
+            modal.style.display = "none";
+          } else {
+            alert("❌ Registration failed: " + (data.error || "Unknown error"));
+          }
+        } catch (err) {
+          console.error("Request error:", err);
+          alert("❌ Registration failed due to network error.");
+        }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(qrFile);
+  };
+
+  modal.querySelector("#closeEventModal").onclick = () => {
+    modal.style.display = "none";
+    qrInput.value = "";
+    qrResult.textContent = "";
+    qrFile = null;
+  };
+  modal.onclick = (e) => {
+    if (e.target === modal) modal.style.display = "none";
+  };
 }
+
 
 
 
@@ -190,10 +210,16 @@ function renderCards(container, data, type) {
       _aiViewObserver.observe(card);
       card.addEventListener("click", () => {
         logEventInteraction(evtId, "click");
-        showEventDetailUI(item); // show modal on click
+        if (
+          card.classList.contains("event-card") &&
+          window.location.pathname.endsWith("Frontend/studentdashboard.html")
+        ) {
+          showEventDetailUI(item);
+        }
+          
       });
     }
-    console.log(item.participation);
+    // console.log(item.participation);
     if (type === "news") {
       const publishedLabel = item.publishedAt
         ? new Date(item.publishedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })

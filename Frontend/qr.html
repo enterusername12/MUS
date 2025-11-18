@@ -27,20 +27,45 @@
   </div>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
-  <script>
-    const scanner = new Html5Qrcode("qr-reader");
+<script>
+const scanner = new Html5Qrcode("qr-reader");
 
-    scanner.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 250, height: 250 } },
-      (decodedText) => {
-        document.getElementById('qr-message').textContent = `Scanned: ${decodedText}`;
-        document.getElementById('qr-result').classList.remove('hidden');
-        setTimeout(() => document.getElementById('qr-result').classList.add('hidden'), 3000);
-      },
-      (err) => {}
-    );
-  </script>
+scanner.start(
+  { facingMode: "environment" },
+  { fps: 10, qrbox: { width: 250, height: 250 } },
+  async (decodedText) => {
+    // decodedText 假设是 competitionId
+    const userId = 123; // 这里换成实际登录用户ID
+
+    try {
+      const res = await fetch('/api/competition/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, competitionId: decodedText })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('qr-message').textContent =
+          data.message || `Registration successful! ID: ${data.registration.id}`;
+      } else {
+        document.getElementById('qr-message').textContent =
+          data.error || 'Failed to register';
+      }
+    } catch (err) {
+      console.error(err);
+      document.getElementById('qr-message').textContent = 'Network error';
+    }
+
+    document.getElementById('qr-result').classList.remove('hidden');
+    setTimeout(() => document.getElementById('qr-result').classList.add('hidden'), 3000);
+  },
+  (err) => {
+    // optional: show scanning errors
+  }
+);
+</script>
+
 
 </body>
 </html>

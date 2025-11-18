@@ -36,6 +36,16 @@ async function ensureTables() {
       joined_at TIMESTAMP DEFAULT NOW()
     );
   `);
+    // 4️⃣ Competition Registration table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS competition_registrations (
+      id SERIAL PRIMARY KEY,
+      competition_id INT REFERENCES competition(id) ON DELETE CASCADE,
+      user_id INT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
 
   // 3️⃣ Reward table
   await pool.query(`
@@ -174,4 +184,68 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete competition' });
   }
 });
+
+// ---------- POST /competition/register ----------
+// Body expects: { userId, competitionId }
+// ---------- POST /competition/register ----------
+router.post("/register", async (req, res) => {
+  const pool = getPool();
+  const { userId, competitionId } = req.body;
+
+  if (!userId || !competitionId) {
+    return res.status(400).json({
+      success: false,
+      error: "Missing userId or competitionId"
+    });
+  }
+
+  try {
+    // 0️⃣ Check competition exists
+    const compCheck = await pool.query(
+      `SELECT id FROM competition WHERE id = $1`,
+      [competitionId]
+    );
+    if (compCheck.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: `Competition with id ${competitionId} does not exist`
+      });
+    }
+
+    // 1️⃣ Check if the registration already exists
+    const check = await pool.query(
+      `SELECT id FROM competition_registrations WHERE user_id = $1 AND competition_id = $2`,
+      [userId, competitionId]
+    );
+
+    if (check.rows.length > 0) {
+      // Already exists → return existing id
+      return res.json({
+        success: true,
+        message: "User already registered",
+        registration: check.rows[0]
+      });
+    }
+
+    // 2️⃣ Insert new registration → id auto-increments
+    const result = await pool.query(
+      `INSERT INTO competition_registrations (user_id, competition_id)
+       VALUES ($1, $2)
+       RETURNING *;`,
+      [userId, competitionId]
+    );
+
+    return res.json({
+      success: true,
+      registration: result.rows[0]
+    });
+
+  } catch (err) {
+    console.error("❌ Error in POST /competition/register:", err);
+    return res.status(500).json({ success: false, error: "Failed to register competition" });
+  }
+});
+
+
+
 module.exports = router;
