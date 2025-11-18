@@ -7,6 +7,8 @@ const STAFF_ROLE_SET = new Set([
   'admin (admin only)'
 ]);
 
+const MERCH_CALENDAR_SOURCE = 'merch_order';
+
 class MerchandiseError extends Error {
   constructor(message, status = 400) {
     super(message);
@@ -77,6 +79,125 @@ const mapOrderItemRow = (row) => ({
   created_at: row.created_at,
   updated_at: row.updated_at
 });
+
+const formatCalendarDateParts = (value) => {
+  const date = value instanceof Date ? value : value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.valueOf())) {
+    return null;
+  }
+
+  const iso = date.toISOString();
+  return {
+    date: iso.slice(0, 10),
+    time: iso.slice(11, 19)
+  };
+};
+
+const buildMerchCalendarMetadata = (order) => {
+  if (!order) {
+    return null;
+  }
+
+  const dateParts = formatCalendarDateParts(order.pickup_ready_at);
+  if (!dateParts) {
+    return null;
+  }
+
+  const orderId = Number(order.id);
+  const title = Number.isInteger(orderId) ? `Merch order #${orderId} pickup` : 'Merch order pickup';
+
+  const details = [];
+  if (order.pickup_option) {
+    details.push(`Pickup: ${order.pickup_option}`);
+  }
+  if (order.status) {
+    details.push(`Status: ${order.status}`);
+  }
+
+  return {
+    ...dateParts,
+    title,
+    description:
+      details.length > 0 ? details.join(' • ') : 'Reminder to collect your merch order.',
+    category: MERCH_CALENDAR_SOURCE
+  };
+};
+
+async function syncMerchCalendarItem(client, order) {
+  if (!order) {
+    return;
+  }
+
+  const executor = client ?? getPool();
+  const userId = Number(order.purchaser_user_id);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return;
+  }
+
+  const sourceId = Number(order.id);
+  if (!Number.isInteger(sourceId) || sourceId <= 0) {
+    return;
+  }
+
+  const normalizedStatus = typeof order.status === 'string' ? order.status.trim().toLowerCase() : '';
+  const isCancelled =
+    Boolean(order.is_cancelled) || normalizedStatus === 'cancelled' || normalizedStatus === 'canceled';
+  const isFulfilled =
+    Boolean(order.is_fulfilled) || normalizedStatus === 'fulfilled' || normalizedStatus === 'complete' || normalizedStatus === 'completed';
+
+  const deleteArgs = [userId, MERCH_CALENDAR_SOURCE, sourceId];
+  if (isCancelled || isFulfilled) {
+    await executor.query(
+      `DELETE FROM user_calendar_items
+         WHERE user_id = $1 AND source_type = $2 AND source_id = $3`,
+      deleteArgs
+    );
+    return;
+  }
+
+  const metadata = buildMerchCalendarMetadata(order);
+  if (!metadata) {
+    await executor.query(
+      `DELETE FROM user_calendar_items
+         WHERE user_id = $1 AND source_type = $2 AND source_id = $3`,
+      deleteArgs
+    );
+    return;
+  }
+
+  await executor.query(
+    `INSERT INTO user_calendar_items (
+       user_id,
+       source_type,
+       source_id,
+       title,
+       description,
+       date,
+       time,
+       category,
+       updated_at
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+     ON CONFLICT (user_id, source_type, source_id)
+     DO UPDATE SET
+       title = EXCLUDED.title,
+       description = EXCLUDED.description,
+       date = EXCLUDED.date,
+       time = EXCLUDED.time,
+       category = EXCLUDED.category,
+       updated_at = NOW()`,
+    [
+      userId,
+      MERCH_CALENDAR_SOURCE,
+      sourceId,
+      metadata.title,
+      metadata.description,
+      metadata.date,
+      metadata.time,
+      metadata.category
+    ]
+  );
+}
 
 const computePickupReadyAt = () => {
   const now = new Date();
@@ -313,6 +434,7 @@ async function createOrder({
       );
     }
 
+    await syncMerchCalendarItem(client, order);
     await client.query('COMMIT');
 
     const itemsResult = await client.query(
@@ -627,6 +749,7 @@ async function updateOrder(orderId, fields) {
   }
 
   const order = mapOrderRow(result.rows[0]);
+  await syncMerchCalendarItem(getPool(), order);
 
   const itemsResult = await getPool().query(
     `SELECT id, order_id, product_id, quantity, unit_price, line_total, created_at, updated_at
