@@ -73,30 +73,20 @@ function showEventDetailUI() {
       zIndex: 9999
     });
 
-    modal.innerHTML = `
-      <div id="modalContent" style="
-          background: #fff;
-          padding: 20px;
-          border-radius: 8px;
-          max-width: 500px;
-          width: 90%;
-          position: relative;
-      ">
-        <span id="closeEventModal" style="
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            cursor: pointer;
-            font-size: 24px;
-            font-weight: bold;
-        ">&times;</span>
+modal.innerHTML = `
+  <div id="modalContent">
+    <span id="closeEventModal">&times;</span>
 
-        <h2>Paste QR Code</h2>
-        <p>Upload/paste the QR image to get your token:</p>
-        <input type="file" id="qrInput" accept="image/*" />
-        <p id="qrResult" style="margin-top:10px;color:green;"></p>
-      </div>
-    `;
+    <h2>Participate</h2>
+    <p>Upload/paste the QR image to Participate:</p>
+
+    <input type="file" id="qrInput" accept="image/*" />
+    <button id="submitQR">Submit QR Code</button>
+
+    <p id="qrResult"></p>
+  </div>
+`;
+
 
     document.body.appendChild(modal);
 

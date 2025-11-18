@@ -756,7 +756,7 @@ main {
 }
 
 #sharePostBtn {
-  background-color: #a83279;
+  background-color: #E12744;
   color: white;
 }
 
@@ -880,6 +880,78 @@ textarea {
   background: #ddd;
 }
 
+#modalContent {
+  background: #fff;
+  padding: 20px 25px;
+  border-radius: 12px;
+  max-width: 450px;
+  width: 90%;
+  position: relative;
+  text-align: center;
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* Close button */
+#closeEventModal {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  cursor: pointer;
+  font-size: 24px;
+  font-weight: bold;
+  color: #666;
+  transition: 0.2s;
+}
+#closeEventModal:hover {
+  color: #000;
+}
+
+#qrInput {
+  width: 100%;
+  border: 2px dashed #aaa;
+  border-radius: 8px;
+  padding: 18px;
+  margin: 15px 0;
+  cursor: pointer;
+  background: #fafafa;
+  transition: border-color 0.2s;
+  box-sizing: border-box; /* <-- Important fix */
+}
+
+#qrInput:hover {
+  border-color: #444;
+}
+
+/* Button style */
+#submitQR {
+  width: 100%;
+  padding: 12px;
+  margin-top: 5px;
+  background: #E12744;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+#submitQR:hover {
+  background: #a91d32;
+  transform: translateY(-2px);
+}
+
+/* Result text */
+#qrResult {
+  margin-top: 10px;
+  color: green;
+  font-weight: 600;
+}
+
+/* Anim */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* ================================
    RESPONSIVE DESIGN
