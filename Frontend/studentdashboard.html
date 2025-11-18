@@ -137,6 +137,7 @@
   <section class="dashboard-section" id="calendarSection">
     <div class="header-flex">
       <h2>My Calendar</h2>
+      <button class="calendar-manage-btn" id="openCalendarModal">Manage My Events</button>
     </div>
 
     <div class="calendar-wrapper">
@@ -144,6 +145,16 @@
         <button id="prevMonth">&#10094;</button>
         <h3 id="monthYear"></h3>
         <button id="nextMonth">&#10095;</button>
+      </div>
+
+      <div class="calendar-weekdays" aria-hidden="true">
+        <span>Sun</span>
+        <span>Mon</span>
+        <span>Tue</span>
+        <span>Wed</span>
+        <span>Thu</span>
+        <span>Fri</span>
+        <span>Sat</span>
       </div>
 
       <div class="calendar-grid" id="calendarGrid">
@@ -158,6 +169,42 @@
     </div>
   </section>
 
+   <div id="calendarModal" class="modal hidden">
+    <div class="modal-content calendar-modal">
+      <button class="modal-close" id="closeCalendarModal" aria-label="Close calendar form">&times;</button>
+      <h3 id="calendarModalTitle">Add Custom Event</h3>
+      <p class="modal-subtitle">Create personal study sessions, club meetings, or reminders. These items only appear in your calendar.</p>
+      <form id="calendarForm">
+        <input type="hidden" id="calendarItemId">
+        <div class="form-grid">
+          <label>
+            Title<span class="required">*</span>
+            <input type="text" id="calendarTitle" maxlength="120" required>
+          </label>
+          <label>
+            Date<span class="required">*</span>
+            <input type="date" id="calendarDate" required>
+          </label>
+          <label>
+            Time
+            <input type="time" id="calendarTime">
+          </label>
+          <label>
+            Category
+            <input type="text" id="calendarCategory" placeholder="e.g. Study, Club, Reminder">
+          </label>
+        </div>
+        <div class="modal-buttons">
+          <button type="button" id="calendarCancelBtn">Cancel</button>
+          <button type="submit" class="primary" id="calendarSaveBtn">Save Event</button>
+        </div>
+      </form>
+      <div class="calendar-modal-divider"></div>
+      <div class="calendar-items-list" id="calendarItemsList">
+        <p class="empty-state">Loading your events...</p>
+      </div>
+    </div>
+  </div>
   
 <hr class="line">
 
