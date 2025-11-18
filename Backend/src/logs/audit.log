@@ -211,3 +211,5 @@
 2025-11-18T12:52:49.155Z [POST] /api/competition/register from ::1 Status: 500, Duration: 636ms
 2025-11-18T12:58:35.705Z [POST] /api/competition/register from ::1 Status: 500, Duration: 478ms
 2025-11-18T12:59:35.047Z [POST] /api/competition from ::1 Status: 200, Duration: 3141ms
+2025-11-18T13:12:52.289Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1660ms
+2025-11-18T13:25:39.410Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1569ms
