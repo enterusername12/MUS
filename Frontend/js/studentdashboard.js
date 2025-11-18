@@ -54,64 +54,156 @@ function sanitizeText(value, fallback = "") {
   return trimmed || fallback;
 }
 
+function showEventDetailUI() {
+  // Create modal if it doesn't exist
+  let modal = document.getElementById("eventDetailModal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "eventDetailModal";
+    Object.assign(modal.style, {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      background: "rgba(0,0,0,0.5)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 9999
+    });
+
+    modal.innerHTML = `
+      <div id="modalContent" style="
+          background: #fff;
+          padding: 20px;
+          border-radius: 8px;
+          max-width: 500px;
+          width: 90%;
+          position: relative;
+      ">
+        <span id="closeEventModal" style="
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            cursor: pointer;
+            font-size: 24px;
+            font-weight: bold;
+        ">&times;</span>
+
+        <h2>Paste QR Code</h2>
+        <p>Upload/paste the QR image to get your token:</p>
+        <input type="file" id="qrInput" accept="image/*" />
+        <p id="qrResult" style="margin-top:10px;color:green;"></p>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close modal
+    modal.querySelector("#closeEventModal").onclick = () => modal.style.display = "none";
+    modal.onclick = (e) => { if (e.target === modal) modal.style.display = "none"; };
+
+    // QR input change
+    const qrInput = modal.querySelector("#qrInput");
+    const qrResult = modal.querySelector("#qrResult");
+
+    qrInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function() {
+        const img = new Image();
+        img.onload = function() {
+          // Scale large images to max 400px to improve QR detection
+          const maxDim = 400;
+          let scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, canvas.width, canvas.height);
+
+          if (code) {
+            qrResult.textContent = `Token: ${code.data}`;
+            console.log("QR token:", code.data);
+          } else {
+            qrResult.textContent = "Could not read QR code. Try a clearer image.";
+          }
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  modal.style.display = "flex";
+}
+
+
+
+
 function renderCards(container, data, type) {
   container.innerHTML = "";
   data.forEach(item => {
     const card = document.createElement("div");
     card.classList.add(type === "news" ? "event-card" : "post-card");
+    card.style.cursor = "pointer"; // make card visually clickable
+    card.style.border = "1px solid #ccc";
+    card.style.padding = "10px";
+    card.style.marginBottom = "10px";
+    card.style.borderRadius = "5px";
+    card.style.background = "#fff";
 
+    const evtId = String(item.id ?? item.event_id ?? item.post_id ?? "");
 
-    // ✅ Attach the event/post id when present so we can log interactions
-    // backend returns `id` for events/community posts. If it's a different key, map it here.
-    if (item && (item.id || item.event_id || item.post_id)) {
-      const evtId = String(item.id ?? item.event_id ?? item.post_id);
+    if (evtId) {
       card.setAttribute("data-event-id", evtId);
-      // log 'view' when the card is visible
       _aiViewObserver.observe(card);
-      // log 'click' if the card is clicked (can refine to specific buttons if add them)
-      card.addEventListener("click", (ev) => {
-        // Avoid double-firing if user clicks on a link; still harmless if it does
+      card.addEventListener("click", () => {
         logEventInteraction(evtId, "click");
+        showEventDetailUI(item); // show modal on click
       });
     }
-    
+    console.log(item.participation);
     if (type === "news") {
       const publishedLabel = item.publishedAt
         ? new Date(item.publishedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })
         : "";
-      const authorLabel = item.author ? `<span class="news-author">${item.author}</span>` : "";
+      const authorLabel = item.author ? item.author : "";
       const meta = [authorLabel, publishedLabel].filter(Boolean).join(" • ");
-      const description = sanitizeText(
-        item.desc ?? item.description ?? item.summary ?? item.body,
-        "Details coming soon."
-      );
+      const description = item.desc ?? item.description ?? item.summary ?? item.body ?? "Details coming soon.";
+
       card.innerHTML = `
-        ${item.bannerBase64 ? `<img src="${item.bannerBase64}" class="banner-img"/>` : ""}
+        ${item.bannerBase64 ? `<img src="${item.bannerBase64}" style="width:100%; border-radius:5px; margin-bottom:10px;">` : ""}
         <h3>${item.title}</h3>
-        ${meta ? `<div class="news-meta">${meta}</div>` : ""}
+        ${meta ? `<div style="color:#666; margin-bottom:5px;">${meta}</div>` : ""}
         <p>${description}</p>
-        <p><p>
       `;
     } else {
       const author = item.author || "Community";
       const category = item.category || "General";
-      const title = sanitizeText(item.title ?? item.heading ?? "");
-      const content = sanitizeText(
-        item.content ?? item.description ?? item.summary ?? item.body,
-        "Stay tuned for more details."
-      );
+      const title = item.title ?? item.heading ?? "";
+      const content = item.content ?? item.description ?? item.summary ?? item.body ?? "Stay tuned for more details.";
+
       card.innerHTML = `
-        <div class="post-header">
-          <div class="post-author">${author}</div>
-          <div class="category-badge">${category}</div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+          <div>${author}</div>
+          <div style="background:#eee; padding:2px 6px; border-radius:3px;">${category}</div>
         </div>
-        ${title ? `<h3 class="post-title">${title}</h3>` : ""}
-        <p class="post-content">${content}</p>
+        ${title ? `<h3>${title}</h3>` : ""}
+        <p>${content}</p>
       `;
     }
+
     container.appendChild(card);
   });
 }
+
 
 // --- Helper to render dots ---
 function renderDots(dotContainer, count) {

@@ -161,4 +161,17 @@ router.post("/", upload.single("banner"), async (req, res) => {
   }
 });
 
+router.delete('/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ error: 'Invalid ID' });
+
+  try {
+    const pool = getPool();
+    await pool.query('DELETE FROM competition WHERE id = $1', [id]);
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete competition' });
+  }
+});
 module.exports = router;

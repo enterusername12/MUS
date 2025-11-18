@@ -186,3 +186,14 @@
 2025-11-17T16:40:11.272Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1551ms
 2025-11-17T16:40:50.886Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1525ms
 2025-11-17T17:09:42.140Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1451ms
+2025-11-17T17:51:05.453Z [POST] /api/competition from ::1 Status: 200, Duration: 4776ms
+2025-11-18T01:40:31.354Z [POST] /api/auth/login from ::1 Status: 500, Duration: 33442ms
+2025-11-18T01:41:08.500Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1833ms
+2025-11-18T02:19:28.846Z [POST] /api/competition from ::1 Status: 200, Duration: 5319ms
+2025-11-18T02:24:41.260Z [POST] /api/competition from ::1 Status: 200, Duration: 3187ms
+2025-11-18T02:31:45.168Z [POST] /api/polls from ::1 Status: 201, Duration: 4064ms
+2025-11-18T02:33:08.408Z [POST] /api/competition from ::1 Status: 200, Duration: 5551ms
+2025-11-18T02:38:52.730Z [POST] /api/competition from ::1 Status: 200, Duration: 4506ms
+2025-11-18T02:39:54.605Z [POST] /api/competition from ::1 Status: 200, Duration: 4313ms
+2025-11-18T02:42:44.887Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1787ms
+2025-11-18T02:44:55.374Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1813ms

@@ -1,5 +1,6 @@
 const API_BASE_URL = 'http://localhost:3000/api';
 let cardId;
+let cardcompetition;
 async function fetchPolls() {
   try {
     const response = await fetch(`${API_BASE_URL}/dashboard`, { credentials: "include" });
@@ -294,6 +295,7 @@ document.getElementById('addPollOption').addEventListener('click', () => {
   // ==========================
   addBtns.forEach(btn => btn.addEventListener('click', () => modal.classList.remove('hidden')));
   cardId = null;
+  cardcompetition = null;
   closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
   modal.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden'); });
 
@@ -337,7 +339,7 @@ document.getElementById('addPollOption').addEventListener('click', () => {
 
       // 重新刷新列表
       if (endpoint.includes("polls")) renderPolls(await fetchData("/api/polls"));
-      else if (endpoint.includes("competitions")) renderCompetitions(await fetchData("http://localhost:3000/api/competitio"));
+      else if (endpoint.includes("competitions")) renderCompetitions(await fetchData("http://localhost:3000/api/competition"));
       else if (endpoint.includes("events")) renderEvents(await fetchData("/api/events"));
     } catch (err) {
       console.error(err);
@@ -413,7 +415,7 @@ competitionForm.addEventListener("submit", async (e) => {
     maxParticipants: parseInt(formData.get("maxParticipants")) || 0,
     due: formData.get("expiry"),
     description: formData.get("description"),
-    id: cardId ?? null // 如果有卡片 ID 就帶上
+    id: cardcompetition ?? null // 如果有卡片 ID 就帶上
   };
 
   // 建立新的 FormData 用於傳送 JSON + banner
@@ -467,134 +469,143 @@ competitionForm.addEventListener("submit", async (e) => {
   // ==========================
   // 🔹 Card Actions (Edit / Delete / QR)
   // ==========================
-  function attachCardActions(container, type) {
-    container.addEventListener("click", async (e) => {
-      const card = e.target.closest(".card");
-      if (!card) return;
+function attachCardActions(container, type) {
+  container.addEventListener("click", async (e) => {
+    const card = e.target.closest(".card");
+    if (!card) return;
 
-      // Remove old menu
-      const existingMenu = card.querySelector(".card-action-menu");
-      if (existingMenu) { existingMenu.remove(); return; }
-
-      const menu = document.createElement("div");
-      menu.classList.add("card-action-menu");
-
-      if (type === "competition") {
-        menu.innerHTML = `
-          <button class="qr-participate">Participation QR</button>
-          <button class="qr-reward">Reward QR</button>
-          <button class="edit-btn">Edit</button>
-          <button class="delete-btn">Delete</button>
-        `;
-      } else {
-        menu.innerHTML = `
-          <button class="edit-btn">Edit</button>
-          <button class="delete-btn">Delete</button>
-        `;
-      }
-
-      card.appendChild(menu);
-
-      // Edit
-  menu.querySelector(".edit-btn")?.addEventListener("click", async () => {
-    modal.classList.remove("hidden");
-
-    // Toggle active tab buttons
-    tabBtns.forEach(btn => btn.classList.toggle("active", btn.dataset.tab === type));
-
-    // Hide all forms first
-    [pollForm, competitionForm, eventForm].forEach(f => f.classList.remove("active"));
-
-    // Activate the correct form
-    if (type === "poll") pollForm.classList.add("active");
-    else if (type === "competition") competitionForm.classList.add("active");
-    else if (type === "event") eventForm.classList.add("active");
-
-    // Pick the correct form
-    const form = type === "poll" ? pollForm : type === "competition" ? competitionForm : eventForm;
-
-    // Fill the text input with the card title
-    form.querySelector("input[type='text']").value = card.querySelector("h3").textContent;
-
-    // Save the card ID for later use
-    cardId = card.dataset.id ?? null;
-    // console.log("Editing card ID:", cardId);
-
-    menu.remove();
-
-    // Later, when submitting, you can check:
-    // if(cardId) { update existing in DB } else { create new in DB }
-});
-
-
- card.querySelector(".delete-btn")?.addEventListener("click", async () => {
-  if (!confirm("Are you sure you want to delete this item?")) return;
-
-  const cards = document.querySelectorAll(".poll-card");
-cards.forEach(card => {
-  console.log("Card ID:", card.dataset.id, "Title:", card.querySelector("h3")?.textContent);
-});
-  // Get the poll ID from the card itself
-  const id = card.dataset.id; 
-  if (!id) {
-    alert("Poll ID not found.");
-    return;
-  }
-
-  try {
-    const res = await fetch(`http://localhost:3000/api/polls/${id}`, { method: "DELETE" });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.message || "Delete failed");
+    // 移除旧菜单
+    const existingMenu = card.querySelector(".card-action-menu");
+    if (existingMenu) {
+      existingMenu.remove();
+      return;
     }
 
-    // Remove the clicked card from UI
-    card.remove();
-    console.log(`Deleted poll with ID ${id}`);
-  } catch (err) {
-    console.error("Delete error:", err);
-    alert(`Failed to delete: ${err.message}`);
-  }
-});
+    // 创建菜单
+    const menu = document.createElement("div");
+    menu.classList.add("card-action-menu");
 
+    if (type === "competition") {
+      menu.innerHTML = `
+        <button class="qr-participate">Participation QR</button>
+        <button class="qr-reward">Reward QR</button>
+        <button class="edit-btn">Edit</button>
+        <button class="delete-btn-competition">Delete</button>
+      `;
+    } else if (type === "poll") {
+      menu.innerHTML = `
+        <button class="edit-btn">Edit</button>
+        <button class="delete-btn">Delete</button>
+      `;
+    } else if (type === "event") {
+      menu.innerHTML = `
+        <button class="edit-btn">Edit</button>
+        <button class="delete-btn-event">Delete</button>
+      `;
+    }
 
+    card.appendChild(menu);
 
-      // QR Codes for competitions
-      if (type === "competition") {
-        const compName = card.querySelector("h3").textContent;
-        const comptoken = card.dataset.participationToken;
-        
-        const reward = card.dataset.reward || "-500 point";
-        const rewardToken = card.dataset.rewardToken;
-        menu.querySelector(".qr-participate").addEventListener("click", () => {
-          qrModal.classList.remove("hidden");
-          qrContainer.innerHTML = "";
-          qrTitle.textContent = "Participation QR";
-          qrTypeDesc.textContent = `Scan to join "${compName}".`;
-          rewardText.textContent = "";
-          new QRCode(qrContainer, { text: `/competition/${encodeURIComponent(comptoken)}/join`, width: 250, height: 250 });
-        });
-        console.log(comptoken, rewardToken);
-        menu.querySelector(".qr-reward").addEventListener("click", () => {
-          qrModal.classList.remove("hidden");
-          qrContainer.innerHTML = "";
-          qrTitle.textContent = "Reward QR";
-          qrTypeDesc.textContent = `Scan to claim reward for "${compName}".`;
-          rewardText.textContent = `Reward: ${reward}`;
-          new QRCode(qrContainer, { text: `/competition/${encodeURIComponent(rewardToken)}/reward`, width: 250, height: 250 });
-        });
-      }
+    // ==========================
+    // Edit 按钮
+    // ==========================
+    menu.querySelector(".edit-btn")?.addEventListener("click", () => {
+      modal.classList.remove("hidden");
 
-      // Close menu on outside click
-      document.addEventListener("click", function handleOutside(e2) {
-        if (!menu.contains(e2.target) && !card.contains(e2.target)) {
-          menu.remove();
-          document.removeEventListener("click", handleOutside);
-        }
-      });
+      // 切换 tab
+      tabBtns.forEach(btn => btn.classList.toggle("active", btn.dataset.tab === type));
+
+      // 隐藏所有 form
+      [pollForm, competitionForm, eventForm].forEach(f => f.classList.remove("active"));
+
+      // 显示对应 form
+      const form = type === "poll" ? pollForm : type === "competition" ? competitionForm : eventForm;
+      form.classList.add("active");
+
+      // 填入标题
+      const titleInput = form.querySelector("input[type='text']");
+      if (titleInput) titleInput.value = card.querySelector("h3")?.textContent ?? "";
+
+      // 保存 cardId
+      cardId = card.dataset.id ?? null;
+      cardcompetition = card.dataset.compId ?? null;
+      menu.remove();
     });
-  }
+
+    // ==========================
+    // Delete 按钮
+    // ==========================
+    const deleteBtnClass = type === "poll" ? ".delete-btn"
+                         : type === "competition" ? ".delete-btn-competition"
+                         : ".delete-btn-event";
+
+    menu.querySelector(deleteBtnClass)?.addEventListener("click", async () => {
+      if (!confirm(`Are you sure you want to delete this ${type}?`)) return;
+
+      // ✅ Get the correct ID
+      let id = type === "competition" ? card.dataset.compId : card.dataset.id;
+      if (!id) return alert(`${type} ID not found`);
+
+      // ✅ Map to the correct endpoint
+      const endpointMap = {
+        poll: `${API_BASE_URL}/polls/${id}`,
+        competition: `${API_BASE_URL}/competition/${id}`,
+        event: `${API_BASE_URL}/events/${id}`
+      };
+
+      try {
+        const res = await fetch(endpointMap[type], { method: "DELETE" });
+        if (!res.ok) throw new Error(await res.text());
+        
+        card.remove();  // remove card from DOM
+        console.log(`Deleted ${type} with ID ${id}`);
+      } catch (err) {
+        console.error(err);
+        alert(`Failed to delete ${type}: ${err.message}`);
+      }
+    });
+
+
+    // ==========================
+    // QR 按钮 (只针对 competition)
+    // ==========================
+    if (type === "competition") {
+      const compName = card.querySelector("h3")?.textContent ?? "";
+      const participationToken = card.dataset.participationToken;
+      const rewardToken = card.dataset.rewardToken;
+      const reward = card.dataset.reward || "-";
+
+      menu.querySelector(".qr-participate")?.addEventListener("click", () => {
+        qrModal.classList.remove("hidden");
+        qrContainer.innerHTML = "";
+        qrTitle.textContent = "Participation QR";
+        qrTypeDesc.textContent = `Scan to join "${compName}".`;
+        rewardText.textContent = "";
+        new QRCode(qrContainer, { text: `/competition/${encodeURIComponent(participationToken)}/join`, width: 250, height: 250 });
+      });
+
+      menu.querySelector(".qr-reward")?.addEventListener("click", () => {
+        qrModal.classList.remove("hidden");
+        qrContainer.innerHTML = "";
+        qrTitle.textContent = "Reward QR";
+        qrTypeDesc.textContent = `Scan to claim reward for "${compName}".`;
+        rewardText.textContent = `Reward: ${reward}`;
+        new QRCode(qrContainer, { text: `/competition/${encodeURIComponent(rewardToken)}/reward`, width: 250, height: 250 });
+      });
+    }
+
+    // ==========================
+    // 点击外部关闭菜单
+    // ==========================
+    document.addEventListener("click", function handleOutside(e2) {
+      if (!menu.contains(e2.target) && !card.contains(e2.target)) {
+        menu.remove();
+        document.removeEventListener("click", handleOutside);
+      }
+    });
+  });
+}
+
 
   attachCardActions(pollContainer, "poll");
   attachCardActions(competitionContainer, "competition");
