@@ -55,8 +55,9 @@ function sanitizeText(value, fallback = "") {
 }
 
 function showEventDetailUI() {
-  // Create modal if it doesn't exist
   let modal = document.getElementById("eventDetailModal");
+
+  // Create modal if it doesn't exist
   if (!modal) {
     modal = document.createElement("div");
     modal.id = "eventDetailModal";
@@ -73,45 +74,52 @@ function showEventDetailUI() {
       zIndex: 9999
     });
 
-modal.innerHTML = `
-  <div id="modalContent">
-    <span id="closeEventModal">&times;</span>
+    modal.innerHTML = `
+      <div id="modalContent" style="background:white;padding:20px;border-radius:10px;position:relative;">
+        <span id="closeEventModal" style="cursor:pointer;position:absolute;top:10px;right:10px;font-size:24px;">&times;</span>
 
-    <h2>Participate</h2>
-    <p>Upload/paste the QR image to Participate:</p>
+        <h2>Participate</h2>
+        <p>Upload/paste the QR image to Participate:</p>
 
-    <input type="file" id="qrInput" accept="image/*" />
-    <button id="submitQR">Submit QR Code</button>
+        <input type="file" id="qrInput" accept="image/*" />
+        <button id="submitQR">Submit QR Code</button>
 
-    <p id="qrResult"></p>
-  </div>
-`;
-
+        <p id="qrResult"></p>
+      </div>
+    `;
 
     document.body.appendChild(modal);
 
-    // Close modal
-    modal.querySelector("#closeEventModal").onclick = () => modal.style.display = "none";
-    modal.onclick = (e) => { if (e.target === modal) modal.style.display = "none"; };
+    let qrFile = null;
 
-    // QR input change
     const qrInput = modal.querySelector("#qrInput");
     const qrResult = modal.querySelector("#qrResult");
+    const submitQR = modal.querySelector("#submitQR");
 
+    // 收文件
     qrInput.addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+      qrFile = e.target.files[0];
+    });
+
+    // 按钮 → 执行解析
+    submitQR.addEventListener("click", () => {
+      if (!qrFile) {
+        qrResult.textContent = "Please upload an image first.";
+        return;
+      }
 
       const reader = new FileReader();
-      reader.onload = function() {
+      reader.onload = function () {
         const img = new Image();
-        img.onload = function() {
-          // Scale large images to max 400px to improve QR detection
+
+        img.onload = function () {
           const maxDim = 400;
           let scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+
           const canvas = document.createElement("canvas");
           canvas.width = img.width * scale;
           canvas.height = img.height * scale;
+
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
@@ -125,14 +133,40 @@ modal.innerHTML = `
             qrResult.textContent = "Could not read QR code. Try a clearer image.";
           }
         };
+
         img.src = reader.result;
       };
-      reader.readAsDataURL(file);
+
+      reader.readAsDataURL(qrFile);
+    });
+
+    modal.querySelector("#closeEventModal").onclick = () => {
+      modal.style.display = "none";
+    };
+
+    modal.onclick = (e) => {
+      if (e.target === modal) modal.style.display = "none";
+    };
+
+    const observer = new MutationObserver(() => {
+      if (modal.style.display === "none") {
+        qrInput.value = "";
+        qrResult.textContent = "";
+        qrFile = null;
+        // console.log("Modal hidden → QR data cleared.");
+      }
+    });
+
+    observer.observe(modal, {
+      attributes: true,
+      attributeFilter: ["style"]
     });
   }
 
+  // show modal
   modal.style.display = "flex";
 }
+
 
 
 
