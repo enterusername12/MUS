@@ -293,12 +293,34 @@ document.getElementById('addPollOption').addEventListener('click', () => {
   // ==========================
   // 🔹 Modal & Tabs
   // ==========================
-  addBtns.forEach(btn => btn.addEventListener('click', () => modal.classList.remove('hidden')));
-  cardId = null;
+  addBtns.forEach(btn =>
+  btn.addEventListener('click', () => {
+    modal.classList.remove('hidden');
+
+    // Reset cardId and cardCompetition when opening modal
+    cardId = null;
+    cardCompetition = null;
+
+    // Clear modal inputs
+    modal.querySelectorAll('input, textarea').forEach(field => {
+      field.value = "";
+    });
+  })
+);
+
+closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
+
+modal.addEventListener('click', e => {
+  if (e.target === modal) modal.classList.add('hidden');
+});
+
   cardcompetition = null;
   closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
+  
   modal.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden'); });
-
+  modal.querySelectorAll('input, textarea').forEach(field => {
+      field.value = "";
+    });
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       const tab = btn.dataset.tab;
