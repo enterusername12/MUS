@@ -238,3 +238,10 @@
 2025-11-19T03:00:44.060Z [POST] /api/auth/login from ::1 Status: 401, Duration: 1416ms
 2025-11-19T03:01:15.344Z [POST] /api/auth/register from ::1 Status: 202, Duration: 4197ms
 2025-11-19T03:01:34.376Z [POST] /api/auth/verify-otp from ::1 Status: 200, Duration: 1867ms
+2025-11-19T04:14:59.225Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1815ms
+2025-11-19T04:29:34.265Z [POST] /api/competition/register from ::1 Status: 200, Duration: 424ms
+2025-11-19T04:49:06.913Z [POST] /api/reward/claim from ::1 Status: 400, Duration: 1ms
+2025-11-19T04:51:53.948Z [POST] /api/reward/claim from ::1 Status: 400, Duration: 0ms
+2025-11-19T04:57:22.263Z [POST] /api/reward/claim from ::1 Status: 500, Duration: 456ms
+2025-11-19T04:59:42.454Z [POST] /api/reward/claim from ::1 Status: 500, Duration: 409ms
+2025-11-19T05:04:37.457Z [POST] /api/reward/claim from ::1 Status: 200, Duration: 241ms
