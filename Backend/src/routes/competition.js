@@ -218,6 +218,7 @@ router.post("/register", async (req, res) => {
       [userId, competitionId]
     );
 
+
     if (check.rows.length > 0) {
       // Already exists → return existing id
       return res.json({
@@ -234,6 +235,23 @@ router.post("/register", async (req, res) => {
        RETURNING *;`,
       [userId, competitionId]
     );
+
+
+// 2️⃣ Insert new registration
+const registration = await pool.query(
+  `INSERT INTO competition_registrations (user_id, competition_id)
+   VALUES ($1, $2)
+   RETURNING *;`,
+  [userId, competitionId]
+);
+
+// 3️⃣ Update participants count (+1)
+await pool.query(
+  `UPDATE participation
+   SET participants = participants + 1
+   WHERE competition_id = $1`,
+  [competitionId]
+);
 
     return res.json({
       success: true,
