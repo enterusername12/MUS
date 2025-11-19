@@ -15,6 +15,18 @@ function getUserId() {
   return null; // guests or unknown
 }
 
+
+document.addEventListener("DOMContentLoaded", () => {
+  const authUser = JSON.parse(localStorage.getItem("musAuthUser"));
+
+  if (authUser) {
+    const fullName = `${authUser.firstName} ${authUser.lastName}`;
+    document.getElementById("studentName").textContent = fullName;
+  }
+});
+
+
+
 async function initializeRewardPoints() {
   try {
     const response = await fetch(`${API_BASE_URL}/dashboard`);
