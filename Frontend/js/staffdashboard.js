@@ -14,6 +14,18 @@ async function fetchPolls() {
   }
 }
 
+document.addEventListener("DOMContentLoaded", () => {
+  const authUser = JSON.parse(localStorage.getItem("musAuthUser"));
+
+  if (authUser) {
+    const fullName = `${authUser.firstName} ${authUser.lastName}`;
+    document.getElementById("staffName").textContent = fullName;
+  }
+});
+
+
+
+
 async function renderPolls() {
   const pollContainer = document.getElementById("pollContainer");
   pollContainer.innerHTML = ""; // 清空 container
@@ -217,6 +229,8 @@ document.getElementById('addPollOption').addEventListener('click', () => {
     }
   });
 
+
+  
   function renderPolls(polls) {
     pollContainer.innerHTML = "";
     polls.forEach(poll => {
