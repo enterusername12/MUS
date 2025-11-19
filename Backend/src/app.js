@@ -16,7 +16,7 @@ const auditMiddleware = require('./middleware/auditMiddleware'); // adjust the p
 const competitionRoutes = require('./routes/Competition');
 
 
-
+const rewardRoute = require("./routes/rewardRoute");
 
 const app = express();
 
@@ -45,6 +45,7 @@ app.use('/api/merch', merchRoutes);
 app.use('/api/auth', limiter, authRoutes);
 app.use('/logs', auditRoutes);
 app.use('/api/competition', competitionRoutes);
+app.use("/api/reward", rewardRoute);
 
 module.exports = app;
 

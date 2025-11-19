@@ -24,7 +24,7 @@ async function initializeRewardPoints() {
 
     // Pass rewardPoints array to your function
     loadRewardPoints(data.rewardPoints);
-    console.log("Reward points from API:", data.rewardPoints);
+    //console.log("Reward points from API:", data.rewardPoints);
 
   } catch (err) {
     console.error("Error loading reward points:", err);

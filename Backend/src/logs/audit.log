@@ -235,3 +235,6 @@
 2025-11-18T17:02:37.739Z [POST] /api/auth/verify-otp from ::1 Status: 500, Duration: 1644ms
 2025-11-18T17:03:53.820Z [POST] /api/auth/register from ::1 Status: 202, Duration: 3309ms
 2025-11-18T17:04:05.114Z [POST] /api/auth/verify-otp from ::1 Status: 200, Duration: 1889ms
+2025-11-19T03:00:44.060Z [POST] /api/auth/login from ::1 Status: 401, Duration: 1416ms
+2025-11-19T03:01:15.344Z [POST] /api/auth/register from ::1 Status: 202, Duration: 4197ms
+2025-11-19T03:01:34.376Z [POST] /api/auth/verify-otp from ::1 Status: 200, Duration: 1867ms

@@ -116,13 +116,18 @@ async function loadCompetitions() {
     console.log("Dashboard data:", data);
 
     // Return competitions array
-    return data.competitions || [];
-  } catch (err) {
-    console.error(err);
-    alert("❌ Could not load competitions");
-    return [];
-  }
-}
+    // Return competitions and rewards arrays
+    return {
+      competitions: Array.isArray(data.competitions) ? data.competitions : [],
+      rewards: Array.isArray(data.rewards) ? data.rewards : 
+      [] };
+      } catch (err) {
+        console.error(err);
+        alert("❌ Could not load dashboard");
+        return { competitions: [], rewards: [] };
+      }
+    }
+
 
 // Find competition ID by token, with detailed logging
 function getCompetitionIdByToken(competitions, token) {
@@ -145,6 +150,20 @@ function extractTokenFromQRCode(qrText) {
   // Assumes the token is the part between /competition/ and /join
   const match = qrText.match(/\/competition\/(.+?)\/join/);
   return match ? match[1] : qrText; // fallback to full string
+}
+
+
+// Find reward by token
+function getRewardByToken(rewards, token) {
+  console.log("Scanning for reward token:", token);
+  const extractedToken = extractTokenFromQRCode(token);
+  for (const reward of rewards) {
+    if (reward.token === extractedToken) {
+      console.log("✅ Reward matched:", token, "Points:", reward.points);
+      return reward;
+    }
+  }
+  return null;
 }
 
 
@@ -171,6 +190,30 @@ async function registerParticipant(userId, competitionId, scannedCode) {
     alert("❌ Registration failed due to network error.");
   }
 }
+
+// Register reward
+async function registerReward(userId, reward) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/reward/claim`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, token: reward.token, points: reward.points })
+    });
+
+    const data = await response.json();
+    console.log("Reward server response:", data);
+
+    if (response.ok && data.success) {
+      alert(`✅ Reward claimed! You earned ${reward.points} points.`);
+    } else {
+      alert("❌ Reward claim failed: " + (data.error || "Unknown error"));
+    }
+  } catch (err) {
+    console.error(err);
+    alert("❌ Reward claim failed due to network error.");
+  }
+}
+
 
 // Start scanner
 async function startScanner() {
