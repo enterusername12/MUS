@@ -107,6 +107,16 @@ async function fetchActivePolls() {
   return polls.map(p => ({ ...p, options: byPoll[p.id] || [] }));
 }
 
+async function fetchRewardPoints() {
+  const { rows } = await getPool().query(
+    `SELECT * FROM reward_points`
+  );
+
+  return rows;  // returns an array of all rows
+}
+
+
+
 // ⚡ fetch all competitions, convert banner to base64
 // ⚡ fetch all competitions, include participation + reward, convert banner to base64
 async function fetchCompetitions() {
@@ -223,12 +233,13 @@ const normalizePolls = (items) =>
 async function getDashboardData(options = {}) {
   const { userId = null } = options;
 
-  const [news, events, posts, polls, competitions] = await Promise.all([
+  const [news, events, posts, polls, competitions,rewardPoints] = await Promise.all([
     fetchLatestNews(),
     fetchUpcomingEvents(),
     fetchPublishedCommunityPosts(),
     fetchActivePolls(),
-    fetchCompetitions()  // ⚡ get all competitions
+    fetchCompetitions(), // ⚡ get all competitions
+    fetchRewardPoints()
   ]);
 
   return {
@@ -236,6 +247,7 @@ async function getDashboardData(options = {}) {
     events: mergeEvents(normalizeEvents(events), normalizeEvents(posts.map(p => ({ ...p, description: p.content })))),
     polls: normalizePolls(polls),
     competitions,  // ⚡ include full competition list
+    rewardPoints,
     generatedAt: new Date().toISOString()
   };
 }

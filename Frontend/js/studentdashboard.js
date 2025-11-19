@@ -15,24 +15,31 @@ function getUserId() {
   return null; // guests or unknown
 }
 
-async function logEventInteraction(eventId, action) {
-  const userId = getUserId();
-  if (!userId || !eventId) return; // skip for guests or missing id
+async function initializeRewardPoints() {
   try {
-    await fetch(`${API_BASE_URL.replace(/\/api$/, "")}/api/reco/interact`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        user_id: String(userId),
-        event_id: String(eventId),
-        action
-      })
-    });
-  } catch (_) {
-    // non-blocking; ignore errors
+    const response = await fetch(`${API_BASE_URL}/dashboard`);
+    if (!response.ok) throw new Error(`Failed to fetch dashboard: ${response.status}`);
+
+    const data = await response.json();
+
+    // Pass rewardPoints array to your function
+    loadRewardPoints(data.rewardPoints);
+    console.log("Reward points from API:", data.rewardPoints);
+
+  } catch (err) {
+    console.error("Error loading reward points:", err);
+    const pointsEl = document.getElementById("rewardPoints");
+    const progressEl = document.getElementById("rewardProgress");
+    if (pointsEl) pointsEl.textContent = "Error loading points";
+    if (progressEl) progressEl.textContent = "";
   }
 }
+
+// Call it after DOM is ready
+document.addEventListener("DOMContentLoaded", () => {
+  initializeRewardPoints();
+});
+
 
 // One-time IntersectionObserver to log 'view' when a card is on screen
 const _aiViewObserver = new IntersectionObserver((entries) => {
@@ -805,28 +812,40 @@ function formatSpotlightMonth(month) {
   return month;
 }
 
-function loadRewardPoints(reward) {
+
+
+function loadRewardPoints(rewardPoints) {
   const pointsEl = document.getElementById("rewardPoints");
   const progressEl = document.getElementById("rewardProgress");
 
   if (!pointsEl || !progressEl) return;
 
-  if (!reward) {
-    pointsEl.textContent = "0 Points";
+  const userDataRaw = localStorage.getItem("musAuthUser");
+  if (!userDataRaw) return;
+
+  let userId;
+  try {
+    const userObj = JSON.parse(userDataRaw);
+    userId = userObj.id;
+  } catch { return; }
+
+  if (!Array.isArray(rewardPoints) || rewardPoints.length === 0) return;
+
+  // Use loose equality to avoid type issues
+  const matching = rewardPoints.find(r => r.user_id == userId);
+
+  if (!matching) {
+    console.warn("No matching reward data found for user", userId);
+    pointsEl.textContent = "Error: No reward data";
     progressEl.textContent = "";
     return;
   }
 
-  const points =
-    reward.points ??
-    (reward.currentUser && reward.currentUser.points !== undefined ? reward.currentUser.points : 0);
-  const progress =
-    reward.progress ??
-    (reward.currentUser && reward.currentUser.progress !== undefined ? reward.currentUser.progress : "");
-
-  pointsEl.textContent = `${points} Points`;
-  progressEl.textContent = progress || "";
+  pointsEl.textContent = `${matching.points} Points`;
+  progressEl.textContent = "";
 }
+
+
 
 const DASHBOARD_LIMITS = {
   newsLimit: 5,
