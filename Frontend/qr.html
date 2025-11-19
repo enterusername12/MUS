@@ -102,71 +102,62 @@
 const API_BASE_URL = "http://localhost:3000"; // backend URL
 const scanner = new Html5Qrcode("qr-reader");
 
-// Fetch all competitions from dashboard
+// Fetch competitions and rewards from dashboard
 async function loadCompetitions() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/dashboard`, {
-      method: "GET",
-      // credentials: "include" // uncomment if using cookies/session
-    });
-
+    const response = await fetch(`${API_BASE_URL}/api/dashboard`, { method: "GET" });
     if (!response.ok) throw new Error("Failed to fetch competitions");
 
     const data = await response.json();
     console.log("Dashboard data:", data);
 
-    // Return competitions array
-    // Return competitions and rewards arrays
     return {
       competitions: Array.isArray(data.competitions) ? data.competitions : [],
-      rewards: Array.isArray(data.rewards) ? data.rewards : 
-      [] };
-      } catch (err) {
-        console.error(err);
-        alert("❌ Could not load dashboard");
-        return { competitions: [], rewards: [] };
-      }
-    }
+      rewards: Array.isArray(data.rewards) ? data.rewards : []
+    };
+  } catch (err) {
+    console.error(err);
+    alert("❌ Could not load dashboard");
+    return { competitions: [], rewards: [] };
+  }
+}
+
+// Extract token from QR code text
+function extractTokenFromQRCode(qrText) {
+  const match = qrText.match(/\/competition\/(.+?)\/(join|reward)/);
+  return match ? match[1] : qrText; // 返回 token
+}
 
 
-// Find competition ID by token, with detailed logging
+// Find competition ID by token
 function getCompetitionIdByToken(competitions, token) {
-  console.log("Scanning for token:", token);
+  if (!Array.isArray(competitions)) return null;
+
   const extractedToken = extractTokenFromQRCode(token);
   for (const comp of competitions) {
-    console.log("Checking competition:", comp.title, "Token:", comp.participation?.token);
-    
     if (comp.participation?.token === extractedToken) {
       console.log("✅ Token matched:", token, "Competition ID:", comp.id);
       return comp.id;
     }
   }
-
-  console.log("❌ No matching token found for:", token);
   return null;
 }
 
-function extractTokenFromQRCode(qrText) {
-  // Assumes the token is the part between /competition/ and /join
-  const match = qrText.match(/\/competition\/(.+?)\/join/);
-  return match ? match[1] : qrText; // fallback to full string
-}
-
-
 // Find reward by token
 function getRewardByToken(rewards, token) {
-  console.log("Scanning for reward token:", token);
+  if (!Array.isArray(rewards)) return null;
+
   const extractedToken = extractTokenFromQRCode(token);
+ 
   for (const reward of rewards) {
-    if (reward.token === extractedToken) {
+     console.log(reward.reward.token, "andd" ,extractedToken)
+    if (reward.reward.token === extractedToken) {
       console.log("✅ Reward matched:", token, "Points:", reward.points);
-      return reward;
+      return reward.reward;
     }
   }
   return null;
 }
-
-
 
 // Register participant
 async function registerParticipant(userId, competitionId, scannedCode) {
@@ -214,10 +205,11 @@ async function registerReward(userId, reward) {
   }
 }
 
-
-// Start scanner
+// Start QR scanner
 async function startScanner() {
-  const competitions = await loadCompetitions();
+  const data = await loadCompetitions();
+  const competitionsArray = data.competitions;
+  const rewardsArray = data.competitions;
 
   const userId = JSON.parse(localStorage.getItem("musAuthUser"))?.id;
   if (!userId) {
@@ -233,15 +225,24 @@ async function startScanner() {
       { facingMode: "environment" },
       { fps: 10, qrbox: 250 },
       async decodedText => {
-        // decodedText is the scanned token
-        const competitionId = getCompetitionIdByToken(competitions, decodedText);
-        if (!competitionId) {
-          alert("❌ Invalid token or competition not found!");
-          return;
+        // First check for competition
+        const competitionId = getCompetitionIdByToken(competitionsArray, decodedText);
+        if (competitionId) {
+          scanner.stop();
+          await registerParticipant(userId, competitionId, decodedText);
         }
 
-        scanner.stop(); // stop after first scan
-        await registerParticipant(userId, competitionId, decodedText);
+        // Then check for reward
+        const reward = getRewardByToken(rewardsArray, decodedText);
+        if (reward) {
+          scanner.stop();
+          await registerReward(userId, reward);
+        }
+
+        // If neither
+        if (!competitionId && !reward) {
+          alert("❌ Invalid token or competition/reward not found!");
+        }
       },
       err => console.warn("Scan error:", err)
     );
@@ -256,6 +257,7 @@ async function startScanner() {
 
 window.onload = startScanner;
 </script>
+
 
 </body>
 </html>
