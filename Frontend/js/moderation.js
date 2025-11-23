@@ -268,9 +268,10 @@ document.addEventListener("DOMContentLoaded", () => {
     container.insertAdjacentHTML("beforeend", cardHTML);
 
     // --- Navigation logic ---
-    const nextBtn = document.getElementById("next-btn");
-    const prevBtn = document.getElementById("prev-btn");
-    const skipBtn = card.querySelector(".btn.skip");
+    const card = container.querySelector(".card");
+    const nextBtn = card?.querySelector("#next-btn");
+    const prevBtn = card?.querySelector("#prev-btn");
+    const skipBtn = card?.querySelector(".btn.skip");
     nextBtn?.addEventListener("click", () => {
       if (currentIndex < data[tabName].length - 1) {
         currentIndex++;
@@ -321,6 +322,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const actionButtons = card?.querySelectorAll(".action-btns button") || [];
     const spinner = toggleActionSpinner(card, true, requestConfig.loadingLabel);
     setButtonsDisabled(actionButtons, true);
+    isActionPending = true;
 
     try {
       const response = await fetch(requestConfig.url, {
@@ -358,6 +360,62 @@ document.addEventListener("DOMContentLoaded", () => {
     } finally {
       toggleActionSpinner(card, false);
       setButtonsDisabled(actionButtons, false);
+ isActionPending = false;
+    }
+  }
+
+  async function handleSkip(tabName, item) {
+    if (!item?.id || isActionPending || isLoading) {
+      return;
+    }
+
+    const items = data[tabName] || [];
+    if (!items.length) {
+      loadTab(tabName);
+      return;
+    }
+
+    const card = container.querySelector(".card");
+    const cardButtons = card?.querySelectorAll(".actions button") || [];
+    setButtonsDisabled(cardButtons, true);
+    isActionPending = true;
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/feedback/${encodeURIComponent(item.id)}`,
+        {
+          method: "DELETE",
+          credentials: "include"
+        }
+      );
+
+      if (!response.ok) {
+        const errorPayload = await safeParseJson(response);
+        const errorMessage = errorPayload?.error || "Failed to skip feedback.";
+        throw new Error(errorMessage);
+      }
+
+      reconcileLocalData(tabName, item.id, { status: "resolved" });
+      updateTabCounters();
+
+      if (!data[tabName]?.length) {
+        showToast("Feedback skipped and removed from the queue.", "info");
+        loadTab(tabName);
+        return;
+      }
+
+      if (currentIndex >= data[tabName].length) {
+        currentIndex = Math.max(0, data[tabName].length - 1);
+      }
+
+      showToast("Feedback skipped and removed from the queue.", "info");
+      renderCard(data[tabName][currentIndex], tabName);
+    } catch (error) {
+      console.error("Failed to skip feedback", error);
+      showToast(error?.message || "Unable to skip this item. Please try again.", "error");
+      renderCard(items[currentIndex], tabName);
+    } finally {
+      setButtonsDisabled(cardButtons, false);
       isActionPending = false;
     }
   }
