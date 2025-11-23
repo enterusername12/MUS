@@ -353,13 +353,16 @@ const normalizePolls = (items) =>
 
 const normalizeCalendarEntries = (publicItems, userItems, competitions, limit = DEFAULT_CALENDAR_LIMIT) => {
   const normalizedPublic = ensureArray(publicItems)
-    .map((item, i) => ({
-      date: toDateOnly(item.start_time),
-      title: ensureString(item.title, `Event ${i + 1}`),
-      time: toTimeOnly(item.start_time),
-      type: ensureString(item.category ?? 'event').toLowerCase(),
-      category: ensureString(item.category ?? 'event')
-    }))
+    .map((item, i) => {
+      const startIso = toISOString(item.start_time);
+      return {
+        date: toDateOnly(startIso),
+        title: ensureString(item.title, `Event ${i + 1}`),
+        time: toTimeOnly(startIso),
+        type: ensureString(item.category ?? 'event').toLowerCase(),
+        category: ensureString(item.category ?? 'event')
+      };
+    })
     .filter((item) => item.date);
 
   const normalizedUser = ensureArray(userItems)
@@ -373,7 +376,7 @@ const normalizeCalendarEntries = (publicItems, userItems, competitions, limit = 
     .filter((item) => item.date);
 
   const normalizedCompetitions = ensureArray(competitions)
-      .map((item, i) => {
+    .map((item, i) => {
       const dueIso = toISOString(item.due ?? item.due_date ?? item.deadline ?? item.ends_at ?? item.created_at ?? '');
       const date = toDateOnly(dueIso);
 
@@ -387,24 +390,22 @@ const normalizeCalendarEntries = (publicItems, userItems, competitions, limit = 
     })
     .filter((item) => item.date);
 
-  const merged = [];
-  const seenDates = new Set();
-  const combined = [...normalizedUser, ...normalizedCompetitions, ...normalizedPublic];
+  const combined = [...normalizedUser, ...normalizedPublic, ...normalizedCompetitions];
 
-  combined.forEach((item) => {
-    if (!seenDates.has(item.date)) {
-      seenDates.add(item.date);
-      merged.push(item);
-    }
-  });
+  const normalized = combined
+    .map((item) => ({
+      ...item,
+      type: ensureString(item.type || 'event').toLowerCase()
+    }))
+    .filter((item) => item.date);
 
-  merged.sort((a, b) => {
-    const tsA = toTimestamp(a.date) || 0;
-    const tsB = toTimestamp(b.date) || 0;
+  normalized.sort((a, b) => {
+    const tsA = toTimestamp(a.time ? `${a.date}T${a.time}Z` : a.date) || 0;
+    const tsB = toTimestamp(b.time ? `${b.date}T${b.time}Z` : b.date) || 0;
     return tsA - tsB;
   });
 
-  return merged.slice(0, limit);
+  return normalized.slice(0, limit);
 };
 
 // ---------- main public API ----------
