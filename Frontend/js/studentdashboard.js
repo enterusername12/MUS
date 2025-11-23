@@ -807,11 +807,16 @@ function loadStudentSpotlight(data) {
     return;
   }
 
-  nameEl.textContent = data.name;
-  monthEl.textContent = data.month ? `${formatSpotlightMonth(data.month)} Spotlight` : "Student Spotlight";
-  pointsEl.textContent = data.points ? `${data.points} points earned` : "";
-  awardEl.textContent = data.award || "";
-  descriptionEl.textContent = data.description || "";
+  const displayName = sanitizeText(
+      data.name || data.fullName || data.user_name || data.userName,
+      "Student Spotlight"
+    );
+
+    nameEl.textContent = displayName;
+    monthEl.textContent = "";
+    pointsEl.textContent = data.points ? `${data.points} Points` : "";
+    awardEl.textContent = "";
+    descriptionEl.textContent = "Top reward points for the month.";
 }
 
 function formatSpotlightMonth(month) {
@@ -921,10 +926,13 @@ async function initializeDashboard() {
     initializePolls(data.polls || []);
     initializeCalendar(data.calendar || []);
 
-    const spotlight = Array.isArray(data.spotlights) ? data.spotlights[0] : null;
-    loadStudentSpotlight(spotlight);
+    const rewardPoints = Array.isArray(data.rewardPoints) ? data.rewardPoints : [];
+    const topReward = rewardPoints
+      .slice()
+      .sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0))[0] || null;
 
-    loadRewardPoints(data.rewardLeaders || null);
+    loadStudentSpotlight(topReward);
+    loadRewardPoints(data.rewardPoints || null);
   } catch (error) {
     console.error("Failed to load dashboard data", error);
     setError(eventsContainer, "Unable to load campus news.");

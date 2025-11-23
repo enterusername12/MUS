@@ -118,10 +118,31 @@ async function fetchActivePolls() {
 
 async function fetchRewardPoints() {
   const { rows } = await getPool().query(
-    `SELECT * FROM reward_points`
+  `SELECT rp.id,
+              rp.user_id,
+              rp.points,
+              rp.updated_at,
+              u.first_name,
+              u.last_name,
+              u.email
+        FROM reward_points rp
+        LEFT JOIN users u ON u.id = rp.user_id`
   );
 
-  return rows;  // returns an array of all rows
+  return rows.map((row, idx) => {
+    const fullName = ensureString(
+      [ensureString(row.first_name), ensureString(row.last_name)].filter(Boolean).join(' '),
+      ensureString(row.email, `User ${row.user_id ?? idx + 1}`)
+    );
+
+    return {
+      ...row,
+      name: fullName,
+      fullName,
+      points: ensureNumber(row.points, 0),
+      user_id: ensureNumber(row.user_id, null)
+    };
+  });
 }
 
 async function fetchUserNameMap(userIds = []) {
@@ -275,11 +296,18 @@ async function getDashboardData(options = {}) {
   let spotlights = [];
   if (rewardLeaderboard.length) {
     const topReward = rewardLeaderboard[0];
-    const nameMap = await fetchUserNameMap([topReward.user_id]);
+    const topName = ensureString(
+      topReward.name ?? topReward.fullName,
+      ensureString(
+        [ensureString(topReward.first_name), ensureString(topReward.last_name)].filter(Boolean).join(' '),
+        `User ${topReward.user_id}`
+      )
+    );
 
     spotlights = [
       {
-        name: ensureString(nameMap[topReward.user_id] ?? `User ${topReward.user_id}`),
+        name: topName,
+        fullName: topName,
         points: ensureNumber(topReward.points, 0),
         month: ensureString(toMonthLabel(topReward.updated_at ?? new Date())),
         award: 'Reward Points Leader',
