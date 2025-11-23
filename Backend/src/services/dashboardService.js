@@ -407,7 +407,6 @@ const normalizeCalendarEntries = (
 
   const normalizedCompetitions = ensureArray(competitions)
     .filter((item) => {
-      if (!userId) return false;
       const compId = ensureNumber(item.id ?? item.competition_id, null);
       return Boolean(compId && participationLookup[compId]);
     })
