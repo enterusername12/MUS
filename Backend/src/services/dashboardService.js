@@ -41,6 +41,15 @@ const toTimestamp = (value) => {
   return Number.isNaN(t) ? null : t;
 };
 
+const toMonthLabel = (value) => {
+  const ts = toTimestamp(value);
+  if (!ts) return '';
+  const d = new Date(ts);
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const year = d.getUTCFullYear();
+  return `${year}-${month}`;
+};
+
 // ---------- DB fetchers ----------
 async function fetchLatestNews(limit = DEFAULT_NEWS_LIMIT) {
   const { rows } = await getPool().query(
@@ -115,6 +124,23 @@ async function fetchRewardPoints() {
   return rows;  // returns an array of all rows
 }
 
+async function fetchUserNameMap(userIds = []) {
+  if (!Array.isArray(userIds) || !userIds.length) return {};
+
+  const { rows } = await getPool().query(
+    `SELECT id, first_name, last_name, email FROM users WHERE id = ANY($1::INT[])`,
+    [userIds]
+  );
+
+  return rows.reduce((acc, user) => {
+    const fullName = ensureString(
+      [ensureString(user.first_name), ensureString(user.last_name)].filter(Boolean).join(' '),
+      ensureString(user.email, `User ${user.id}`)
+    );
+    acc[user.id] = fullName;
+    return acc;
+  }, {});
+}
 
 
 // ⚡ fetch all competitions, convert banner to base64
@@ -233,7 +259,7 @@ const normalizePolls = (items) =>
 async function getDashboardData(options = {}) {
   const { userId = null } = options;
 
-  const [news, events, posts, polls, competitions,rewardPoints] = await Promise.all([
+  const [news, events, posts, polls, competitions, rewardPoints] = await Promise.all([
     fetchLatestNews(),
     fetchUpcomingEvents(),
     fetchPublishedCommunityPosts(),
@@ -242,12 +268,33 @@ async function getDashboardData(options = {}) {
     fetchRewardPoints()
   ]);
 
+ const rewardLeaderboard = ensureArray(rewardPoints)
+    .slice()
+    .sort((a, b) => (ensureNumber(b.points, 0) || 0) - (ensureNumber(a.points, 0) || 0));
+
+  let spotlights = [];
+  if (rewardLeaderboard.length) {
+    const topReward = rewardLeaderboard[0];
+    const nameMap = await fetchUserNameMap([topReward.user_id]);
+
+    spotlights = [
+      {
+        name: ensureString(nameMap[topReward.user_id] ?? `User ${topReward.user_id}`),
+        points: ensureNumber(topReward.points, 0),
+        month: ensureString(toMonthLabel(topReward.updated_at ?? new Date())),
+        award: 'Reward Points Leader',
+        description: 'Top reward points for the month.'
+      }
+    ];
+  }
+
   return {
     news: normalizeNews(news),
     events: mergeEvents(normalizeEvents(events), normalizeEvents(posts.map(p => ({ ...p, description: p.content })))),
     polls: normalizePolls(polls),
     competitions,  // ⚡ include full competition list
     rewardPoints,
+    spotlights,
     generatedAt: new Date().toISOString()
   };
 }
