@@ -41,6 +41,24 @@ const toTimestamp = (value) => {
   return Number.isNaN(t) ? null : t;
 };
 
+const toDateOnly = (value) => {
+  const ts = toTimestamp(value);
+  if (!ts) return '';
+  const d = new Date(ts);
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${month}-${day}`;
+};
+
+const toTimeOnly = (value) => {
+  const ts = toTimestamp(value);
+  if (!ts) return '';
+  const d = new Date(ts);
+  const hours = String(d.getUTCHours()).padStart(2, '0');
+  const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
+
 const toMonthLabel = (value) => {
   const ts = toTimestamp(value);
   if (!ts) return '';
@@ -84,6 +102,36 @@ async function fetchPublishedCommunityPosts(limit = DEFAULT_EVENTS_LIMIT) {
     [limit]
   );
   return rows.map((r) => ({ ...r, content: r.description }));
+}
+
+async function fetchCalendarItems(limit = DEFAULT_CALENDAR_LIMIT) {
+  const { rows } = await getPool().query(
+    `SELECT id, title, start_time, category
+       FROM calendar_items
+       WHERE start_time >= NOW() - INTERVAL '1 day'
+         AND start_time <= NOW() + INTERVAL '180 days'
+       ORDER BY start_time ASC NULLS LAST, id ASC
+       LIMIT $1`,
+    [limit]
+  );
+  return rows;
+}
+
+async function fetchUserCalendarItems(userId, limit = DEFAULT_CALENDAR_LIMIT) {
+  if (!userId) return [];
+
+  const { rows } = await getPool().query(
+    `SELECT id, title, date, time, category
+       FROM user_calendar_items
+       WHERE user_id = $1
+         AND date >= (NOW() - INTERVAL '1 day')::DATE
+         AND date <= (NOW() + INTERVAL '180 days')::DATE
+       ORDER BY date ASC, time ASC NULLS LAST, id ASC
+       LIMIT $2`,
+    [userId, limit]
+  );
+
+  return rows;
 }
 
 async function fetchActivePolls() {
@@ -276,20 +324,64 @@ const normalizePolls = (items) =>
     };
   });
 
+const normalizeCalendarEntries = (publicItems, userItems, limit = DEFAULT_CALENDAR_LIMIT) => {
+  const normalizedPublic = ensureArray(publicItems)
+    .map((item, i) => ({
+      date: toDateOnly(item.start_time),
+      title: ensureString(item.title, `Event ${i + 1}`),
+      time: toTimeOnly(item.start_time),
+      type: ensureString(item.category ?? 'event').toLowerCase(),
+      category: ensureString(item.category ?? 'event')
+    }))
+    .filter((item) => item.date);
+
+  const normalizedUser = ensureArray(userItems)
+    .map((item, i) => ({
+      date: toDateOnly(item.date),
+      title: ensureString(item.title, `Event ${i + 1}`),
+      time: ensureString(item.time ?? ''),
+      type: ensureString(item.category ?? 'personal').toLowerCase(),
+      category: ensureString(item.category ?? 'personal')
+    }))
+    .filter((item) => item.date);
+
+  const merged = [];
+  const seenDates = new Set();
+  const combined = [...normalizedUser, ...normalizedPublic];
+
+  combined.forEach((item) => {
+    if (!seenDates.has(item.date)) {
+      seenDates.add(item.date);
+      merged.push(item);
+    }
+  });
+
+  merged.sort((a, b) => {
+    const tsA = toTimestamp(a.date) || 0;
+    const tsB = toTimestamp(b.date) || 0;
+    return tsA - tsB;
+  });
+
+  return merged.slice(0, limit);
+};
+
 // ---------- main public API ----------
 async function getDashboardData(options = {}) {
-  const { userId = null } = options;
+  const { userId = null, limits = {} } = options;
+  const calendarLimit = ensureNumber(limits?.calendarLimit, DEFAULT_CALENDAR_LIMIT);
 
-  const [news, events, posts, polls, competitions, rewardPoints] = await Promise.all([
+  const [news, events, posts, polls, competitions, rewardPoints, calendarItems, userCalendarItems] = await Promise.all([
     fetchLatestNews(),
     fetchUpcomingEvents(),
     fetchPublishedCommunityPosts(),
     fetchActivePolls(),
     fetchCompetitions(), // ⚡ get all competitions
-    fetchRewardPoints()
+    fetchRewardPoints(),
+    fetchCalendarItems(calendarLimit),
+    fetchUserCalendarItems(userId, calendarLimit)
   ]);
 
- const rewardLeaderboard = ensureArray(rewardPoints)
+  const rewardLeaderboard = ensureArray(rewardPoints)
     .slice()
     .sort((a, b) => (ensureNumber(b.points, 0) || 0) - (ensureNumber(a.points, 0) || 0));
 
@@ -323,6 +415,7 @@ async function getDashboardData(options = {}) {
     competitions,  // ⚡ include full competition list
     rewardPoints,
     spotlights,
+    calendar: normalizeCalendarEntries(calendarItems, userCalendarItems, calendarLimit),
     generatedAt: new Date().toISOString()
   };
 }
