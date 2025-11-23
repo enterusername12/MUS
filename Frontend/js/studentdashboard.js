@@ -3,20 +3,6 @@
 const API_BASE_URL = "http://localhost:3000/api";
 
 // === AI interaction helpers ===
-function decodeJwtPayload(token) {
-  if (!token || typeof token !== "string") return null;
-  try {
-    const payloadBase64 = token.split(".")[1];
-    if (!payloadBase64) return null;
-
-    const normalized = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
-    const decoded = atob(normalized);
-    return JSON.parse(decoded);
-  } catch (error) {
-    console.warn("Unable to decode auth token for userId", error);
-    return null;
-  }
-}
 
 function readCookie(name) {
   const cookies = document.cookie?.split(";") ?? [];
@@ -30,11 +16,6 @@ function readCookie(name) {
 }
 
 function getUserId() {
-  // Prefer the auth token payload to ensure we have the active identity
-  const token = localStorage.getItem("musAuthToken") || readCookie("musAuthToken");
-  const decoded = decodeJwtPayload(token);
-  if (decoded?.sub) return decoded.sub;
-
   // Option A: musAuthUser payload
   const musAuthUserRaw = localStorage.getItem("musAuthUser") || readCookie("musAuthUser");
   if (musAuthUserRaw) {
