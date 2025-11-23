@@ -29,14 +29,37 @@ const runWithFeedbackTable = async (runner) => {
   }
 };
 
+const serialiseAttachmentPayload = (submission = {}) => {
+  if (!submission || typeof submission !== 'object') {
+    return submission;
+  }
+
+  const hasBufferAttachment =
+    submission.attachmentData && Buffer.isBuffer(submission.attachmentData);
+
+  if (hasBufferAttachment) {
+    const mimeType = submission.attachmentMimeType || 'application/octet-stream';
+    const base64 = submission.attachmentData.toString('base64');
+    submission.attachmentBase64 = `data:${mimeType};base64,${base64}`;
+  }
+
+  if ('attachmentData' in submission) {
+    delete submission.attachmentData;
+  }
+
+  return submission;
+};
+
 const createFeedbackSubmission = async ({
   userId = null,
   contactEmail = null,
   category,
   message,
+  facilityLocation = null,
   attachment = null
 }) => {
-  const attachmentData = attachment?.data ?? attachment?.buffer ?? null;
+  const attachmentPath = null;
+  const attachmentData = attachment?.buffer || null;
   const attachmentOriginalName = attachment?.originalName || null;
   const attachmentMimeType = attachment?.mimeType || null;
   const attachmentSize = attachment?.size ?? null;
@@ -48,24 +71,30 @@ const createFeedbackSubmission = async ({
          contact_email,
          category,
          message,
+         facility_location,
+         attachment_path,
          attachment_data,
          attachment_original_name,
          attachment_mime_type,
          attachment_size
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING id,
                  user_id AS "userId",
                  contact_email AS "contactEmail",
                  category,
                  message,
-                 (attachment_data IS NOT NULL) AS "hasAttachment",
+                 facility_location AS "facilityLocation",
+                 attachment_path AS "attachmentPath",
+                 attachment_data AS "attachmentData",
                  attachment_original_name AS "attachmentOriginalName",
                  attachment_mime_type AS "attachmentMimeType",
                  attachment_size AS "attachmentSize",
                  status,
                  moderated_by AS "moderatedBy",
                  moderated_at AS "moderatedAt",
+                 moderator_response AS "moderatorResponse",
+                 moderator_response_updated_at AS "moderatorResponseUpdatedAt",
                  created_at AS "createdAt",
                  updated_at AS "updatedAt"`,
       [
@@ -73,6 +102,8 @@ const createFeedbackSubmission = async ({
         contactEmail,
         category,
         message,
+        facilityLocation,
+        attachmentPath,
         attachmentData,
         attachmentOriginalName,
         attachmentMimeType,
@@ -81,7 +112,7 @@ const createFeedbackSubmission = async ({
     )
   );
 
-  return result.rows[0];
+  return serialiseAttachmentPayload(result.rows[0]);
 };
 
 const listFeedbackSubmissions = async ({ status } = {}) => {
@@ -93,13 +124,17 @@ const listFeedbackSubmissions = async ({ status } = {}) => {
                 contact_email AS "contactEmail",
                 category,
                 message,
-                (attachment_data IS NOT NULL) AS "hasAttachment",
+                facility_location AS "facilityLocation",
+                attachment_path AS "attachmentPath",
+                attachment_data AS "attachmentData",
                 attachment_original_name AS "attachmentOriginalName",
                 attachment_mime_type AS "attachmentMimeType",
                 attachment_size AS "attachmentSize",
                 status,
                 moderated_by AS "moderatedBy",
                 moderated_at AS "moderatedAt",
+                moderator_response AS "moderatorResponse",
+                moderator_response_updated_at AS "moderatorResponseUpdatedAt",
                 created_at AS "createdAt",
                 updated_at AS "updatedAt"
               FROM feedback_submissions`;
@@ -112,10 +147,13 @@ const listFeedbackSubmissions = async ({ status } = {}) => {
   text += ' ORDER BY created_at DESC';
 
   const result = await runWithFeedbackTable((pool) => pool.query({ text, values }));
-  return result.rows;
+  return result.rows.map(serialiseAttachmentPayload);
 };
 
-const updateFeedbackStatus = async (id, { status, moderatedBy = null } = {}) => {
+const updateFeedbackStatus = async (
+  id,
+  { status, moderatedBy = null, moderatorResponse } = {}
+) => {
   const normalisedStatus = normaliseStatus(status);
 
   if (!normalisedStatus) {
@@ -124,20 +162,69 @@ const updateFeedbackStatus = async (id, { status, moderatedBy = null } = {}) => 
 
   const moderatedAt = normalisedStatus === 'pending' ? null : new Date();
 
+  const values = [id, normalisedStatus, moderatedBy, moderatedAt];
+  const setClauses = [
+    'status = $2',
+    'moderated_by = $3',
+    'moderated_at = $4',
+    'updated_at = NOW()'
+  ];
+
+  if (moderatorResponse !== undefined) {
+    const responseIndex = values.length + 1;
+    setClauses.push(`moderator_response = $${responseIndex}`);
+    values.push(moderatorResponse);
+
+    const timestampIndex = values.length + 1;
+    const responseTimestamp = moderatorResponse ? new Date() : null;
+    setClauses.push(`moderator_response_updated_at = $${timestampIndex}`);
+    values.push(responseTimestamp);
+  }
+
   const result = await runWithFeedbackTable((pool) =>
     pool.query({
       text: `UPDATE feedback_submissions
-             SET status = $2,
-                 moderated_by = $3,
-                 moderated_at = $4,
-                 updated_at = NOW()
+             SET ${setClauses.join(', ')}
              WHERE id = $1
              RETURNING id,
                        user_id AS "userId",
                        contact_email AS "contactEmail",
                        category,
                        message,
-                       (attachment_data IS NOT NULL) AS "hasAttachment",
+                       facility_location AS "facilityLocation",
+                       attachment_path AS "attachmentPath",
+                       attachment_data AS "attachmentData",
+                       attachment_original_name AS "attachmentOriginalName",
+                       attachment_mime_type AS "attachmentMimeType",
+                       attachment_size AS "attachmentSize",
+                       status,
+                       moderated_by AS "moderatedBy",
+                       moderated_at AS "moderatedAt",
+                       moderator_response AS "moderatorResponse",
+                       moderator_response_updated_at AS "moderatorResponseUpdatedAt",
+                       created_at AS "createdAt",
+                       updated_at AS "updatedAt"`,
+      values
+    })
+  );
+
+  const updatedRow = result.rows[0] || null;
+  return serialiseAttachmentPayload(updatedRow);
+};
+
+const deleteFeedbackSubmission = async (id) => {
+  const result = await runWithFeedbackTable((pool) =>
+    pool.query({
+      text: `DELETE FROM feedback_submissions
+             WHERE id = $1
+             RETURNING id,
+                       user_id AS "userId",
+                       contact_email AS "contactEmail",
+                       category,
+                       message,
+                       facility_location AS "facilityLocation",
+                       attachment_path AS "attachmentPath",
+                       attachment_data AS "attachmentData",
                        attachment_original_name AS "attachmentOriginalName",
                        attachment_mime_type AS "attachmentMimeType",
                        attachment_size AS "attachmentSize",
@@ -146,33 +233,12 @@ const updateFeedbackStatus = async (id, { status, moderatedBy = null } = {}) => 
                        moderated_at AS "moderatedAt",
                        created_at AS "createdAt",
                        updated_at AS "updatedAt"`,
-      values: [id, normalisedStatus, moderatedBy, moderatedAt]
-    })
-  );
-
-  return result.rows[0] || null;
-};
-
-const getFeedbackAttachment = async (id) => {
-  const result = await runWithFeedbackTable((pool) =>
-    pool.query({
-      text: `SELECT
-               attachment_data AS "data",
-               attachment_original_name AS "originalName",
-               attachment_mime_type AS "mimeType",
-               attachment_size AS "size"
-             FROM feedback_submissions
-             WHERE id = $1`,
       values: [id]
     })
   );
 
-  const row = result.rows[0];
-  if (!row || !row.data) {
-    return null;
-  }
-
-  return row;
+  const deletedRow = result.rows[0] || null;
+  return serialiseAttachmentPayload(deletedRow);
 };
 
 module.exports = {
@@ -180,5 +246,5 @@ module.exports = {
   createFeedbackSubmission,
   listFeedbackSubmissions,
   updateFeedbackStatus,
-  getFeedbackAttachment
+  deleteFeedbackSubmission
 };

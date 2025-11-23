@@ -1,52 +1,27 @@
 const express = require('express');
-const path = require('path');
+
 const {
   VALID_STATUSES,
   createFeedbackSubmission,
   listFeedbackSubmissions,
   updateFeedbackStatus,
-  getFeedbackAttachment
+  deleteFeedbackSubmission
 } = require('../services/feedbackService');
 
 const router = express.Router();
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-
-const ALLOWED_MIME_TYPES = new Set([
-  'image/jpeg',
+const MAX_MODERATOR_RESPONSE_LENGTH = 2000;
+const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
   'image/png',
+  'image/jpeg',
+  'image/jpg',
   'image/gif',
-  'image/webp',
-  'image/bmp',
-  'image/tiff',
   'application/pdf',
+  'text/plain',
   'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'text/plain'
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 ]);
-
-const EXTENSION_MIME_MAP = {
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.png': 'image/png',
-  '.gif': 'image/gif',
-  '.webp': 'image/webp',
-  '.bmp': 'image/bmp',
-  '.tif': 'image/tiff',
-  '.tiff': 'image/tiff',
-  '.pdf': 'application/pdf',
-  '.doc': 'application/msword',
-  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  '.xls': 'application/vnd.ms-excel',
-  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  '.ppt': 'application/vnd.ms-powerpoint',
-  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  '.txt': 'text/plain'
-};
 
 const sanitiseText = (value) => {
   if (typeof value !== 'string') {
@@ -55,6 +30,17 @@ const sanitiseText = (value) => {
   return value.trim();
 };
 
+const sanitiseMultilineText = (value) => {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  return value.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, '').trim();
+};
+
+const FACILITY_REPORT_CATEGORY = 'facilities damages';
+const requiresFacilityLocation = (category) =>
+  (category || '').trim().toLowerCase() === FACILITY_REPORT_CATEGORY;
+
 class MultipartError extends Error {
   constructor(code, message) {
     super(message);
@@ -62,27 +48,6 @@ class MultipartError extends Error {
     this.code = code;
   }
 }
-
-const getValidatedMimeType = (originalName, declaredMimeType) => {
-  const normalisedMime = declaredMimeType
-    ? String(declaredMimeType)
-        .split(';')[0]
-        .trim()
-        .toLowerCase()
-    : '';
-  const extension = path.extname(originalName || '').toLowerCase();
-
-  if (normalisedMime && ALLOWED_MIME_TYPES.has(normalisedMime)) {
-    return normalisedMime;
-  }
-
-  const mimeFromExtension = EXTENSION_MIME_MAP[extension];
-  if (mimeFromExtension && ALLOWED_MIME_TYPES.has(mimeFromExtension)) {
-    return mimeFromExtension;
-  }
-
-  throw new MultipartError('UNSUPPORTED_MEDIA_TYPE', 'Attachment type is not allowed.');
-};
 
 const parseMultipartForm = (req) =>
   new Promise((resolve, reject) => {
@@ -164,21 +129,18 @@ const parseMultipartForm = (req) =>
 
           if (filenameMatch && filenameMatch[1]) {
             const mimeMatch = headerSection.match(/Content-Type:\s*([^\r\n]+)/i);
-            const declaredMimeType = mimeMatch ? mimeMatch[1].trim() : '';
+            const mimeType = mimeMatch ? mimeMatch[1].trim() : 'application/octet-stream';
             const fileBuffer = Buffer.from(contentSection, 'binary');
 
             if (fileBuffer.length > MAX_FILE_SIZE_BYTES) {
               throw new MultipartError('FILE_TOO_LARGE', 'Attachment must be 10MB or smaller.');
             }
 
-            const validatedMimeType = getValidatedMimeType(filenameMatch[1], declaredMimeType);
-
             if (fileBuffer.length > 0) {
               file = {
                 fieldName,
                 originalName: filenameMatch[1],
-                mimeType: validatedMimeType,
-                validatedMimeType,
+                mimeType,
                 size: fileBuffer.length,
                 buffer: fileBuffer
               };
@@ -200,13 +162,37 @@ const parseMultipartForm = (req) =>
     req.once('error', onError);
   });
 
-const persistUploadedFile = async (file) => ({
-  data: file.buffer,
-  originalName: file.originalName,
-  mimeType: file.validatedMimeType || file.mimeType,
-  validatedMimeType: file.validatedMimeType || file.mimeType,
-  size: file.size
-});
+const normaliseMimeType = (value) => String(value || '').toLowerCase();
+
+const buildAttachmentPayload = (file) => {
+  if (!file) {
+    return null;
+  }
+
+  const mimeType = normaliseMimeType(file.mimeType);
+  const isAllowedMimeType = ALLOWED_ATTACHMENT_MIME_TYPES.has(mimeType);
+
+  if (!isAllowedMimeType) {
+    throw new MultipartError(
+      'UNSUPPORTED_FILE_TYPE',
+      'Attachments must be PDF, DOC, DOCX, plain text, or common image formats.'
+    );
+  }
+
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    throw new MultipartError('FILE_TOO_LARGE', 'Attachment must be 10MB or smaller.');
+  }
+
+  if (!Buffer.isBuffer(file.buffer) || file.buffer.length === 0) {
+    return null;
+  }
+  return {
+    buffer: file.buffer,
+    mimeType,
+    originalName: file.originalName,
+    size: file.size
+  };
+};
 
 router.post('/', async (req, res, next) => {
   try {
@@ -215,19 +201,29 @@ router.post('/', async (req, res, next) => {
     const category = sanitiseText(fields.category);
     const message = sanitiseText(fields.feedback);
     const contactEmail = sanitiseText(fields.email || '');
+    const facilityLocation = sanitiseText(
+      fields.facilityLocation || fields.facility_location || ''
+    );
 
     if (!category || !message) {
       return res.status(400).json({ error: 'Category and feedback message are required.' });
     }
 
-    const storedFile = file ? await persistUploadedFile(file) : null;
+    if (requiresFacilityLocation(category) && !facilityLocation) {
+      return res.status(400).json({
+        error: 'Facilities reports must include the damaged location.'
+      });
+    }
+
+    const attachmentPayload = buildAttachmentPayload(file);
 
     const submission = await createFeedbackSubmission({
       userId: req.user?.id ?? null,
       contactEmail: contactEmail || null,
       category,
       message,
-      attachment: storedFile
+      facilityLocation: facilityLocation || null,
+      attachment: attachmentPayload
     });
 
     return res.status(201).json({
@@ -243,7 +239,7 @@ router.post('/', async (req, res, next) => {
           return res.status(413).json({ error: 'Multipart payload exceeds allowed size.' });
         case 'UNSUPPORTED_TYPE':
         case 'NO_BOUNDARY':
-        case 'UNSUPPORTED_MEDIA_TYPE':
+        case 'UNSUPPORTED_FILE_TYPE':
           return res.status(400).json({ error: error.message });
         default:
           break;
@@ -272,17 +268,38 @@ router.patch('/:id', express.json(), async (req, res, next) => {
 
     const requestedStatus = sanitiseText(req.body.status).toLowerCase();
     if (!VALID_STATUSES.has(requestedStatus)) {
-      return res
-        .status(400)
-        .json({ error: 'Status must be one of: pending, in_review, resolved.' });
+      const allowedStatuses = Array.from(VALID_STATUSES).join(', ');
+      return res.status(400).json({ error: `Status must be one of: ${allowedStatuses}.` });
+    }
+
+    const hasModeratorResponse = Object.prototype.hasOwnProperty.call(
+      req.body,
+      'moderatorResponse'
+    );
+    let moderatorResponse = undefined;
+
+    if (hasModeratorResponse) {
+      const cleanedResponse = sanitiseMultilineText(req.body.moderatorResponse);
+      if (cleanedResponse.length > MAX_MODERATOR_RESPONSE_LENGTH) {
+        return res.status(400).json({
+          error: `Moderator response must be ${MAX_MODERATOR_RESPONSE_LENGTH} characters or fewer.`
+        });
+      }
+      moderatorResponse = cleanedResponse || null;
     }
 
     const moderatedBy = req.body.moderatedBy ?? req.user?.id ?? null;
 
-    const updated = await updateFeedbackStatus(submissionId, {
+    const payload = {
       status: requestedStatus,
       moderatedBy
-    });
+    };
+
+    if (hasModeratorResponse) {
+      payload.moderatorResponse = moderatorResponse;
+    }
+
+    const updated = await updateFeedbackStatus(submissionId, payload);
 
     if (!updated) {
       return res.status(404).json({ error: 'Feedback submission not found.' });
@@ -300,26 +317,23 @@ router.patch('/:id', express.json(), async (req, res, next) => {
   }
 });
 
-router.get('/:id/attachment', async (req, res, next) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const submissionId = Number.parseInt(req.params.id, 10);
     if (Number.isNaN(submissionId)) {
       return res.status(400).json({ error: 'Invalid submission id.' });
     }
 
-    const attachment = await getFeedbackAttachment(submissionId);
+    const deleted = await deleteFeedbackSubmission(submissionId);
 
-    if (!attachment) {
-      return res.status(404).json({ error: 'Attachment not found for this submission.' });
+    if (!deleted) {
+      return res.status(404).json({ error: 'Feedback submission not found.' });
     }
 
-    res.set({
-      'Content-Type': attachment.mimeType || 'application/octet-stream',
-      'Content-Length': attachment.size ?? attachment.data.length,
-      'Content-Disposition': `attachment; filename="${encodeURIComponent(attachment.originalName || 'attachment')}"`
+    return res.json({
+      message: 'Feedback submission deleted successfully.',
+      submission: deleted
     });
-
-    return res.send(attachment.data);
   } catch (error) {
     return next(error);
   }
