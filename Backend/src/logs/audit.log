@@ -289,3 +289,6 @@
 2025-11-23T14:57:53.463Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1584ms
 2025-11-23T15:01:35.527Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1691ms
 2025-11-23T15:05:23.769Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1676ms
+2025-11-23T15:29:42.454Z [POST] /api/auth/login from ::1 Status: 401, Duration: 1427ms
+2025-11-23T15:29:54.229Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1593ms
+2025-11-23T15:30:30.414Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1580ms
