@@ -33,7 +33,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function initializeRewardPoints() {
   try {
-    const response = await fetch(`${API_BASE_URL}/dashboard`);
+    const response = await fetch(`${API_BASE_URL}/dashboard`, {
+      credentials: "include",
+      headers: {
+        "Accept": "application/json"
+      }
+    });
     if (!response.ok) throw new Error(`Failed to fetch dashboard: ${response.status}`);
 
     const data = await response.json();
