@@ -285,3 +285,4 @@
 2025-11-23T10:04:27.973Z [POST] /api/feedback from ::1 Status: 201, Duration: 212ms
 2025-11-23T10:24:47.637Z [POST] /api/feedback from ::1 Status: 201, Duration: 1314ms
 2025-11-23T10:24:55.740Z [POST] /api/feedback from ::1 Status: 201, Duration: 196ms
+2025-11-23T12:33:26.605Z [POST] /api/auth/login from ::1 Status: 200, Duration: 525ms

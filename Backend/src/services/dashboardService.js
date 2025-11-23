@@ -324,7 +324,7 @@ const normalizePolls = (items) =>
     };
   });
 
-const normalizeCalendarEntries = (publicItems, userItems, limit = DEFAULT_CALENDAR_LIMIT) => {
+const normalizeCalendarEntries = (publicItems, userItems, competitions, limit = DEFAULT_CALENDAR_LIMIT) => {
   const normalizedPublic = ensureArray(publicItems)
     .map((item, i) => ({
       date: toDateOnly(item.start_time),
@@ -345,9 +345,19 @@ const normalizeCalendarEntries = (publicItems, userItems, limit = DEFAULT_CALEND
     }))
     .filter((item) => item.date);
 
+  const normalizedCompetitions = ensureArray(competitions)
+    .map((item, i) => ({
+      date: toDateOnly(item.due),
+      title: ensureString(item.title, `Competition ${i + 1}`),
+      time: toTimeOnly(item.due),
+      type: 'competition',
+      category: 'competition'
+    }))
+    .filter((item) => item.date);
+
   const merged = [];
   const seenDates = new Set();
-  const combined = [...normalizedUser, ...normalizedPublic];
+  const combined = [...normalizedUser, ...normalizedCompetitions, ...normalizedPublic];
 
   combined.forEach((item) => {
     if (!seenDates.has(item.date)) {
@@ -415,7 +425,7 @@ async function getDashboardData(options = {}) {
     competitions,  // ⚡ include full competition list
     rewardPoints,
     spotlights,
-    calendar: normalizeCalendarEntries(calendarItems, userCalendarItems, calendarLimit),
+    calendar: normalizeCalendarEntries(calendarItems, userCalendarItems, competitions, calendarLimit),
     generatedAt: new Date().toISOString()
   };
 }

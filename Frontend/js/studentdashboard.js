@@ -640,11 +640,20 @@ const CALENDAR_COLOR_PALETTE = [
   "#facc15"
 ];
 
+const PREDEFINED_CALENDAR_COLORS = {
+  competition: "#a855f7"
+};
+
 function resolveCalendarColor(type) {
   const normalizedType = type || "event";
   if (!calendarState.typeColors[normalizedType]) {
-    const paletteIndex = Object.keys(calendarState.typeColors).length % CALENDAR_COLOR_PALETTE.length;
-    calendarState.typeColors[normalizedType] = CALENDAR_COLOR_PALETTE[paletteIndex];
+    const predefinedColor = PREDEFINED_CALENDAR_COLORS[normalizedType];
+    if (predefinedColor) {
+      calendarState.typeColors[normalizedType] = predefinedColor;
+    } else {
+      const paletteIndex = Object.keys(calendarState.typeColors).length % CALENDAR_COLOR_PALETTE.length;
+      calendarState.typeColors[normalizedType] = CALENDAR_COLOR_PALETTE[paletteIndex];
+    }
   }
   return calendarState.typeColors[normalizedType];
 }
