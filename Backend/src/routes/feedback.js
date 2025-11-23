@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const {
   VALID_STATUSES,
   createFeedbackSubmission,
@@ -10,6 +11,42 @@ const {
 const router = express.Router();
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/bmp',
+  'image/tiff',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain'
+]);
+
+const EXTENSION_MIME_MAP = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.bmp': 'image/bmp',
+  '.tif': 'image/tiff',
+  '.tiff': 'image/tiff',
+  '.pdf': 'application/pdf',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xls': 'application/vnd.ms-excel',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.ppt': 'application/vnd.ms-powerpoint',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.txt': 'text/plain'
+};
 
 const sanitiseText = (value) => {
   if (typeof value !== 'string') {
@@ -25,6 +62,27 @@ class MultipartError extends Error {
     this.code = code;
   }
 }
+
+const getValidatedMimeType = (originalName, declaredMimeType) => {
+  const normalisedMime = declaredMimeType
+    ? String(declaredMimeType)
+        .split(';')[0]
+        .trim()
+        .toLowerCase()
+    : '';
+  const extension = path.extname(originalName || '').toLowerCase();
+
+  if (normalisedMime && ALLOWED_MIME_TYPES.has(normalisedMime)) {
+    return normalisedMime;
+  }
+
+  const mimeFromExtension = EXTENSION_MIME_MAP[extension];
+  if (mimeFromExtension && ALLOWED_MIME_TYPES.has(mimeFromExtension)) {
+    return mimeFromExtension;
+  }
+
+  throw new MultipartError('UNSUPPORTED_MEDIA_TYPE', 'Attachment type is not allowed.');
+};
 
 const parseMultipartForm = (req) =>
   new Promise((resolve, reject) => {
@@ -106,18 +164,21 @@ const parseMultipartForm = (req) =>
 
           if (filenameMatch && filenameMatch[1]) {
             const mimeMatch = headerSection.match(/Content-Type:\s*([^\r\n]+)/i);
-            const mimeType = mimeMatch ? mimeMatch[1].trim() : 'application/octet-stream';
+            const declaredMimeType = mimeMatch ? mimeMatch[1].trim() : '';
             const fileBuffer = Buffer.from(contentSection, 'binary');
 
             if (fileBuffer.length > MAX_FILE_SIZE_BYTES) {
               throw new MultipartError('FILE_TOO_LARGE', 'Attachment must be 10MB or smaller.');
             }
 
+            const validatedMimeType = getValidatedMimeType(filenameMatch[1], declaredMimeType);
+
             if (fileBuffer.length > 0) {
               file = {
                 fieldName,
                 originalName: filenameMatch[1],
-                mimeType,
+                mimeType: validatedMimeType,
+                validatedMimeType,
                 size: fileBuffer.length,
                 buffer: fileBuffer
               };
@@ -142,7 +203,8 @@ const parseMultipartForm = (req) =>
 const persistUploadedFile = async (file) => ({
   data: file.buffer,
   originalName: file.originalName,
-  mimeType: file.mimeType,
+  mimeType: file.validatedMimeType || file.mimeType,
+  validatedMimeType: file.validatedMimeType || file.mimeType,
   size: file.size
 });
 
@@ -181,6 +243,7 @@ router.post('/', async (req, res, next) => {
           return res.status(413).json({ error: 'Multipart payload exceeds allowed size.' });
         case 'UNSUPPORTED_TYPE':
         case 'NO_BOUNDARY':
+        case 'UNSUPPORTED_MEDIA_TYPE':
           return res.status(400).json({ error: error.message });
         default:
           break;

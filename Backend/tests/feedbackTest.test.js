@@ -114,7 +114,7 @@ test('creates a feedback submission with an attachment stored in the database', 
     assert.equal(insertQuery.values[3], 'Something broke');
     assert.deepEqual(insertQuery.values[4], attachmentBuffer);
     assert.equal(insertQuery.values[5], 'note.txt');
-    assert.equal(insertQuery.values[6], 'application/octet-stream');
+    assert.equal(insertQuery.values[6], 'text/plain');
     assert.equal(insertQuery.values[7], attachmentBuffer.length);
 
     assert.equal(body.message, 'Feedback submitted successfully.');
