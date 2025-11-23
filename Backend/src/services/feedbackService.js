@@ -36,7 +36,7 @@ const createFeedbackSubmission = async ({
   message,
   attachment = null
 }) => {
-  const attachmentPath = attachment?.path || null;
+  const attachmentData = attachment?.data ?? attachment?.buffer ?? null;
   const attachmentOriginalName = attachment?.originalName || null;
   const attachmentMimeType = attachment?.mimeType || null;
   const attachmentSize = attachment?.size ?? null;
@@ -48,7 +48,7 @@ const createFeedbackSubmission = async ({
          contact_email,
          category,
          message,
-         attachment_path,
+         attachment_data,
          attachment_original_name,
          attachment_mime_type,
          attachment_size
@@ -59,7 +59,7 @@ const createFeedbackSubmission = async ({
                  contact_email AS "contactEmail",
                  category,
                  message,
-                 attachment_path AS "attachmentPath",
+                 (attachment_data IS NOT NULL) AS "hasAttachment",
                  attachment_original_name AS "attachmentOriginalName",
                  attachment_mime_type AS "attachmentMimeType",
                  attachment_size AS "attachmentSize",
@@ -73,7 +73,7 @@ const createFeedbackSubmission = async ({
         contactEmail,
         category,
         message,
-        attachmentPath,
+        attachmentData,
         attachmentOriginalName,
         attachmentMimeType,
         attachmentSize
@@ -93,7 +93,7 @@ const listFeedbackSubmissions = async ({ status } = {}) => {
                 contact_email AS "contactEmail",
                 category,
                 message,
-                attachment_path AS "attachmentPath",
+                (attachment_data IS NOT NULL) AS "hasAttachment",
                 attachment_original_name AS "attachmentOriginalName",
                 attachment_mime_type AS "attachmentMimeType",
                 attachment_size AS "attachmentSize",
@@ -137,7 +137,7 @@ const updateFeedbackStatus = async (id, { status, moderatedBy = null } = {}) => 
                        contact_email AS "contactEmail",
                        category,
                        message,
-                       attachment_path AS "attachmentPath",
+                       (attachment_data IS NOT NULL) AS "hasAttachment",
                        attachment_original_name AS "attachmentOriginalName",
                        attachment_mime_type AS "attachmentMimeType",
                        attachment_size AS "attachmentSize",
@@ -153,9 +153,32 @@ const updateFeedbackStatus = async (id, { status, moderatedBy = null } = {}) => 
   return result.rows[0] || null;
 };
 
+const getFeedbackAttachment = async (id) => {
+  const result = await runWithFeedbackTable((pool) =>
+    pool.query({
+      text: `SELECT
+               attachment_data AS "data",
+               attachment_original_name AS "originalName",
+               attachment_mime_type AS "mimeType",
+               attachment_size AS "size"
+             FROM feedback_submissions
+             WHERE id = $1`,
+      values: [id]
+    })
+  );
+
+  const row = result.rows[0];
+  if (!row || !row.data) {
+    return null;
+  }
+
+  return row;
+};
+
 module.exports = {
   VALID_STATUSES,
   createFeedbackSubmission,
   listFeedbackSubmissions,
-  updateFeedbackStatus
+  updateFeedbackStatus,
+  getFeedbackAttachment
 };

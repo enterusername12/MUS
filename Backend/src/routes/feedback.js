@@ -1,21 +1,15 @@
 const express = require('express');
-const fs = require('fs');
-const { promises: fsPromises } = fs;
-const path = require('path');
-const crypto = require('crypto');
 const {
   VALID_STATUSES,
   createFeedbackSubmission,
   listFeedbackSubmissions,
-  updateFeedbackStatus
+  updateFeedbackStatus,
+  getFeedbackAttachment
 } = require('../services/feedbackService');
 
 const router = express.Router();
 
-const uploadsRoot = path.join(__dirname, '..', '..', 'uploads', 'feedback');
-fs.mkdirSync(uploadsRoot, { recursive: true });
-
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 const sanitiseText = (value) => {
   if (typeof value !== 'string') {
@@ -116,7 +110,7 @@ const parseMultipartForm = (req) =>
             const fileBuffer = Buffer.from(contentSection, 'binary');
 
             if (fileBuffer.length > MAX_FILE_SIZE_BYTES) {
-              throw new MultipartError('FILE_TOO_LARGE', 'Attachment must be 5MB or smaller.');
+              throw new MultipartError('FILE_TOO_LARGE', 'Attachment must be 10MB or smaller.');
             }
 
             if (fileBuffer.length > 0) {
@@ -145,17 +139,12 @@ const parseMultipartForm = (req) =>
     req.once('error', onError);
   });
 
-const persistUploadedFile = async (file) => {
-  const uniqueName = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${path.extname(file.originalName)}`;
-  const storedPath = path.join(uploadsRoot, uniqueName);
-  await fsPromises.writeFile(storedPath, file.buffer);
-  return {
-    path: path.relative(path.join(__dirname, '..', '..'), storedPath),
-    originalName: file.originalName,
-    mimeType: file.mimeType,
-    size: file.size
-  };
-};
+const persistUploadedFile = async (file) => ({
+  data: file.buffer,
+  originalName: file.originalName,
+  mimeType: file.mimeType,
+  size: file.size
+});
 
 router.post('/', async (req, res, next) => {
   try {
@@ -244,6 +233,31 @@ router.patch('/:id', express.json(), async (req, res, next) => {
     if (error.message === 'Invalid status value') {
       return res.status(400).json({ error: 'Invalid status value.' });
     }
+    return next(error);
+  }
+});
+
+router.get('/:id/attachment', async (req, res, next) => {
+  try {
+    const submissionId = Number.parseInt(req.params.id, 10);
+    if (Number.isNaN(submissionId)) {
+      return res.status(400).json({ error: 'Invalid submission id.' });
+    }
+
+    const attachment = await getFeedbackAttachment(submissionId);
+
+    if (!attachment) {
+      return res.status(404).json({ error: 'Attachment not found for this submission.' });
+    }
+
+    res.set({
+      'Content-Type': attachment.mimeType || 'application/octet-stream',
+      'Content-Length': attachment.size ?? attachment.data.length,
+      'Content-Disposition': `attachment; filename="${encodeURIComponent(attachment.originalName || 'attachment')}"`
+    });
+
+    return res.send(attachment.data);
+  } catch (error) {
     return next(error);
   }
 });

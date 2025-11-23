@@ -521,7 +521,7 @@ const ensureDatabase = async () => {
         contact_email TEXT,
         category TEXT NOT NULL,
         message TEXT NOT NULL,
-        attachment_path TEXT,
+        attachment_data BYTEA,
         attachment_original_name TEXT,
         attachment_mime_type TEXT,
         attachment_size INTEGER,
@@ -533,6 +533,12 @@ const ensureDatabase = async () => {
         CONSTRAINT feedback_submissions_status_check
           CHECK (status IN ('pending', 'in_review', 'resolved'))
       )`);
+
+      await client.query(
+        `ALTER TABLE feedback_submissions
+           DROP COLUMN IF EXISTS attachment_path,
+           ADD COLUMN IF NOT EXISTS attachment_data BYTEA`
+      );
 
       // merch_products
       await client.query(`CREATE TABLE IF NOT EXISTS merch_products (
