@@ -284,7 +284,7 @@ document.addEventListener("DOMContentLoaded", () => {
         renderCard(data[tabName][currentIndex], tabName);
       }
     });
-    skipBtn?.addEventListener("click", () => handleSkip(tabName));
+    skipBtn?.addEventListener("click", () => handleSkip(tabName, item));
 
     // --- Action button logic ---
     document.getElementById("approve-btn")?.addEventListener("click", () => handleAction("approve", tabName, item));
@@ -360,7 +360,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } finally {
       toggleActionSpinner(card, false);
       setButtonsDisabled(actionButtons, false);
- isActionPending = false;
+      isActionPending = false;
     }
   }
 
@@ -382,9 +382,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/feedback/${encodeURIComponent(item.id)}`,
+        `${API_BASE_URL}/api/feedback/${encodeURIComponent(item.id)}/skip`,
         {
-          method: "DELETE",
+          method: "PATCH",
           credentials: "include"
         }
       );
@@ -395,11 +395,17 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error(errorMessage);
       }
 
-      reconcileLocalData(tabName, item.id, { status: "resolved" });
+      const payload = await safeParseJson(response);
+      const updatedSubmission = payload?.submission || payload || { status: "skipped" };
+
+      reconcileLocalData(tabName, item.id, {
+        ...updatedSubmission,
+        status: "skipped"
+      });
       updateTabCounters();
 
       if (!data[tabName]?.length) {
-        showToast("Feedback skipped and removed from the queue.", "info");
+        showToast("Feedback skipped and removed from the queue.", "success");
         loadTab(tabName);
         return;
       }
@@ -408,7 +414,7 @@ document.addEventListener("DOMContentLoaded", () => {
         currentIndex = Math.max(0, data[tabName].length - 1);
       }
 
-      showToast("Feedback skipped and removed from the queue.", "info");
+      showToast("Feedback skipped and removed from the queue.", "success");
       renderCard(data[tabName][currentIndex], tabName);
     } catch (error) {
       console.error("Failed to skip feedback", error);
@@ -419,28 +425,6 @@ document.addEventListener("DOMContentLoaded", () => {
       isActionPending = false;
     }
   }
-
- function handleSkip(tabName) {
-    if (isActionPending || isLoading) {
-      return;
-    }
-
-    const items = data[tabName] || [];
-    if (!items.length) {
-      loadTab(tabName);
-      return;
-    }
-
-    if (currentIndex < items.length - 1) {
-      currentIndex++;
-      renderCard(items[currentIndex], tabName);
-      return;
-    }
-
-    showToast("You've reached the end of the queue.", "info");
-    renderCard(items[currentIndex], tabName);
-  }
-  
 
   function buildActionRequest(type, item) {
     const baseUrl = `${API_BASE_URL}/api/feedback/${encodeURIComponent(item.id)}`;
