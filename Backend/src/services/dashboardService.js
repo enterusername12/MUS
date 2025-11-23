@@ -257,7 +257,7 @@ async function fetchCompetitions() {
     id: String(item.id ?? `comp-${i + 1}`),
     title: ensureString(item.title, `Competition ${i + 1}`),
     hosts: ensureArray(item.hosts),
-    reward: ensureString(item.reward),
+    rewardText: ensureString(item.reward),
     venue: ensureString(item.venue),
     maxParticipants: ensureNumber(item.max_participants, 0),
     due: toISOString(item.due),
@@ -279,6 +279,33 @@ function mergeEvents(campusEvents, communityPosts, limit = DEFAULT_EVENTS_LIMIT)
 }
 
 // ---------- normalizers ----------
+const normalizeCompetitions = (items) =>
+  ensureArray(items).map((item, i) => {
+    const dueIso = toISOString(item.due ?? item.due_date ?? item.deadline ?? item.ends_at ?? item.created_at ?? '');
+    const rewardDetails =
+      item.reward && typeof item.reward === 'object' && !Array.isArray(item.reward)
+        ? item.reward
+        : { token: null, points: ensureNumber(item.reward?.points, 0) || 0 };
+    const rewardText = ensureString(item.rewardText ?? (typeof item.reward === 'string' ? item.reward : ''));
+    const bannerBase64 =
+      item.bannerBase64 ?? (item.banner ? `data:image/png;base64,${item.banner.toString('base64')}` : null);
+
+    return {
+      ...item,
+      id: String(item.id ?? `comp-${i + 1}`),
+      title: ensureString(item.title, `Competition ${i + 1}`),
+      hosts: ensureArray(item.hosts),
+      venue: ensureString(item.venue),
+      maxParticipants: ensureNumber(item.max_participants ?? item.maxParticipants, 0),
+      due: dueIso,
+      rewardText,
+      description: ensureString(item.description),
+      bannerBase64,
+      participation: item.participation || { token: null, participants: 0 },
+      reward: rewardDetails
+    };
+  });
+
 const normalizeNews = (items) =>
   ensureArray(items).map((item, i) => ({
     id: String(item.id ?? `news-${i + 1}`),
@@ -346,13 +373,18 @@ const normalizeCalendarEntries = (publicItems, userItems, competitions, limit = 
     .filter((item) => item.date);
 
   const normalizedCompetitions = ensureArray(competitions)
-    .map((item, i) => ({
-      date: toDateOnly(item.due),
-      title: ensureString(item.title, `Competition ${i + 1}`),
-      time: toTimeOnly(item.due),
-      type: 'competition',
-      category: 'competition'
-    }))
+      .map((item, i) => {
+      const dueIso = toISOString(item.due ?? item.due_date ?? item.deadline ?? item.ends_at ?? item.created_at ?? '');
+      const date = toDateOnly(dueIso);
+
+      return {
+        date,
+        title: ensureString(item.title, `Competition ${i + 1}`),
+        time: toTimeOnly(dueIso),
+        type: 'competition',
+        category: 'competition'
+      };
+    })
     .filter((item) => item.date);
 
   const merged = [];
@@ -391,6 +423,8 @@ async function getDashboardData(options = {}) {
     fetchUserCalendarItems(userId, calendarLimit)
   ]);
 
+  const normalizedCompetitions = normalizeCompetitions(competitions);
+
   const rewardLeaderboard = ensureArray(rewardPoints)
     .slice()
     .sort((a, b) => (ensureNumber(b.points, 0) || 0) - (ensureNumber(a.points, 0) || 0));
@@ -422,10 +456,10 @@ async function getDashboardData(options = {}) {
     news: normalizeNews(news),
     events: mergeEvents(normalizeEvents(events), normalizeEvents(posts.map(p => ({ ...p, description: p.content })))),
     polls: normalizePolls(polls),
-    competitions,  // ⚡ include full competition list
+    competitions: normalizedCompetitions,  // ⚡ include full competition list
     rewardPoints,
     spotlights,
-    calendar: normalizeCalendarEntries(calendarItems, userCalendarItems, competitions, calendarLimit),
+    calendar: normalizeCalendarEntries(calendarItems, userCalendarItems, normalizedCompetitions, calendarLimit),
     generatedAt: new Date().toISOString()
   };
 }
