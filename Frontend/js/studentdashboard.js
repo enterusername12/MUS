@@ -9,11 +9,43 @@ function getUserId() {
   const ls = localStorage.getItem("userId");
   if (ls) return ls;
 
+  // Option A2: musAuthUser payload
+  const musAuthUserRaw = localStorage.getItem("musAuthUser");
+  if (musAuthUserRaw) {
+    try {
+      const parsedUser = JSON.parse(musAuthUserRaw);
+      if (parsedUser?.id) return parsedUser.id;
+    } catch (error) {
+      console.warn("Unable to parse musAuthUser from storage", error);
+    }
+  }
+
   // Option B: meta tag injected by backend template (if add it later)
   const meta = document.querySelector('meta[name="user-id"]');
   if (meta && meta.content) return meta.content;
 
   return null; // guests or unknown
+}
+
+function getDashboardRequestOptions() {
+  const headers = {
+    "Accept": "application/json"
+  };
+
+  const token = localStorage.getItem("musAuthToken");
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const userId = getUserId();
+  if (userId) {
+    headers["X-User-Id"] = userId;
+  }
+
+  return {
+    credentials: "include",
+    headers
+  };
 }
 
 const user = JSON.parse(localStorage.getItem("musAuthUser"));
@@ -33,12 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function initializeRewardPoints() {
   try {
-    const response = await fetch(`${API_BASE_URL}/dashboard`, {
-      credentials: "include",
-      headers: {
-        "Accept": "application/json"
-      }
-    });
+        const response = await fetch(`${API_BASE_URL}/dashboard`, getDashboardRequestOptions());
     if (!response.ok) throw new Error(`Failed to fetch dashboard: ${response.status}`);
 
     const data = await response.json();
@@ -951,9 +978,7 @@ async function initializeDashboard() {
     //   }
     // });
 
-    const response = await fetch(`${API_BASE_URL}/dashboard`, {
-      // credentials: "include"
-    });
+    const response = await fetch(`${API_BASE_URL}/dashboard`, getDashboardRequestOptions());
     if (!response.ok) {
       throw new Error(`Request failed with status ${response.status}`);
     }
