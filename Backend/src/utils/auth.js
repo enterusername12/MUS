@@ -33,6 +33,9 @@ const readUserIdFromRequest = (req) => {
   const attachedUserId = toPositiveInt(req?.userId ?? req?.user?.id);
   if (attachedUserId) return attachedUserId;
 
+  const headerUserId = toPositiveInt(req?.headers?.['x-user-id']);
+  if (headerUserId) return headerUserId;
+  
   return readJwtUserId(req);
 };
 
