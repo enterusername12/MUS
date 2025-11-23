@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
     reports: []
   };
   let isLoading = false;
+  let isActionPending = false;
   let hasError = false;
 
   const blobUrlCache = new Map();
@@ -269,6 +270,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- Navigation logic ---
     const nextBtn = document.getElementById("next-btn");
     const prevBtn = document.getElementById("prev-btn");
+    const skipBtn = card.querySelector(".btn.skip");
     nextBtn?.addEventListener("click", () => {
       if (currentIndex < data[tabName].length - 1) {
         currentIndex++;
@@ -281,6 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
         renderCard(data[tabName][currentIndex], tabName);
       }
     });
+    skipBtn?.addEventListener("click", () => handleSkip(tabName));
 
     // --- Action button logic ---
     document.getElementById("approve-btn")?.addEventListener("click", () => handleAction("approve", tabName, item));
@@ -301,6 +304,10 @@ document.addEventListener("DOMContentLoaded", () => {
   async function handleAction(type, tabName, item) {
     if (!item?.id) {
       showToast("Unable to update this submission. Missing identifier.", "error");
+      return;
+    }
+
+    if (isActionPending) {
       return;
     }
 
@@ -351,8 +358,31 @@ document.addEventListener("DOMContentLoaded", () => {
     } finally {
       toggleActionSpinner(card, false);
       setButtonsDisabled(actionButtons, false);
+      isActionPending = false;
     }
   }
+
+ function handleSkip(tabName) {
+    if (isActionPending || isLoading) {
+      return;
+    }
+
+    const items = data[tabName] || [];
+    if (!items.length) {
+      loadTab(tabName);
+      return;
+    }
+
+    if (currentIndex < items.length - 1) {
+      currentIndex++;
+      renderCard(items[currentIndex], tabName);
+      return;
+    }
+
+    showToast("You've reached the end of the queue.", "info");
+    renderCard(items[currentIndex], tabName);
+  }
+  
 
   function buildActionRequest(type, item) {
     const baseUrl = `${API_BASE_URL}/api/feedback/${encodeURIComponent(item.id)}`;

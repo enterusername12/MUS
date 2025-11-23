@@ -23,10 +23,10 @@ const facilityLocationField = document.getElementById('facilityLocationField');
 const facilityLocationInput = document.getElementById('facilityLocation');
 const contactEmailInput = document.getElementById('contactEmail');
 
-const FACILITY_DAMAGE_CATEGORY = 'facilities damages';
+const LOCATION_REQUIRED_CATEGORIES = new Set(['facilities damages', 'lost', 'found']);
 
 const requiresFacilityLocation = (category) =>
-  (category || '').trim().toLowerCase() === FACILITY_DAMAGE_CATEGORY;
+  LOCATION_REQUIRED_CATEGORIES.has((category || '').trim().toLowerCase());
 
 const toggleFacilityLocationField = () => {
   if (!facilityLocationField || !facilityLocationInput || !categorySelect) {
@@ -157,7 +157,7 @@ form.addEventListener('submit', async (e) => {
   }
 
   if (requiresFacilityLocation(category) && !facilityLocationValue) {
-    alert('Please provide the damaged location for facilities reports.');
+    alert('Please provide the location for this category.');
     return;
   }
 

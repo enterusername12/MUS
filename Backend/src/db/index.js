@@ -521,6 +521,8 @@ const ensureDatabase = async () => {
         contact_email TEXT,
         category TEXT NOT NULL,
         message TEXT NOT NULL,
+        facility_location TEXT,
+        attachment_path TEXT,
         attachment_data BYTEA,
         attachment_original_name TEXT,
         attachment_mime_type TEXT,
@@ -528,6 +530,8 @@ const ensureDatabase = async () => {
         status TEXT NOT NULL DEFAULT 'pending',
         moderated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         moderated_at TIMESTAMPTZ,
+        moderator_response TEXT,
+        moderator_response_updated_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         CONSTRAINT feedback_submissions_status_check
@@ -536,8 +540,11 @@ const ensureDatabase = async () => {
 
       await client.query(
         `ALTER TABLE feedback_submissions
-           DROP COLUMN IF EXISTS attachment_path,
-           ADD COLUMN IF NOT EXISTS attachment_data BYTEA`
+           ADD COLUMN IF NOT EXISTS facility_location TEXT,
+           ADD COLUMN IF NOT EXISTS attachment_path TEXT,
+           ADD COLUMN IF NOT EXISTS attachment_data BYTEA,
+           ADD COLUMN IF NOT EXISTS moderator_response TEXT,
+           ADD COLUMN IF NOT EXISTS moderator_response_updated_at TIMESTAMPTZ`
       );
 
       // merch_products
