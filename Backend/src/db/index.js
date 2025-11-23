@@ -535,8 +535,15 @@ const ensureDatabase = async () => {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         CONSTRAINT feedback_submissions_status_check
-          CHECK (status IN ('pending', 'in_review', 'resolved'))
+          CHECK (status IN ('pending', 'in_review', 'resolved', 'skipped'))
       )`);
+
+      await client.query(`ALTER TABLE feedback_submissions
+        DROP CONSTRAINT IF EXISTS feedback_submissions_status_check`);
+
+      await client.query(`ALTER TABLE feedback_submissions
+        ADD CONSTRAINT feedback_submissions_status_check
+          CHECK (status IN ('pending', 'in_review', 'resolved', 'skipped'))`);
 
       await client.query(
         `ALTER TABLE feedback_submissions

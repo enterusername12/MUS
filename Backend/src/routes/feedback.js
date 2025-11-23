@@ -259,6 +259,34 @@ router.get('/moderation', async (req, res, next) => {
   }
 });
 
+router.patch('/:id/skip', async (req, res, next) => {
+  try {
+    const submissionId = Number.parseInt(req.params.id, 10);
+    if (Number.isNaN(submissionId)) {
+      return res.status(400).json({ error: 'Invalid submission id.' });
+    }
+
+    const skipped = await updateFeedbackStatus(submissionId, {
+      status: 'skipped',
+      moderatedBy: req.user?.id ?? null
+    });
+
+    if (!skipped) {
+      return res.status(404).json({ error: 'Feedback submission not found.' });
+    }
+
+    return res.json({
+      message: 'Feedback submission skipped successfully.',
+      submission: skipped
+    });
+  } catch (error) {
+    if (error.message === 'Invalid status value') {
+      return res.status(400).json({ error: 'Invalid status value.' });
+    }
+    return next(error);
+  }
+});
+
 router.patch('/:id', express.json(), async (req, res, next) => {
   try {
     const submissionId = Number.parseInt(req.params.id, 10);

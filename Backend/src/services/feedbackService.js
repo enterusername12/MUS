@@ -1,6 +1,6 @@
 const { getPool, ensureDatabase } = require('../db');
 
-const VALID_STATUSES = new Set(['pending', 'in_review', 'resolved']);
+const VALID_STATUSES = new Set(['pending', 'in_review', 'resolved', 'skipped']);
 
 const normaliseStatus = (status) => {
   if (!status) {
