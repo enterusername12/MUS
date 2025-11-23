@@ -60,7 +60,7 @@ form.addEventListener('submit', async (e) => {
   if (file) formData.append('file', file);
 
   try {
-    const res = await fetch('http://localhost:3000/api/feedback', {
+    const res = await fetch('/api/feedback', {
       method: 'POST',
       body: formData,
     });
@@ -71,7 +71,26 @@ form.addEventListener('submit', async (e) => {
       fileName.textContent = '';
       charCount.innerHTML = `0 / 500 characters <span class="points">+5 points</span>`;
     } else {
-      alert('❌ Failed to submit feedback. Try again.');
+      let errorMessage = '❌ Failed to submit feedback. Try again.';
+
+      try {
+        const responseBody = await res.clone().json();
+        const backendMessage = responseBody?.error || responseBody?.message;
+        if (backendMessage) {
+          errorMessage = `❌ ${backendMessage}`;
+        }
+      } catch (jsonError) {
+        try {
+          const responseText = await res.text();
+          if (responseText) {
+            errorMessage = `❌ ${responseText}`;
+          }
+        } catch (textError) {
+          // Ignore parsing errors and fall back to default message
+        }
+      }
+
+      alert(errorMessage);
     }
   } catch (err) {
     console.error(err);
