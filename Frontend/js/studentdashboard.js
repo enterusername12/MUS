@@ -842,27 +842,39 @@ function loadRewardPoints(rewardPoints) {
   if (!pointsEl || !progressEl) return;
 
   const userDataRaw = localStorage.getItem("musAuthUser");
-  if (!userDataRaw) return;
+  if (!userDataRaw) {
+    pointsEl.textContent = "0 Points";
+    progressEl.textContent = "";
+    return;
+  }
 
   let userId;
   try {
     const userObj = JSON.parse(userDataRaw);
     userId = userObj.id;
-  } catch { return; }
+  } catch {
+    pointsEl.textContent = "0 Points";
+    progressEl.textContent = "";
+    return;
+  }
 
-  if (!Array.isArray(rewardPoints) || rewardPoints.length === 0) return;
+  if (!Array.isArray(rewardPoints) || rewardPoints.length === 0) {
+    pointsEl.textContent = "0 Points";
+    progressEl.textContent = "";
+    return;
+  }
 
   // Use loose equality to avoid type issues
   const matching = rewardPoints.find(r => r.user_id == userId);
 
   if (!matching) {
-    console.warn("No matching reward data found for user", userId);
-    pointsEl.textContent = "Error: No reward data";
+    pointsEl.textContent = "0 Points";
     progressEl.textContent = "";
     return;
   }
 
-  pointsEl.textContent = `${matching.points} Points`;
+  const pointsValue = Number(matching.points) || 0;
+  pointsEl.textContent = `${pointsValue} Points`;
   progressEl.textContent = "";
 }
 
