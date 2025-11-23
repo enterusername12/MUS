@@ -276,17 +276,83 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("resolve-btn")?.addEventListener("click", () => handleAction("resolve", tabName, item));
   }
 
+  function getModeratorDetails() {
+    try {
+      const stored = localStorage.getItem("musAuthUser");
+      if (!stored) return {};
+      const parsed = JSON.parse(stored);
+      const nameParts = [parsed.firstName, parsed.lastName].filter(Boolean).join(" ");
+      return {
+        id: parsed.id,
+        name: nameParts || parsed.email || "Moderator"
+      };
+    } catch (error) {
+      console.warn("Unable to read moderator details", error);
+      return {};
+    }
+  }
+
   // --- ✅ Action handler (for backend) ---
-  function handleAction(type, tabName, item) {
-    console.log(`Action triggered: ${type}`, item);
+async function handleAction(type, tabName, item) {
+    const statusMap = {
+      approve: "resolved",
+      reject: "resolved",
+      sendResponse: "in_review",
+      resolve: "resolved"
+    };
 
-    // Example backend request (replace with your API call)
-    // fetch('/api/moderation', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ type, tabName, item })
-    // }).then(res => res.json()).then(data => console.log(data));
+    const newStatus = statusMap[type];
 
-    alert(`"${type}" action submitted for ${item.user}. (connect backend here)`);
+    if (!newStatus) {
+      console.warn("Unsupported action", type);
+      return;
+    }
+
+    const moderator = getModeratorDetails();
+    const payload = {
+      status: newStatus,
+      moderatedBy: moderator.id ?? null,
+      moderatorName: moderator.name
+    };
+
+    try {
+      const response = await fetch(`/api/feedback/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({}));
+        const message =
+          errorPayload.error ||
+          errorPayload.message ||
+          `Failed to update status (HTTP ${response.status})`;
+        throw new Error(message);
+      }
+
+      const updated = await response.json();
+      console.log("Submission updated", updated);
+
+      const tabItems = data[tabName] || [];
+      const itemIndex = tabItems.findIndex((entry) => entry.id === item.id);
+      if (itemIndex !== -1) {
+        tabItems.splice(itemIndex, 1);
+      }
+
+      updateTabCounts();
+
+      if (!data[currentTab]?.length) {
+        const nextTab = ["feedback", "reports", "abnormal"].find((name) => data[name]?.length) || currentTab;
+        currentTab = nextTab;
+        setActiveTabButton(currentTab);
+      }
+
+      currentIndex = Math.min(currentIndex, Math.max((data[currentTab]?.length || 1) - 1, 0));
+      loadTab(currentTab);
+    } catch (error) {
+      console.error("Failed to submit moderation action", error);
+      alert(`Failed to ${type} submission: ${error.message}`);
+    }
   }
 });
