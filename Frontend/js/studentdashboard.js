@@ -3,17 +3,43 @@
 const API_BASE_URL = "http://localhost:3000/api";
 
 // === AI interaction helpers ===
-function getUserId() {
-  // Adjust if store it differently; this is a safe no-op fallback.
-  // Option A: localStorage
-  const ls = localStorage.getItem("userId");
-  if (ls) return ls;
+function decodeJwtPayload(token) {
+  if (!token || typeof token !== "string") return null;
+  try {
+    const payloadBase64 = token.split(".")[1];
+    if (!payloadBase64) return null;
 
-  // Option A2: musAuthUser payload
-  const musAuthUserRaw = localStorage.getItem("musAuthUser");
+    const normalized = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = atob(normalized);
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.warn("Unable to decode auth token for userId", error);
+    return null;
+  }
+}
+
+function readCookie(name) {
+  const cookies = document.cookie?.split(";") ?? [];
+  for (const cookie of cookies) {
+    const [key, value] = cookie.split("=");
+    if (key?.trim() === name) {
+      return decodeURIComponent(value ?? "");
+    }
+  }
+  return null;
+}
+
+function getUserId() {
+  // Prefer the auth token payload to ensure we have the active identity
+  const token = localStorage.getItem("musAuthToken") || readCookie("musAuthToken");
+  const decoded = decodeJwtPayload(token);
+  if (decoded?.sub) return decoded.sub;
+
+  // Option A: musAuthUser payload
+  const musAuthUserRaw = localStorage.getItem("musAuthUser") || readCookie("musAuthUser");
   if (musAuthUserRaw) {
     try {
-      const parsedUser = JSON.parse(musAuthUserRaw);
+      const parsedUser = typeof musAuthUserRaw === "string" ? JSON.parse(musAuthUserRaw) : musAuthUserRaw;
       if (parsedUser?.id) return parsedUser.id;
     } catch (error) {
       console.warn("Unable to parse musAuthUser from storage", error);
@@ -38,9 +64,7 @@ function getDashboardRequestOptions() {
   }
 
   const userId = getUserId();
-  if (userId) {
-    headers["X-User-Id"] = userId;
-  }
+  headers["X-User-Id"] = userId ?? "";
 
   return {
     credentials: "include",
