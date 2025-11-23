@@ -641,19 +641,34 @@ const CALENDAR_COLOR_PALETTE = [
 ];
 
 const PREDEFINED_CALENDAR_COLORS = {
-  competition: "#a855f7"
+  poll: "#e84a5f",
+  deadline: "#e84a5f",
+  "poll deadline": "#e84a5f",
+  competition: "#8a2c57",
+  event: "#4caf50",
+  "campus event": "#4caf50"
+};
+
+const PREDEFINED_CALENDAR_CLASSES = {
+  poll: "red",
+  deadline: "red",
+  "poll deadline": "red",
+  competition: "purple",
+  event: "green",
+  "campus event": "green"
 };
 
 function resolveCalendarColor(type) {
-  const normalizedType = type || "event";
+  const normalizedType = (type || "event").toLowerCase();
+
+  const predefinedColor = PREDEFINED_CALENDAR_COLORS[normalizedType];
+  if (predefinedColor) {
+    calendarState.typeColors[normalizedType] = predefinedColor;
+    return predefinedColor;
+  }
   if (!calendarState.typeColors[normalizedType]) {
-    const predefinedColor = PREDEFINED_CALENDAR_COLORS[normalizedType];
-    if (predefinedColor) {
-      calendarState.typeColors[normalizedType] = predefinedColor;
-    } else {
-      const paletteIndex = Object.keys(calendarState.typeColors).length % CALENDAR_COLOR_PALETTE.length;
-      calendarState.typeColors[normalizedType] = CALENDAR_COLOR_PALETTE[paletteIndex];
-    }
+    const paletteIndex = Object.keys(calendarState.typeColors).length % CALENDAR_COLOR_PALETTE.length;
+    calendarState.typeColors[normalizedType] = CALENDAR_COLOR_PALETTE[paletteIndex];
   }
   return calendarState.typeColors[normalizedType];
 }
@@ -672,22 +687,11 @@ function updateCalendarLegend() {
     return;
   }
 
-  const entries = Object.entries(calendarState.typeColors);
-  if (entries.length === 0) {
-    legend.innerHTML = '<span class="legend-empty">Event types will appear here.</span>';
-    return;
-  }
-
-  legend.innerHTML = entries
-    .map(
-      ([type, color]) => `
-        <span>
-          <span class="dot" style="background-color:${color};"></span>
-          ${formatCalendarTypeLabel(type)}
-        </span>
-      `
-    )
-    .join("");
+   legend.innerHTML = `
+    <span><span class="dot red"></span> Poll Deadline</span>
+    <span><span class="dot purple"></span> Competition</span>
+    <span><span class="dot green"></span> Campus Event</span>
+  `;
 }
 
 function renderCalendar() {
@@ -728,11 +732,20 @@ function renderCalendar() {
 
     const fullDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const eventsToday = items.filter((item) => item.date === fullDate);
+    const joinedEvents = eventsToday.filter(
+      (event) => event.joined || event.isJoined || event.userJoined
+    );
+    const eventsToRender = (joinedEvents.length ? joinedEvents : eventsToday).slice(0, 1);
 
-    eventsToday.forEach((event) => {
+    eventsToRender.forEach((event) => {
       const dot = document.createElement("div");
       dot.classList.add("dot");
-      dot.style.backgroundColor = resolveCalendarColor(event.type);
+      const typeClass = PREDEFINED_CALENDAR_CLASSES[(event.type || "event").toLowerCase()];
+      if (typeClass) {
+        dot.classList.add(typeClass);
+      } else {
+        dot.style.backgroundColor = resolveCalendarColor(event.type);
+      }
       dot.title = event.time ? `${event.title} — ${event.time}` : event.title;
       dotsContainer.appendChild(dot);
     });

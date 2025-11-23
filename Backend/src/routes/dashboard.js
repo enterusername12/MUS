@@ -1,7 +1,7 @@
 const express = require('express');
 
 const { getDashboardData } = require('../services/dashboardService');
-const { readJwtUserId } = require('../utils/auth');
+const { readUserIdFromRequest } = require('../utils/auth');
 
 const router = express.Router();
 
@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
       calendarLimit: req.query.calendarLimit
     };
 
-    const userId = readJwtUserId(req);
+    const userId = readUserIdFromRequest(req);
 
     const data = await getDashboardData({ limits, userId });
     res.json(data);

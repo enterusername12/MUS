@@ -8,6 +8,8 @@ const toDateOnly = (isoString) => isoString.slice(0, 10);
 describe('dashboard calendar integration', () => {
   let dashboardService;
   let queryStub;
+  let registrationRows;
+  let lastRegistrationQueryUserId;
 
   const calendarRows = [
     { id: 1, title: 'Campus Open Day', start_time: isoDaysFromNow(2), category: 'campus' },
@@ -29,7 +31,14 @@ describe('dashboard calendar integration', () => {
     delete require.cache[dbModuleId];
     delete require.cache[require.resolve('../src/services/dashboardService')];
 
-    queryStub = async (text) => {
+    lastRegistrationQueryUserId = null;
+    registrationRows = [{ competition_id: competitionRows[0].id }];
+
+    queryStub = async (text, params = []) => {
+      if (text.includes('FROM competition_registrations')) {
+        lastRegistrationQueryUserId = params[0];
+        return { rows: registrationRows };
+      }
       if (text.includes('FROM competition')) return { rows: competitionRows };
       if (text.includes('FROM participation')) return { rows: [] };
       if (text.includes('FROM reward ')) return { rows: [] };
@@ -52,16 +61,17 @@ describe('dashboard calendar integration', () => {
     delete require.cache[require.resolve('../src/services/dashboardService')];
   });
 
-  it('merges calendar sources, includes competition entries, and respects limit order', async () => {
+  it('merges calendar sources and only includes competitions when the user is registered', async () => {
     const result = await dashboardService.getDashboardData({ userId: 42, limits: { calendarLimit: 4 } });
 
+    assert.equal(lastRegistrationQueryUserId, 42);
     assert.equal(result.calendar.length, 4);
 
-    const competitionEntry = result.calendar.find((entry) => entry.type === 'competition');
+    const competitionEntries = result.calendar.filter((entry) => entry.type === 'competition');
 
-    assert.ok(competitionEntry, 'competition deadline should be merged into calendar');
-    assert.equal(competitionEntry.title, 'Innovation Challenge');
-    assert.equal(competitionEntry.date, toDateOnly(competitionRows[0].due));
+    assert.equal(competitionEntries.length, 1, 'only registered competitions are included');
+    assert.equal(competitionEntries[0].title, 'Innovation Challenge');
+    assert.equal(competitionEntries[0].date, toDateOnly(competitionRows[0].due));
 
     const orderedDates = result.calendar.map((item) => item.date);
     const expectedDates = [
@@ -72,6 +82,23 @@ describe('dashboard calendar integration', () => {
     ].map(toDateOnly);
 
     assert.deepEqual(orderedDates, expectedDates);
-    assert.equal(competitionEntry.date, toDateOnly(competitionRows[0].due));
+  });
+
+  it('drops competition entries when the user is no longer registered', async () => {
+    let result = await dashboardService.getDashboardData({ userId: 42, limits: { calendarLimit: 5 } });
+
+    assert.ok(result.calendar.some((entry) => entry.type === 'competition'));
+
+    registrationRows = [];
+
+    result = await dashboardService.getDashboardData({ userId: 42, limits: { calendarLimit: 5 } });
+
+    assert.ok(!result.calendar.some((entry) => entry.type === 'competition'));
+  });
+
+  it('excludes competitions when no user ID is provided', async () => {
+    const result = await dashboardService.getDashboardData({ limits: { calendarLimit: 5 } });
+
+    assert.ok(!result.calendar.some((entry) => entry.type === 'competition'));
   });
 });

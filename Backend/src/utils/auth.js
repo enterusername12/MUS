@@ -2,6 +2,11 @@ const jwt = require('jsonwebtoken');
 
 const { JWT_SECRET } = require('../config/env');
 
+const toPositiveInt = (value) => {
+  const num = Number(value);
+  return Number.isInteger(num) && num > 0 ? num : null;
+};
+
 const readJwtUserId = (req) => {
   const authHeader = req?.headers?.authorization;
   if (!authHeader || typeof authHeader !== 'string') {
@@ -15,13 +20,23 @@ const readJwtUserId = (req) => {
 
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    const id = Number(payload?.sub);
-    return Number.isInteger(id) && id > 0 ? id : null;
+    return toPositiveInt(payload?.sub);
   } catch (error) {
     return null;
   }
 };
 
+const readUserIdFromRequest = (req) => {
+  const sessionUserId = toPositiveInt(req?.session?.userId ?? req?.session?.user?.id);
+  if (sessionUserId) return sessionUserId;
+
+  const attachedUserId = toPositiveInt(req?.userId ?? req?.user?.id);
+  if (attachedUserId) return attachedUserId;
+
+  return readJwtUserId(req);
+};
+
 module.exports = {
-  readJwtUserId
+  readJwtUserId,
+  readUserIdFromRequest
 };
