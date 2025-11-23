@@ -46,6 +46,29 @@
         <option>Other</option>
       </select>
 
+      <div class="facility-location-field" id="facilityLocationField" style="display:none;">
+        <label for="facilityLocation">Damaged Location <span class="required">*</span></label>
+        <input
+          type="text"
+          id="facilityLocation"
+          name="facilityLocation"
+          maxlength="120"
+          placeholder="e.g., Library Level 1, Study Room 3"
+        />
+        <small class="upload-hint">Let maintenance know exactly where to go.</small>
+      </div>
+
+      <label for="contactEmail">Contact Email (Optional)</label>
+      <input
+        type="email"
+        id="contactEmail"
+        name="email"
+        inputmode="email"
+        placeholder="you@murdoch.edu.au"
+        autocomplete="email"
+      />
+      <small class="upload-hint">We'll only use this to send updates about your submission.</small>
+
       <!-- Feedback -->
       <label for="feedback">Your Feedback <span class="required">*</span></label>
       <textarea id="feedback" name="feedback" maxlength="500" placeholder="Share your suggestions, concerns, or compliments..." required></textarea>
@@ -56,7 +79,7 @@
       <p class="upload-hint">Add a photo or document to support your feedback (Max 10MB)</p>
 
       <div class="upload-area" id="uploadArea">
-        <input type="file" id="upload" name="upload" accept=".jpg,.png,.gif,.pdf,.doc,.docx" hidden />
+        <input type="file" id="upload" name="upload" accept=".jpg,.jpeg,.png,.gif,.pdf,.txt,.doc,.docx" hidden />
         <div class="upload-content">
           <div class="upload-icon">📂</div>
           <p><strong>Click to upload</strong> or drag and drop</p>
@@ -103,6 +126,11 @@
       </button>
     </a>
   </div>
+
+  <script>
+    window.__CONFIG = { apiBaseUrl: "http://localhost:3000" };
+  </script>
+  <script src="js/config.js"></script>
 
   <script src="js/feedback.js"></script>
   

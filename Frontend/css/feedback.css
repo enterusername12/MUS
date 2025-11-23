@@ -124,7 +124,9 @@ body {
 }
 
 .feedback-section select,
-.feedback-section textarea {
+.feedback-section textarea,
+.feedback-section input[type="text"],
+.feedback-section input[type="email"] {
   width: 100%;
   border: 1px solid #e1e1e1;
   border-radius: 8px;

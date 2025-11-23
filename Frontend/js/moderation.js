@@ -1,16 +1,22 @@
 document.addEventListener("DOMContentLoaded", () => {
+  const API_BASE_URL = window.getApiBaseUrl
+    ? window.getApiBaseUrl()
+    : window.__CONFIG?.apiBaseUrl?.replace(/\/$/, "") || "http://localhost:3000";
   const tabs = document.querySelectorAll(".tab");
   const container = document.querySelector(".card-container");
   const pageTitle = document.getElementById("page-title");
   const itemsCount = document.getElementById("items-count");
 
-  const data = {
+  let data = {
     abnormal: [],
     feedback: [],
     reports: []
   };
+  let isLoading = false;
+  let hasError = false;
 
-  const REPORT_CATEGORIES = new Set(["Facilities Damages", "Lost", "Found"]);
+  const blobUrlCache = new Map();
+  const MAX_RESPONSE_LENGTH = 2000;
 
   const titles = {
     abnormal: "Abnormal Content Review",
@@ -18,139 +24,130 @@ document.addEventListener("DOMContentLoaded", () => {
     reports: "Facility Reports Review"
   };
 
-  let currentTab = document.querySelector(".tab.active")?.dataset.tab || "abnormal";
+  const emptyStateMessages = {
+    abnormal: "No abnormal content is waiting for review.",
+    feedback: "There are no feedback submissions right now.",
+    reports: "No facility or lost & found reports have been submitted."
+  };
+
+  const REPORT_CATEGORY_LABELS = Object.freeze(
+    new Set([
+      "facilities damages",
+      "facility damages",
+      "facility damage",
+      "facilities damage",
+      "lost",
+      "lost & found",
+      "lost and found",
+      "missing item",
+      "found",
+      "found item",
+      "found items"
+    ])
+  );
+  const REPORT_CATEGORY_KEYWORDS = Object.freeze([
+    "facility",
+    "facilities",
+    "maintenance",
+    "repair",
+    "damage",
+    "lost",
+    "found",
+    "incident",
+    "report"
+  ]);
+  const ABNORMAL_CATEGORY_KEYWORDS = Object.freeze([
+    "abnormal",
+    "violation",
+    "harassment",
+    "abuse",
+    "threat",
+    "spam"
+  ]);
+
+  let currentTab = "abnormal";
   let currentIndex = 0;
 
-  setLoadingState("Loading moderation queue...");
-  fetchModerationData();
+  initialize();
+
+  async function initialize() {
+    setLoadingState();
+    await fetchModerationQueue();
+    updateTabCounters();
+    loadTab(currentTab);
+  }
+
+  async function fetchModerationQueue() {
+    isLoading = true;
+    hasError = false;
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/feedback/moderation?status=pending`,
+        {
+          credentials: "include"
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Unable to load moderation items.");
+      }
+
+      const payload = await response.json();
+      const submissions = Array.isArray(payload?.submissions)
+        ? payload.submissions
+        : Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload)
+        ? payload
+        : [];
+      data = normalizeSubmissions(submissions);
+    } catch (error) {
+      console.error("Failed to load moderation queue", error);
+      hasError = true;
+      data = {
+        abnormal: [],
+        feedback: [],
+        reports: []
+      };
+      const cannotReachBackend =
+        error?.message && /Failed to fetch|NetworkError|TypeError/.test(error.message);
+      const errorMessage = cannotReachBackend
+        ? `Can't reach backend at ${API_BASE_URL}. Please ensure the server is running.`
+        : error?.message || "Failed to load moderation items. Please try again.";
+      showErrorState(errorMessage);
+    } finally {
+      isLoading = false;
+    }
+  }
 
   tabs.forEach(tab => {
     tab.addEventListener("click", () => {
-      setActiveTabButton(tab.dataset.tab);
+      tabs.forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
       currentTab = tab.dataset.tab;
       currentIndex = 0;
       loadTab(currentTab);
     });
   });
 
-    async function fetchModerationData() {
-    try {
-      const response = await fetch("/api/feedback/moderation");
-      if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
-      }
-
-      const payload = await response.json();
-      const submissions = Array.isArray(payload.submissions) ? payload.submissions : [];
-
-      data.abnormal = [];
-      data.feedback = [];
-      data.reports = [];
-
-      submissions.forEach((submission) => {
-        const mapped = mapSubmission(submission);
-        if (REPORT_CATEGORIES.has(mapped.category)) {
-          data.reports.push(mapped);
-        } else {
-          data.feedback.push(mapped);
-        }
-      });
-
-      updateTabCounts();
-
-      if (!data[currentTab]?.length) {
-        const nextTab = ["feedback", "reports", "abnormal"].find((name) => data[name]?.length) || currentTab;
-        currentTab = nextTab;
-        setActiveTabButton(currentTab);
-      }
-
-      currentIndex = 0;
-      loadTab(currentTab);
-    } catch (error) {
-      console.error("Failed to load moderation data", error);
-      itemsCount.textContent = "Unable to load items";
-      container.innerHTML = `<div class="empty-state"><p>Failed to load moderation data.</p></div>`;
-    }
-  }
-
-  function setActiveTabButton(tabName) {
-    tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === tabName));
-  }
-
-  function updateTabCounts() {
-    tabs.forEach((tab) => {
-      const type = tab.dataset.tab;
-      const count = data[type]?.length || 0;
-      const badge = tab.querySelector(".count");
-      if (badge) badge.textContent = count;
-    });
-  }
-
-  function setLoadingState(message) {
-    itemsCount.textContent = message;
-    container.innerHTML = `<div class="empty-state"><p>${message}</p></div>`;
-  }
-
-  function mapSubmission(submission) {
-    const createdAt = submission.createdAt || submission.created_at;
-    const attachmentUrl =
-      submission.attachmentByteaUrl || submission.attachmentUrl || (submission.id ? `/api/feedback/${submission.id}/attachment` : null);
-    const hasAttachment = submission.attachmentPath || submission.attachmentOriginalName || attachmentUrl;
-
-    return {
-      id: submission.id,
-      user: submission.userId ? `User #${submission.userId}` : submission.contactEmail || "Anonymous",
-      date: formatDate(createdAt),
-      category: submission.category || "General",
-      context: submission.contactEmail ? `Contact email: ${submission.contactEmail}` : "Submitted via portal",
-      feedback: submission.message || "",
-      status: submission.status || "pending",
-      attachment: hasAttachment
-        ? {
-            url: attachmentUrl,
-            name: submission.attachmentOriginalName || "attachment",
-            mimeType: submission.attachmentMimeType || "",
-            size: submission.attachmentSize || submission.attachment_size || 0
-          }
-        : null
-    };
-  }
-
-  function formatDate(dateValue) {
-    if (!dateValue) return "Unknown date";
-    const date = new Date(dateValue);
-    if (Number.isNaN(date.getTime())) return "Unknown date";
-    return date.toLocaleString();
-  }
-
-  function renderAttachmentSection(attachment) {
-    if (!attachment) {
-      return `<div class="text-box">No attachment provided.</div>`;
-    }
-
-    const isImage = attachment.mimeType?.startsWith("image/");
-    const fileLabel = `${attachment.name}${attachment.size ? ` (${Math.round(attachment.size / 1024)} KB)` : ""}`;
-
-    const preview = isImage
-      ? `<div class="attachment"><img src="${attachment.url}" alt="${attachment.name}"></div>`
-      : `<div class="text-box"><strong>${fileLabel}</strong></div>`;
-
-    return `
-      ${preview}
-      <div class="text-box">
-        <a href="${attachment.url}" download="${attachment.name}" target="_blank" rel="noopener">Download attachment</a>
-      </div>
-    `;
-  }
-
   function loadTab(tabName) {
+    if (isLoading) {
+      setLoadingState();
+      return;
+    }
+
+    if (hasError) {
+      return;
+    }
+
     container.innerHTML = "";
     const items = data[tabName] || [];
     pageTitle.textContent = titles[tabName];
-    itemsCount.textContent = `${items.length} item${items.length === 1 ? "" : "s"} in queue`;
+    itemsCount.textContent = `${items.length} items in queue`;
 
     if (!items || items.length === 0) {
-      container.innerHTML = `<div class="empty-state"><p>No ${tabName} items found.</p></div>`;
+      itemsCount.textContent = "0 items in queue";
+      renderEmptyState(tabName);
       return;
     }
 
@@ -166,14 +163,14 @@ document.addEventListener("DOMContentLoaded", () => {
       cardHTML = `
         <div class="card">
           <div class="card-header">
-            <div class="card-field"><label>User</label><div class="value">${item.user}</div></div>
-            <div class="card-field"><label>Date & Time</label><div class="value">${item.date}</div></div>
-            <div class="card-field"><label>Status</label><div class="value"><span class="badge inappropriate">${item.status}</span></div></div>
+            <div class="card-field"><label>User</label><div class="value">${formatUser(item)}</div></div>
+            <div class="card-field"><label>Date & Time</label><div class="value">${formatDateTime(item)}</div></div>
+            <div class="card-field"><label>Reason</label><div class="value"><span class="badge inappropriate">${item.category || "Abnormal Content"}</span></div></div>
           </div>
-          <div class="section-label">Submitted Content</div>
-          <div class="text-box">${item.feedback || "No content provided."}</div>
+          <div class="section-label">Content</div>
+          <div class="text-box">${item.message || item.content || "No message provided."}</div>
           <div class="section-label">Attachment</div>
-          ${renderAttachmentSection(item.attachment)}
+          <div class="attachment">${renderAttachment(item)}</div>
           <div class="actions">
             <div class="nav-btns">
               <button id="prev-btn" ${currentIndex === 0 ? "disabled" : ""}>◀ Prev</button>
@@ -190,22 +187,33 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- FEEDBACK (editable text box for response) ---
     if (tabName === "feedback") {
+      const responsePrefill = escapeHtml(item.moderatorResponse || "");
+      const responseTimestamp = item.moderatorResponseUpdatedAt || item.moderatedAt || null;
+      const savedResponseSection = item.moderatorResponse
+        ? `
+          <div class="section-label">Saved Response</div>
+          <div class="text-box saved-response">
+            ${formatMultilineText(item.moderatorResponse)}
+            ${responseTimestamp ? `<div class="response-meta">Last updated ${formatTimestamp(responseTimestamp)}</div>` : ""}
+          </div>`
+        : "";
       cardHTML = `
         <div class="card">
           <div class="card-header">
-            <div class="card-field"><label>User</label><div class="value">${item.user}</div></div>
-            <div class="card-field"><label>Date & Time</label><div class="value">${item.date}</div></div>
-            <div class="card-field"><label>Category</label><div class="value"><span class="badge feature-request">${item.category}</span></div></div>
-            <div class="card-field"><label>Status</label><div class="value"><span class="badge feature-request">${item.status}</span></div></div>
+            <div class="card-field"><label>User</label><div class="value">${formatUser(item)}</div></div>
+            <div class="card-field"><label>Date & Time</label><div class="value">${formatDateTime(item)}</div></div>
+            <div class="card-field"><label>Category</label><div class="value"><span class="badge feature-request">${item.category || "General Feedback"}</span></div></div>
           </div>
           <div class="section-label">Context</div>
-          <div class="text-box">${item.context}</div>
+          <div class="text-box">${item.context || item.details || "No additional context provided."}</div>
           <div class="section-label">Feedback</div>
-          <div class="text-box">${item.feedback}</div>
+          <div class="text-box">${item.message || item.feedback || "No feedback text available."}</div>
+          ${hasRenderableAttachment(item) ? `
           <div class="section-label">Attachment</div>
-          ${renderAttachmentSection(item.attachment)}
+          <div class="attachment">${renderAttachment(item)}</div>` : ""}
+          ${savedResponseSection}
           <div class="section-label">Your Response</div>
-          <textarea id="response-box" placeholder="Write your response here..." rows="4" style="width:100%;"></textarea>
+          <textarea id="response-box" class="feedback-box" placeholder="Write your response here..." rows="4">${responsePrefill}</textarea>
           <div class="actions">
             <div class="nav-btns">
               <button id="prev-btn" ${currentIndex === 0 ? "disabled" : ""}>◀ Prev</button>
@@ -222,18 +230,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- FACILITY REPORTS ---
     if (tabName === "reports") {
+      const facilityLocationLabel = escapeHtml(
+        item.facilityLocation || item.location || "Not specified"
+      );
+      const issueLabel = escapeHtml(item.issue || item.category || "Facility Report");
+      const reportDescription =
+        item.desc || item.message || "No description provided.";
       cardHTML = `
         <div class="card">
           <div class="card-header">
-            <div class="card-field"><label>User</label><div class="value">${item.user}</div></div>
-            <div class="card-field"><label>Date & Time</label><div class="value">${item.date}</div></div>
-            <div class="card-field"><label>Category</label><div class="value"><span class="badge location">${item.category}</span></div></div>
-            <div class="card-field"><label>Status</label><div class="value"><span class="badge location">${item.status}</span></div></div>
+            <div class="card-field"><label>User</label><div class="value">${formatUser(item)}</div></div>
+            <div class="card-field"><label>Date & Time</label><div class="value">${formatDateTime(item)}</div></div>
+            <div class="card-field"><label>Location</label><div class="value"><span class="badge location">${facilityLocationLabel}</span></div></div>
           </div>
-          <div class="section-label">Report Details</div>
-          <div class="text-box">${item.feedback}</div>
+          <div class="section-label">Issue Type</div>
+          <div class="text-box"><strong>${issueLabel}</strong></div>
+          <div class="section-label">Description</div>
+          <div class="text-box">${reportDescription}</div>
+          ${hasRenderableAttachment(item) ? `
           <div class="section-label">Attachment</div>
-          ${renderAttachmentSection(item.attachment)}
+          <div class="attachment">${renderAttachment(item)}</div>` : ""}
           <div class="actions">
             <div class="nav-btns">
               <button id="prev-btn" ${currentIndex === 0 ? "disabled" : ""}>◀ Prev</button>
@@ -270,89 +286,458 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("approve-btn")?.addEventListener("click", () => handleAction("approve", tabName, item));
     document.getElementById("reject-btn")?.addEventListener("click", () => handleAction("reject", tabName, item));
     document.getElementById("send-btn")?.addEventListener("click", () => {
-      const response = document.getElementById("response-box").value.trim();
+      const responseField = document.getElementById("response-box");
+      const response = responseField?.value?.trim() || "";
+      if (response.length > MAX_RESPONSE_LENGTH) {
+        showToast(`Responses must be ${MAX_RESPONSE_LENGTH} characters or fewer.`, "error");
+        return;
+      }
       handleAction("sendResponse", tabName, { ...item, response });
     });
     document.getElementById("resolve-btn")?.addEventListener("click", () => handleAction("resolve", tabName, item));
   }
 
-  function getModeratorDetails() {
-    try {
-      const stored = localStorage.getItem("musAuthUser");
-      if (!stored) return {};
-      const parsed = JSON.parse(stored);
-      const nameParts = [parsed.firstName, parsed.lastName].filter(Boolean).join(" ");
-      return {
-        id: parsed.id,
-        name: nameParts || parsed.email || "Moderator"
-      };
-    } catch (error) {
-      console.warn("Unable to read moderator details", error);
-      return {};
-    }
-  }
-
-  // --- ✅ Action handler (for backend) ---
-async function handleAction(type, tabName, item) {
-    const statusMap = {
-      approve: "resolved",
-      reject: "resolved",
-      sendResponse: "in_review",
-      resolve: "resolved"
-    };
-
-    const newStatus = statusMap[type];
-
-    if (!newStatus) {
-      console.warn("Unsupported action", type);
+  // --- ✅ Action handler (with backend integration + optimistic UI) ---
+  async function handleAction(type, tabName, item) {
+    if (!item?.id) {
+      showToast("Unable to update this submission. Missing identifier.", "error");
       return;
     }
 
-    const moderator = getModeratorDetails();
-    const payload = {
-      status: newStatus,
-      moderatedBy: moderator.id ?? null,
-      moderatorName: moderator.name
-    };
+    const requestConfig = buildActionRequest(type, item);
+    if (!requestConfig) {
+      showToast("Unsupported action. Please refresh and try again.", "error");
+      return;
+    }
+
+    const card = container.querySelector(".card");
+    const actionButtons = card?.querySelectorAll(".action-btns button") || [];
+    const spinner = toggleActionSpinner(card, true, requestConfig.loadingLabel);
+    setButtonsDisabled(actionButtons, true);
 
     try {
-      const response = await fetch(`/api/feedback/${item.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+      const response = await fetch(requestConfig.url, {
+        method: requestConfig.method,
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify(requestConfig.body)
       });
 
       if (!response.ok) {
-        const errorPayload = await response.json().catch(() => ({}));
-        const message =
-          errorPayload.error ||
-          errorPayload.message ||
-          `Failed to update status (HTTP ${response.status})`;
-        throw new Error(message);
+        const errorPayload = await safeParseJson(response);
+        const errorMessage = errorPayload?.message || "Failed to update submission.";
+        throw new Error(errorMessage);
       }
 
-      const updated = await response.json();
-      console.log("Submission updated", updated);
+      const payload = await safeParseJson(response);
+      const updatedSubmission = payload?.submission || payload || null;
+      reconcileLocalData(tabName, item.id, updatedSubmission);
+      updateTabCounters();
+      const responseSnippet =
+        type === "sendResponse"
+          ? updatedSubmission?.moderatorResponse || item.response || ""
+          : "";
+      const successMessage = responseSnippet
+        ? `${requestConfig.successMessage} Saved response: "${truncateText(responseSnippet)}"`
+        : requestConfig.successMessage;
 
-      const tabItems = data[tabName] || [];
-      const itemIndex = tabItems.findIndex((entry) => entry.id === item.id);
-      if (itemIndex !== -1) {
-        tabItems.splice(itemIndex, 1);
-      }
-
-      updateTabCounts();
-
-      if (!data[currentTab]?.length) {
-        const nextTab = ["feedback", "reports", "abnormal"].find((name) => data[name]?.length) || currentTab;
-        currentTab = nextTab;
-        setActiveTabButton(currentTab);
-      }
-
-      currentIndex = Math.min(currentIndex, Math.max((data[currentTab]?.length || 1) - 1, 0));
-      loadTab(currentTab);
+      showToast(successMessage, "success");
+      loadTab(tabName);
     } catch (error) {
-      console.error("Failed to submit moderation action", error);
-      alert(`Failed to ${type} submission: ${error.message}`);
+      console.error("Moderation action failed", error);
+      showToast(error?.message || "Unable to complete the action. Please try again.", "error");
+    } finally {
+      toggleActionSpinner(card, false);
+      setButtonsDisabled(actionButtons, false);
     }
+  }
+
+  function buildActionRequest(type, item) {
+    const baseUrl = `${API_BASE_URL}/api/feedback/${encodeURIComponent(item.id)}`;
+    switch (type) {
+      case "approve":
+        return {
+          url: baseUrl,
+          method: "PATCH",
+          body: { status: "in_review" },
+          successMessage: "Submission approved.",
+          loadingLabel: "Approving..."
+        };
+      case "reject":
+        return {
+          url: baseUrl,
+          method: "PATCH",
+          body: { status: "resolved" },
+          successMessage: "Submission rejected.",
+          loadingLabel: "Rejecting..."
+        };
+      case "resolve":
+        return {
+          url: baseUrl,
+          method: "PATCH",
+          body: { status: "resolved" },
+          successMessage: "Report marked as resolved.",
+          loadingLabel: "Resolving..."
+        };
+      case "sendResponse":
+        if (!item.response) {
+          showToast("Please provide a response before sending.", "error");
+          return null;
+        }
+        return {
+          url: baseUrl,
+          method: "PATCH",
+          body: { status: "resolved", moderatorResponse: item.response },
+          successMessage: "Response sent successfully.",
+          loadingLabel: "Sending response..."
+        };
+      default:
+        return null;
+    }
+  }
+
+  function reconcileLocalData(tabName, itemId, updatedItem) {
+    if (!tabName || !itemId) {
+      return;
+    }
+
+    const list = data[tabName];
+    if (!Array.isArray(list)) {
+      return;
+    }
+
+    const index = list.findIndex(entry => String(entry.id) === String(itemId));
+    if (index === -1) {
+      return;
+    }
+
+    if (updatedItem?.status && updatedItem.status !== "pending") {
+      list.splice(index, 1);
+    } else {
+      list[index] = { ...list[index], ...updatedItem };
+    }
+
+    if (currentIndex >= list.length) {
+      currentIndex = Math.max(0, list.length - 1);
+    }
+  }
+
+  function setButtonsDisabled(buttons, disabled) {
+    buttons.forEach(button => {
+      button.disabled = disabled;
+      if (disabled) {
+        button.dataset.originalText = button.dataset.originalText || button.textContent;
+      } else if (button.dataset.originalText) {
+        button.textContent = button.dataset.originalText;
+        delete button.dataset.originalText;
+      }
+    });
+  }
+
+  function toggleActionSpinner(card, isVisible, label = "Processing...") {
+    if (!card) return null;
+    let spinner = card.querySelector(".card-spinner");
+    if (isVisible) {
+      if (!spinner) {
+        spinner = document.createElement("div");
+        spinner.className = "card-spinner visible";
+        spinner.innerHTML = `<div class="spinner"></div><span>${label}</span>`;
+        card.appendChild(spinner);
+      } else {
+        spinner.querySelector("span").textContent = label;
+        spinner.classList.add("visible");
+      }
+    } else if (spinner) {
+      spinner.classList.remove("visible");
+    }
+    return spinner;
+  }
+
+  async function safeParseJson(response) {
+    try {
+      return await response.json();
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function showToast(message, type = "info") {
+    if (!message) return;
+    let toastContainer = document.querySelector(".toast-container");
+    if (!toastContainer) {
+      toastContainer = document.createElement("div");
+      toastContainer.className = "toast-container";
+      document.body.appendChild(toastContainer);
+    }
+
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    toastContainer.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add("visible");
+    }, 10);
+
+    setTimeout(() => {
+      toast.classList.remove("visible");
+      setTimeout(() => toast.remove(), 300);
+    }, 4000);
+  }
+
+  function normalizeSubmissions(submissions) {
+    const normalized = {
+      abnormal: [],
+      feedback: [],
+      reports: []
+    };
+
+    submissions.forEach(submission => {
+      const tabKey = mapSubmissionToTab(submission);
+      if (!normalized[tabKey]) {
+        normalized[tabKey] = [];
+      }
+      normalized[tabKey].push(submission);
+    });
+
+    return normalized;
+  }
+
+  function mapSubmissionToTab(submission) {
+    const normalizedCategory = normalizeCategory(submission?.category);
+    if (isAbnormalCategory(normalizedCategory)) {
+      return "abnormal";
+    }
+
+    if (isReportCategory(normalizedCategory, submission)) {
+      return "reports";
+    }
+
+    return "feedback";
+  }
+
+ function normalizeCategory(category) {
+    if (typeof category !== "string") {
+      return "";
+    }
+    return category.trim().toLowerCase();
+  }
+
+  function isAbnormalCategory(categoryLabel) {
+    if (!categoryLabel) {
+      return false;
+    }
+    return ABNORMAL_CATEGORY_KEYWORDS.some(keyword => categoryLabel.includes(keyword));
+  }
+
+  function isReportCategory(categoryLabel, submission) {
+    if (typeof submission?.type === "string" && submission.type.trim().toLowerCase() === "report") {
+      return true;
+    }
+
+    if (!categoryLabel) {
+      return false;
+    }
+
+    if (REPORT_CATEGORY_LABELS.has(categoryLabel)) {
+      return true;
+    }
+
+    return REPORT_CATEGORY_KEYWORDS.some(keyword => categoryLabel.includes(keyword));
+  }
+
+  function renderAttachment(item) {
+    if (!item) {
+      return `<span>No attachment provided.</span>`;
+    }
+
+    const fileName = escapeHtml(item?.attachmentOriginalName || 'Download attachment');
+    const mimeType = item?.attachmentMimeType || '';
+    const base64 = item?.attachmentBase64;
+
+    if (base64) {
+      if (isImageAttachment(mimeType, base64)) {
+        return `<img src="${base64}" alt="${fileName}" loading="lazy">`;
+      }
+
+      const downloadUrl = createBlobUrlFromDataUri(base64) || base64;
+      const sizeLabel = formatFileSize(item?.attachmentSize);
+      const sizeText = sizeLabel ? ` <small>(${sizeLabel})</small>` : '';
+
+      return `
+        <div class="attachment-download">
+          <p>${fileName}${sizeText}</p>
+          <a class="btn download" href="${downloadUrl}" download="${fileName}">Download attachment</a>
+        </div>`;
+    }
+
+    if (item?.attachmentPath) {
+      const url = buildAttachmentUrl(item.attachmentPath);
+      const isImage = isImageAttachment(mimeType, url);
+
+      if (isImage) {
+        return `<img src="${url}" alt="${fileName}" loading="lazy">`;
+      }
+
+      return `<a href="${url}" download="${fileName}" target="_blank" rel="noopener">Download ${fileName}</a>`;
+    }
+
+    if (item?.img) {
+      const url = buildAttachmentUrl(item.img);
+      return `<img src="${url}" alt="attachment" loading="lazy">`;
+    }
+
+    return `<span>No attachment provided.</span>`;
+  }
+
+  function hasRenderableAttachment(item) {
+    if (!item) return false;
+    return Boolean(item.attachmentBase64 || item.attachmentPath || item.img);
+  }
+
+  function buildAttachmentUrl(pathValue) {
+    if (!pathValue || typeof pathValue !== 'string') return '';
+    const normalised = pathValue.replace(/\\/g, '/');
+    if (/^https?:\/\//i.test(normalised)) {
+      return normalised;
+    }
+
+    const prefixed = normalised.startsWith('/') ? normalised : `/${normalised}`;
+    return encodeURI(prefixed);
+  }
+
+  function isImageAttachment(mimeType, url) {
+    if (typeof mimeType === 'string' && mimeType.toLowerCase().startsWith('image/')) {
+      return true;
+    }
+    if (typeof url === 'string' && url.startsWith('data:image/')) {
+      return true;
+    }
+    return /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(url);
+  }
+
+ function createBlobUrlFromDataUri(dataUri) {
+    if (typeof dataUri !== 'string' || !dataUri.startsWith('data:')) {
+      return null;
+    }
+
+    if (blobUrlCache.has(dataUri)) {
+      return blobUrlCache.get(dataUri);
+    }
+
+    try {
+      const matches = dataUri.match(/^data:(.*?);base64,(.*)$/);
+      if (!matches) {
+        return null;
+      }
+
+      const mimeType = matches[1] || 'application/octet-stream';
+      const base64Data = matches[2];
+      const byteString = atob(base64Data);
+      const byteNumbers = new Array(byteString.length);
+      for (let i = 0; i < byteString.length; i += 1) {
+        byteNumbers[i] = byteString.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: mimeType });
+      const blobUrl = URL.createObjectURL(blob);
+      blobUrlCache.set(dataUri, blobUrl);
+      return blobUrl;
+    } catch (error) {
+      console.error('Failed to create Blob URL from attachment data.', error);
+      return null;
+    }
+  }
+
+  function formatFileSize(bytes) {
+    if (typeof bytes !== 'number' || Number.isNaN(bytes) || bytes <= 0) {
+      return '';
+    }
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = bytes;
+    let unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex += 1;
+    }
+    return `${size.toFixed(size >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+  }
+
+  function escapeHtml(value = '') {
+    return value.replace(/[&<>"']/g, (char) => {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      };
+      return map[char] || char;
+    });
+  }
+
+  function formatUser(item) {
+    return item?.submittedBy || item?.user || "Anonymous";
+  }
+
+  function formatDateTime(item) {
+    if (!item) return "";
+    const date = item?.createdAt || item?.date;
+    const formatted = formatTimestamp(date);
+    return formatted || "Not available";
+  }
+
+  function formatTimestamp(value) {
+    if (!value) {
+      return '';
+    }
+    try {
+      return new Date(value).toLocaleString();
+    } catch (error) {
+      return value;
+    }
+  }
+
+  function formatMultilineText(value = '') {
+    if (!value) {
+      return '';
+    }
+    return escapeHtml(value).replace(/\n/g, '<br>');
+  }
+
+  function truncateText(value = '', maxLength = 140) {
+    if (!value) {
+      return '';
+    }
+    if (value.length <= maxLength) {
+      return value;
+    }
+    return `${value.slice(0, maxLength - 1)}…`;
+  }
+
+  function setLoadingState() {
+    container.innerHTML = `<div class="loading-state"><p>Loading moderation queue...</p></div>`;
+    itemsCount.textContent = "Loading items...";
+  }
+
+  function showErrorState(message) {
+    container.innerHTML = `<div class="error-state"><p>${message}</p></div>`;
+    itemsCount.textContent = "0 items in queue";
+  }
+
+  function renderEmptyState(tabName) {
+    const message = emptyStateMessages[tabName] || `No ${tabName} items found.`;
+    container.innerHTML = `<div class="empty-state"><p>${message}</p></div>`;
+  }
+
+  function updateTabCounters() {
+    tabs.forEach(tab => {
+      const type = tab.dataset.tab;
+      const count = data[type]?.length || 0;
+      const badge = tab.querySelector(".count");
+      if (badge) badge.textContent = count;
+    });
   }
 });
