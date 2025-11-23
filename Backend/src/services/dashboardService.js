@@ -212,9 +212,9 @@ async function fetchUserNameMap(userIds = []) {
 }
 
 
-// ⚡ fetch all competitions, convert banner to base64
+
 // ⚡ fetch all competitions, include participation + reward, convert banner to base64
-async function fetchCompetitions() {
+async function fetchCompetitions(userId = null) {
   const pool = getPool();
   
   // 1️⃣ fetch all competitions
@@ -241,6 +241,20 @@ async function fetchCompetitions() {
      WHERE competition_id = ANY($1::INT[])`,
     [compIds]
   );
+  
+  let userParticipationLookup = {};
+  if (userId) {
+    const { rows: userParticipationRows } = await pool.query(
+      `SELECT competition_id
+         FROM competition_registrations
+        WHERE user_id = $1`,
+      [userId]
+    );
+    userParticipationLookup = userParticipationRows.reduce((acc, row) => {
+      acc[row.competition_id] = true;
+      return acc;
+    }, {});
+  }  
 
   const participationMap = participationRows.reduce((acc, p) => {
     acc[p.competition_id] = { token: p.token, participants: p.participants };
@@ -264,7 +278,8 @@ async function fetchCompetitions() {
     description: ensureString(item.description),
     bannerBase64: item.banner ? `data:image/png;base64,${item.banner.toString('base64')}` : null,
     participation: participationMap[item.id] || { token: null, participants: 0 },
-    reward: rewardMap[item.id] || { token: null, points: 0 }
+    reward: rewardMap[item.id] || { token: null, points: 0 },
+    isUserRegistered: Boolean(userParticipationLookup[item.id])
   }));
 }
 
@@ -302,7 +317,8 @@ const normalizeCompetitions = (items) =>
       description: ensureString(item.description),
       bannerBase64,
       participation: item.participation || { token: null, participants: 0 },
-      reward: rewardDetails
+      reward: rewardDetails,
+      isUserRegistered: Boolean(item.isUserRegistered)
     };
   });
 
@@ -351,7 +367,13 @@ const normalizePolls = (items) =>
     };
   });
 
-const normalizeCalendarEntries = (publicItems, userItems, competitions, limit = DEFAULT_CALENDAR_LIMIT) => {
+const normalizeCalendarEntries = (
+  publicItems,
+  userItems,
+  competitions,
+  limit = DEFAULT_CALENDAR_LIMIT,
+  userId = null
+) => {
   const normalizedPublic = ensureArray(publicItems)
     .map((item, i) => {
       const startIso = toISOString(item.start_time);
@@ -375,7 +397,20 @@ const normalizeCalendarEntries = (publicItems, userItems, competitions, limit = 
     }))
     .filter((item) => item.date);
 
+  const participationLookup = ensureArray(competitions).reduce((acc, comp) => {
+    const compId = ensureNumber(comp.id ?? comp.competition_id, null);
+    if (compId && comp.isUserRegistered) {
+      acc[compId] = true;
+    }
+    return acc;
+  }, {});
+
   const normalizedCompetitions = ensureArray(competitions)
+      .filter((item) => {
+      if (!userId) return true;
+      const compId = ensureNumber(item.id ?? item.competition_id, null);
+      return Boolean(compId && participationLookup[compId]);
+    })
     .map((item, i) => {
       const dueIso = toISOString(item.due ?? item.due_date ?? item.deadline ?? item.ends_at ?? item.created_at ?? '');
       const date = toDateOnly(dueIso);
@@ -418,7 +453,7 @@ async function getDashboardData(options = {}) {
     fetchUpcomingEvents(),
     fetchPublishedCommunityPosts(),
     fetchActivePolls(),
-    fetchCompetitions(), // ⚡ get all competitions
+    fetchCompetitions(userId), // ⚡ get all competitions
     fetchRewardPoints(),
     fetchCalendarItems(calendarLimit),
     fetchUserCalendarItems(userId, calendarLimit)
@@ -460,7 +495,7 @@ async function getDashboardData(options = {}) {
     competitions: normalizedCompetitions,  // ⚡ include full competition list
     rewardPoints,
     spotlights,
-    calendar: normalizeCalendarEntries(calendarItems, userCalendarItems, normalizedCompetitions, calendarLimit),
+    calendar: normalizeCalendarEntries(calendarItems, userCalendarItems, normalizedCompetitions, calendarLimit, userId),
     generatedAt: new Date().toISOString()
   };
 }
