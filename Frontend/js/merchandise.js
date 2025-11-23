@@ -1,3 +1,6 @@
+
+
+
 const API_BASE = (() => {
   const explicit = window.__MU_MERCH_API_BASE__
     || document?.querySelector?.('meta[name="merch-api-base"]')?.content;

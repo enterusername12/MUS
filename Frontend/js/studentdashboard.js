@@ -1,3 +1,4 @@
+
 // Dashboard widgets are hydrated from the backend API and rendered client-side.
 const API_BASE_URL = "http://localhost:3000/api";
 
@@ -14,6 +15,9 @@ function getUserId() {
 
   return null; // guests or unknown
 }
+
+const user = JSON.parse(localStorage.getItem("musAuthUser"));
+
 
 
 document.addEventListener("DOMContentLoaded", () => {
