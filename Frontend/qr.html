@@ -18,17 +18,15 @@
       margin: 0;
       padding: 0;
       width: 100%;
-      height: 100%;
+      min-height: 100vh;
       background: linear-gradient(90deg, #65135D 0%, #A12262 25%, #E12744 50%, #B72A70 75%, #C74287 100%);
       font-family: 'Inter', sans-serif;
       color: #fff;
       display: flex;
       justify-content: center;
       align-items: center;
-      overflow: hidden;
+      overflow-x: hidden;
     }
-
-
 
     /* Wrapper center layout */
     .scanner-container {
@@ -69,7 +67,6 @@
     }
 
     #qr-wrapper {
-
       padding: 18px;
       border-radius: var(--radius);
       box-shadow: var(--shadow);
@@ -80,6 +77,61 @@
     #qr-reader {
       border-radius: var(--radius);
       overflow: hidden;
+    }
+
+    /* Sync Button */
+    #sync-queue-btn {
+      display: none;
+      margin-top: 24px;
+      padding: 14px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      background: var(--grad);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      transition: all 0.3s ease;
+      backdrop-filter: blur(4px);
+    }
+
+    #sync-queue-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+    }
+
+    #sync-queue-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    #sync-queue-btn .badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.3);
+      padding: 2px 8px;
+      border-radius: 12px;
+      margin-left: 6px;
+      font-size: 14px;
+    }
+
+    /* Status indicator */
+    .status-indicator {
+      margin-top: 16px;
+      padding: 10px 16px;
+      border-radius: 20px;
+      background: var(--pill);
+      font-size: 14px;
+      display: inline-block;
+      backdrop-filter: blur(4px);
+    }
+
+    .status-online {
+      border: 1px solid rgba(76, 175, 80, 0.5);
+    }
+
+    .status-offline {
+      border: 1px solid rgba(255, 152, 0, 0.5);
     }
   </style>
 </head>
@@ -95,21 +147,103 @@
     <div id="qr-wrapper">
       <div id="qr-reader" style="width:300px;height:300px;"></div>
     </div>
+
+    <!-- Status Indicator -->
+    <div id="status-indicator" class="status-indicator"></div>
+
+    <!-- Sync Queue Button -->
+    <button id="sync-queue-btn">
+      🔄 Sync Queue <span class="badge"><span id="queue-count">0</span></span>
+    </button>
   </div>
 
- <script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
 <script>
-const API_BASE_URL = "http://localhost:3000"; // backend URL
-const scanner = new Html5Qrcode("qr-reader");
+let scanner;
+const API_BASE_URL = "http://localhost:3000";
+const QUEUE_KEY = "qr_scan_queue";
+const CACHE_KEY = "dashboard_cache";
 
-// Fetch competitions and rewards from dashboard
+// Queue Management
+function getQueue() {
+  const queue = localStorage.getItem(QUEUE_KEY);
+  return queue ? JSON.parse(queue) : [];
+}
+
+function addToQueue(item) {
+  const queue = getQueue();
+  queue.push({
+    ...item,
+    timestamp: new Date().toISOString(),
+    id: Date.now() + Math.random()
+  });
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+  updateQueueUI();
+}
+
+function clearQueue() {
+  localStorage.setItem(QUEUE_KEY, JSON.stringify([]));
+  updateQueueUI();
+}
+
+function updateQueueUI() {
+  const queue = getQueue();
+  const queueBtn = document.getElementById("sync-queue-btn");
+  const queueCount = document.getElementById("queue-count");
+  
+  if (queueBtn && queueCount) {
+    if (queue.length > 0) {
+      queueBtn.style.display = "block";
+      queueCount.textContent = queue.length;
+    } else {
+      queueBtn.style.display = "none";
+    }
+  }
+}
+
+// Check network connectivity and update UI
+async function isOnline() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/dashboard`, {
+      method: "HEAD",
+      cache: "no-cache",
+      signal: AbortSignal.timeout(3000) // 3 second timeout
+    });
+    updateStatusIndicator(true);
+    return response.ok;
+  } catch {
+    updateStatusIndicator(false);
+    return false;
+  }
+}
+
+function updateStatusIndicator(online) {
+  const indicator = document.getElementById("status-indicator");
+  if (indicator) {
+    if (online) {
+      indicator.textContent = "🟢 Online";
+      indicator.className = "status-indicator status-online";
+    } else {
+      indicator.textContent = "🟠 Offline Mode";
+      indicator.className = "status-indicator status-offline";
+    }
+  }
+}
+
+// Fetch competitions and rewards with caching
 async function loadCompetitions() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/dashboard`, { method: "GET" });
+    const response = await fetch(`${API_BASE_URL}/api/dashboard`, { 
+      method: "GET",
+      signal: AbortSignal.timeout(5000) // 5 second timeout
+    });
     if (!response.ok) throw new Error("Failed to fetch competitions");
 
     const data = await response.json();
     console.log("Dashboard data:", data);
+
+    // Cache the data
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
 
     return {
       competitions: Array.isArray(data.competitions) ? data.competitions : [],
@@ -117,17 +251,29 @@ async function loadCompetitions() {
     };
   } catch (err) {
     console.error(err);
-    alert("❌ Could not load dashboard");
+    
+    // Try to use cached data
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      console.log("Using cached dashboard data");
+      const data = JSON.parse(cached);
+      return {
+        competitions: Array.isArray(data.competitions) ? data.competitions : [],
+        rewards: Array.isArray(data.rewards) ? data.rewards : []
+      };
+    }
+    
+    alert("❌ Could not load dashboard and no cache available");
     return { competitions: [], rewards: [] };
   }
 }
 
-// Extract token from QR code text
+// Extract token from QR No matching competition or reward for scanned codecode text
 function extractTokenFromQRCode(qrText) {
   const match = qrText.match(/\/competition\/(.+?)\/(join|reward)/);
-  return match ? match[1] : qrText; // 返回 token
+  console.log(qrText);
+  return match ? match[1] : qrText;
 }
-
 
 // Find competition ID by token
 function getCompetitionIdByToken(competitions, token) {
@@ -142,7 +288,6 @@ function getCompetitionIdByToken(competitions, token) {
   }
   return null;
 }
-
 // Find reward by token
 function getRewardByToken(rewards, token) {
   if (!Array.isArray(rewards)) return null;
@@ -158,9 +303,38 @@ function getRewardByToken(rewards, token) {
   }
   return null;
 }
+// Find reward by token
+function getRewardByToken(rewards, token) {
+  if (!Array.isArray(rewards)) return null;
 
-// Register participant
+  const extractedToken = extractTokenFromQRCode(token);
+ 
+  for (const reward of rewards) {
+    console.log(reward.reward?.token, "and", extractedToken);
+    if (reward.reward?.token === extractedToken) {
+      console.log("✅ Reward matched:", token, "Points:", reward.points);
+      return reward.reward;
+    }
+  }
+  return null;
+}
+
+// Register participant (with offline support)
 async function registerParticipant(userId, competitionId, scannedCode) {
+  const online = await isOnline();
+  
+  if (!online) {
+    console.log("📴 Offline - Adding to queue");
+    addToQueue({
+      type: "competition",
+      userId,
+      competitionId,
+      qrCode: scannedCode
+    });
+    alert("📴 Offline Mode: Registration queued. Will sync when online.");
+    return;
+  }
+
   try {
     const response = await fetch(`${API_BASE_URL}/api/competition/register`, {
       method: "POST",
@@ -178,12 +352,33 @@ async function registerParticipant(userId, competitionId, scannedCode) {
     }
   } catch (error) {
     console.error(error);
-    alert("❌ Registration failed due to network error.");
+    // If network error, add to queue
+    addToQueue({
+      type: "competition",
+      userId,
+      competitionId,
+      qrCode: scannedCode
+    });
+    alert("📴 Network error - Registration queued for later sync.");
   }
 }
 
-// Register reward
+// Register reward (with offline support)
 async function registerReward(userId, reward) {
+  const online = await isOnline();
+  
+  if (!online) {
+    console.log("📴 Offline - Adding to queue");
+    addToQueue({
+      type: "reward",
+      userId,
+      token: reward.token,
+      points: reward.points
+    });
+    alert(`📴 Offline Mode: Reward (${reward.points} points) queued. Will sync when online.`);
+    return;
+  }
+
   try {
     const response = await fetch(`${API_BASE_URL}/api/reward/claim`, {
       method: "POST",
@@ -201,13 +396,98 @@ async function registerReward(userId, reward) {
     }
   } catch (err) {
     console.error(err);
-    alert("❌ Reward claim failed due to network error.");
+    // If network error, add to queue
+    addToQueue({
+      type: "reward",
+      userId,
+      token: reward.token,
+      points: reward.points
+    });
+    alert(`📴 Network error - Reward (${reward.points} points) queued for later sync.`);
+  }
+}
+
+// Sync queued items
+async function syncQueue() {
+  const queue = getQueue();
+  if (queue.length === 0) {
+    alert("No items to sync.");
+    return;
+  }
+
+  const online = await isOnline();
+  if (!online) {
+    alert("❌ Still offline. Cannot sync.");
+    return;
+  }
+
+  const syncBtn = document.getElementById("sync-queue-btn");
+  syncBtn.disabled = true;
+  syncBtn.innerHTML = '⏳ Syncing... <span class="badge"><span id="queue-count">' + queue.length + '</span></span>';
+
+  let successCount = 0;
+  let failedItems = [];
+
+  for (const item of queue) {
+    try {
+      let response;
+      
+      if (item.type === "competition") {
+        response = await fetch(`${API_BASE_URL}/api/competition/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: item.userId,
+            competitionId: item.competitionId,
+            qrCode: item.qrCode
+          })
+        });
+      } else if (item.type === "reward") {
+        response = await fetch(`${API_BASE_URL}/api/reward/claim`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: item.userId,
+            token: item.token,
+            points: item.points
+          })
+        });
+      }
+
+      if (response && response.ok) {
+        successCount++;
+      } else {
+        failedItems.push(item);
+      }
+    } catch (err) {
+      console.error("Sync error:", err);
+      failedItems.push(item);
+    }
+  }
+
+  // Update queue with failed items only
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(failedItems));
+  
+  syncBtn.disabled = false;
+  syncBtn.innerHTML = '🔄 Sync Queue <span class="badge"><span id="queue-count">0</span></span>';
+  updateQueueUI();
+
+  if (failedItems.length === 0) {
+    alert(`✅ All ${successCount} items synced successfully!`);
+  } else {
+    alert(`⚠️ Synced ${successCount} items. ${failedItems.length} failed and remain in queue.`);
   }
 }
 
 // Start QR scanner
 async function startScanner() {
+  // Initialize scanner here
+  if (!scanner) {
+    scanner = new Html5Qrcode("qr-reader");
+  }
+
   const data = await loadCompetitions();
+  console.log("Loaded competitions and rewards:", data);
   const competitionsArray = data.competitions;
   const rewardsArray = data.competitions;
 
@@ -228,18 +508,36 @@ async function startScanner() {
         // First check for competition
         const competitionId = getCompetitionIdByToken(competitionsArray, decodedText);
         if (competitionId) {
-          scanner.stop();
+          await scanner.stop();
           await registerParticipant(userId, competitionId, decodedText);
+          setTimeout(async () => {
+            try {
+              await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 });
+            } catch (err) {
+              console.error("Restart error:", err);
+            }
+          }, 2000);
+          return;
         }
 
         // Then check for reward
         const reward = getRewardByToken(rewardsArray, decodedText);
+        console.log("Reward found:", decodedText,rewardsArray);
         if (reward) {
-          scanner.stop();
+          await scanner.stop();
           await registerReward(userId, reward);
+          setTimeout(async () => {
+            try {
+              await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 });
+            } catch (err) {
+              console.error("Restart error:", err);
+            }
+          }, 2000);
+          return;
         }
 
         // If neither
+        console.log("❌ No matching competition or reward for scanned code." , reward);
         if (!competitionId && !reward) {
           alert("❌ Invalid token or competition/reward not found!");
         }
@@ -255,9 +553,31 @@ async function startScanner() {
   }
 }
 
-window.onload = startScanner;
-</script>
+// Initialize
+window.onload = async () => {
+  // Wait for library to load
+  if (typeof Html5Qrcode === 'undefined') {
+    console.error('Html5Qrcode library not loaded');
+    alert('❌ QR Scanner library failed to load. Please refresh the page.');
+    return;
+  }
 
+  updateQueueUI();
+  await isOnline(); // Check initial status
+  startScanner();
+  
+  // Setup sync button
+  const syncBtn = document.getElementById("sync-queue-btn");
+  if (syncBtn) {
+    syncBtn.addEventListener("click", syncQueue);
+  }
+
+  // Periodic connectivity check (every 30 seconds)
+  setInterval(async () => {
+    await isOnline();
+  }, 30000);
+};
+</script>
 
 </body>
 </html>

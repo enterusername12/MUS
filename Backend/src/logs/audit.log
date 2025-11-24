@@ -294,3 +294,16 @@
 2025-11-23T15:30:30.414Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1580ms
 2025-11-23T15:37:01.269Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1572ms
 2025-11-23T15:39:48.761Z [POST] /api/auth/login from ::1 Status: 200, Duration: 509ms
+2025-11-23T15:49:24.186Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1674ms
+2025-11-23T15:53:45.978Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1646ms
+2025-11-23T16:29:04.618Z [POST] /api/competition from ::1 Status: 200, Duration: 3962ms
+2025-11-23T16:30:16.430Z [POST] /api/competition/register from ::1 Status: 200, Duration: 2185ms
+2025-11-23T17:06:53.463Z [POST] /api/competition/register from ::1 Status: 200, Duration: 1413ms
+2025-11-23T17:07:59.508Z [POST] /api/competition/register from ::1 Status: 200, Duration: 387ms
+2025-11-24T14:44:00.273Z [POST] /api/auth/login from ::1 Status: 200, Duration: 2544ms
+2025-11-24T14:53:47.788Z [POST] /api/competition/register from ::1 Status: 200, Duration: 388ms
+2025-11-24T14:54:02.200Z [POST] /api/competition/register from ::1 Status: 200, Duration: 409ms
+2025-11-24T14:58:03.538Z [POST] /api/competition/register from ::1 Status: 200, Duration: 977ms
+2025-11-24T15:01:58.449Z [POST] /api/reward/claim from ::1 Status: 200, Duration: 203ms
+2025-11-24T15:24:48.435Z [POST] /api/reward/claim from ::1 Status: 200, Duration: 196ms
+2025-11-24T15:26:46.477Z [POST] /api/reward/claim from ::1 Status: 200, Duration: 259ms
