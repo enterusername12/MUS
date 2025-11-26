@@ -947,7 +947,6 @@ const DASHBOARD_LIMITS = {
   rewardLimit: 5,
   calendarLimit: 12
 };
-
 async function initializeDashboard() {
   const eventsContainer = document.getElementById("eventsContainer");
   const postContainer = document.getElementById("postContainer");
@@ -976,13 +975,6 @@ async function initializeDashboard() {
   if (rewardProgressEl) rewardProgressEl.textContent = "";
 
   try {
-    // const params = new URLSearchParams();
-    // Object.entries(DASHBOARD_LIMITS).forEach(([key, value]) => {
-    //   if (value !== undefined && value !== null) {
-    //     params.append(key, value);
-    //   }
-    // });
-
     const response = await fetch(`${API_BASE_URL}/dashboard`, getDashboardRequestOptions());
     if (!response.ok) {
       throw new Error(`Request failed with status ${response.status}`);
@@ -990,7 +982,14 @@ async function initializeDashboard() {
 
     const data = await response.json();
 
-    initializeNews(data.competitions || []);
+    // Merge competitions and campus events into one array
+    const competitions = data.competitions || [];
+    const events = data.event || [];
+    const merged = [...competitions, ...events];
+
+    // Render merged items
+    initializeNews(merged);
+    
     initializeCommunityHighlights(data.events || []);
     initializePolls(data.polls || []);
     initializeCalendar(data.calendar || []);
@@ -1012,104 +1011,95 @@ async function initializeDashboard() {
     loadRewardPoints(null);
   }
 }
-function setupSharePostModal() {
-  const shareModal = document.getElementById("sharePostModal");
-  const openShareModalBtn = document.getElementById("createPost");
-  const closeShareModalBtn = document.getElementById("closeShareModal");
-  const cancelPostBtn = document.getElementById("cancelPostBtn");
-  const form = document.getElementById("sharePostForm");
-  const photoInput = document.getElementById("postPhoto");
 
-  if (!shareModal || !form) {
-    return;
-  }
+// UPDATE your renderCards function - change the type checking:
+function renderCards(container, data, type) {
+  container.innerHTML = "";
+  data.forEach(item => {
+    const card = document.createElement("div");
+    card.classList.add(type === "news" ? "event-card" : "post-card");
+    card.style.cursor = "pointer";
+    card.style.border = "1px solid #ccc";
+    card.style.padding = "10px";
+    card.style.marginBottom = "10px";
+    card.style.borderRadius = "5px";
+    card.style.background = "#fff";
 
-  const openModal = (event) => {
-    if (event) {
-      event.preventDefault();
-    }
-    shareModal.classList.remove("hidden");
-  };
+    const evtId = String(item.id ?? item.event_id ?? item.post_id ?? "");
 
-  const closeModal = () => {
-    shareModal.classList.add("hidden");
-  };
-
-  if (openShareModalBtn) {
-    openShareModalBtn.addEventListener("click", openModal);
-  }
-
-  if (closeShareModalBtn) {
-    closeShareModalBtn.addEventListener("click", closeModal);
-  }
-
-  if (cancelPostBtn) {
-    cancelPostBtn.addEventListener("click", closeModal);
-  }
-
-  if (photoInput) {
-    photoInput.setAttribute("disabled", "disabled");
-    photoInput.setAttribute("aria-disabled", "true");
-    photoInput.title = "Image uploads are not supported yet.";
-
-    const photoGroup = photoInput.closest(".form-group, .input-group, label");
-    if (photoGroup && !photoGroup.querySelector(".form-helper-text")) {
-      const helper = document.createElement("p");
-      helper.className = "form-helper-text";
-      helper.textContent = "Image uploads are not supported yet.";
-      photoGroup.appendChild(helper);
-    }
-  }
-
-  window.addEventListener("click", (event) => {
-    if (event.target === shareModal) {
-      closeModal();
-    }
-  });
-
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
-    const title = document.getElementById("postTitle")?.value.trim();
-    const category = document.getElementById("postCategory")?.value;
-    const tags = document.getElementById("postTags")?.value.trim();
-    const description = document.getElementById("postDescription")?.value.trim();
-
-    if (!title || !description) {
-      alert("Please fill out the required fields.");
-      return;
-    }
-
-    try {
-      const payload = {
-        title,
-        category: category || "General",
-        tags: tags || "",
-        description
-      };
-
-      const response = await fetch(`${API_BASE_URL}/community-posts`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        credentials: "include",
-        body: JSON.stringify(payload)
+    if (evtId) {
+      card.setAttribute("data-event-id", evtId);
+      _aiViewObserver.observe(card);
+      card.addEventListener("click", () => {
+        if (typeof logEventInteraction === 'function') {
+          logEventInteraction(evtId, "click");
+        }
+        if (
+          card.classList.contains("event-card") &&
+          window.location.pathname.endsWith("Frontend/studentdashboard.html")
+        ) {
+          showEventDetailUI(item);
+        }
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to share post");
-      }
-
-      alert("✅ Post shared successfully!");
-      closeModal();
-      form.reset();
-    } catch (error) {
-      console.error("Error sharing post:", error);
-      alert(`❌ Error: ${error.message}`);
     }
+
+    // Check if it's a competition (has hosts, due, description) or campus event (has content, category)
+    const isCompetition = item.hosts || item.due || item.rewardText;
+    const isCampusEvent = item.content && item.category === "Event";
+
+    if (type === "news") {
+      if (isCampusEvent) {
+        // Render as campus event
+        const title = sanitizeText(item.title, "Untitled Event");
+        const category = sanitizeText(item.category, "Event");
+        const content = sanitizeText(item.content, "No details available.");
+        const imageUrl = item.image_url;
+
+        card.innerHTML = `
+          ${imageUrl ? `<img src="${imageUrl}" style="width:100%; border-radius:5px; margin-bottom:10px;" alt="${title}">` : ""}
+          <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+            <h3 style="margin:0; flex-grow:1;">${title}</h3>
+            <div style="background:#4CAF50; color:white; padding:2px 6px; border-radius:3px; font-size:0.85rem;">${category}</div>
+          </div>
+          <p style="margin-top:8px;">${content}</p>
+        `;
+      } else {
+        // Render as competition/news
+        const publishedLabel = item.publishedAt
+          ? new Date(item.publishedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+          : "";
+        const authorLabel = item.author ? item.author : "";
+        const meta = [authorLabel, publishedLabel].filter(Boolean).join(" • ");
+        const description = item.desc ?? item.description ?? item.summary ?? item.body ?? "Details coming soon.";
+
+        card.innerHTML = `
+          ${item.bannerBase64 ? `<img src="${item.bannerBase64}" style="width:100%; border-radius:5px; margin-bottom:10px;">` : ""}
+          <h3>${item.title}</h3>
+          ${meta ? `<div style="color:#666; margin-bottom:5px;">${meta}</div>` : ""}
+          <p>${description}</p>
+        `;
+      }
+    } else {
+      // Community posts (original logic)
+      const author = item.author || "Community";
+      const category = item.category || "General";
+      const title = item.title ?? item.heading ?? "";
+      const content = item.content ?? item.description ?? item.summary ?? item.body ?? "Stay tuned for more details.";
+
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+          <div>${author}</div>
+          <div style="background:#eee; padding:2px 6px; border-radius:3px;">${category}</div>
+        </div>
+        ${title ? `<h3>${title}</h3>` : ""}
+        <p>${content}</p>
+      `;
+    }
+
+    container.appendChild(card);
   });
 }
+
 
 // Load everything when the page is ready
 document.addEventListener("DOMContentLoaded", () => {
