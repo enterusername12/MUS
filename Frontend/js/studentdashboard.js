@@ -869,9 +869,6 @@ function renderCalendar() {
     const dotsContainer = document.createElement("div");
     dotsContainer.classList.add("indicators");
 
-    const entriesContainer = document.createElement("div");
-    entriesContainer.classList.add("calendar-entries");
-
     const fullDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const eventsToday = items.filter((item) => item.date === fullDate);
     const joinedEvents = eventsToday.filter(
@@ -880,7 +877,6 @@ function renderCalendar() {
     const eventsToRender = (joinedEvents.length ? joinedEvents : eventsToday).slice(0, 1);
 
     const eventsForEntries = joinedEvents.length ? joinedEvents : eventsToday;
-    const entriesToRender = eventsForEntries.slice(0, 2);
 
     eventsToRender.forEach((event) => {
       const dot = document.createElement("div");
@@ -896,49 +892,15 @@ function renderCalendar() {
       dotsContainer.appendChild(dot);
     });
 
-    entriesToRender.forEach((event) => {
-      const type = normalizeCalendarType(event.type);
-      const entry = document.createElement("div");
-      entry.classList.add("calendar-entry", `calendar-entry--${type}`);
-
-      const iconMap = {
-        poll: "🗳️",
-        competition: "🏆",
-        event: "📅"
-      };
-      const icon = iconMap[type] || iconMap.event;
-      const title = sanitizeText(event.title, "Untitled");
-      const label = formatCalendarTypeLabel(type);
-      const time = sanitizeText(event.time || "", "");
-
-      entry.innerHTML = `
-        <span class="calendar-entry__type">${icon} ${label}</span>
-        <span class="calendar-entry__title">${title}</span>
-        ${time ? `<span class="calendar-entry__time">${time}</span>` : ""}
-      `;
-
-      entry.addEventListener("click", () => openCalendarEventModal(eventsForEntries, event));
-
-      entriesContainer.appendChild(entry);
-    });
-
-    if (eventsForEntries.length > entriesToRender.length) {
-      const remainingCount = eventsForEntries.length - entriesToRender.length;
-      const moreChip = document.createElement("div");
-      moreChip.classList.add("calendar-entry", "calendar-entry--more");
-      moreChip.textContent = `+${remainingCount} more`;
-      moreChip.addEventListener("click", () => openCalendarEventModal(eventsForEntries));
-      entriesContainer.appendChild(moreChip);
-    }
-
     if (eventsToday.length === 0) {
       dotsContainer.classList.add("empty");
     }
 
-    cell.appendChild(dateLabel);
-    if (entriesContainer.childElementCount > 0) {
-      cell.appendChild(entriesContainer);
+    if (eventsForEntries.length > 0) {
+      cell.addEventListener("click", () => openCalendarEventModal(eventsForEntries));
     }
+
+    cell.appendChild(dateLabel);
     cell.appendChild(dotsContainer);
     grid.appendChild(cell);
   }
