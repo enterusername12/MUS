@@ -416,6 +416,21 @@ const ensureDatabase = async () => {
       );
     `);
 
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS events (
+        id SERIAL PRIMARY KEY,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        date DATE NOT NULL,
+        venue TEXT NOT NULL,
+        description TEXT NOT NULL,
+        poster BYTEA,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+    `);
+      
+
 
       // polls
       await client.query(`CREATE TABLE IF NOT EXISTS polls (

@@ -14,6 +14,29 @@ async function fetchPolls() {
   }
 }
 
+async function fetchDashboardEvents() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/dashboard`, { credentials: "include" });
+    if (!res.ok) throw new Error(`Failed to fetch dashboard: ${res.status}`);
+    const data = await res.json();
+    return data.events || [];
+  } catch (err) {
+    console.error("Failed to fetch events:", err);
+    return [];
+  }
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const eventContainer = document.getElementById("eventContainer");
+
+  const events = await fetchDashboardEvents();
+  renderEvents(events);
+
+  attachCardActions(eventContainer, "event"); // attach edit/delete/QR actions
+
+
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   const authUser = JSON.parse(localStorage.getItem("musAuthUser"));
 
@@ -23,6 +46,180 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+
+// ==========================================
+// FIXED: Event Fetching & Rendering
+// ==========================================
+
+
+// Fetch events from dashboard endpoint
+// ✅ Fetch BOTH event types from dashboard
+async function fetchAllEvents() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/dashboard`, { 
+      credentials: "include" 
+    });
+    
+    if (!res.ok) {
+      throw new Error(`Failed to fetch dashboard: ${res.status}`);
+    }
+    
+    const data = await res.json();
+    console.log("📊 Full dashboard data:", data);
+    
+    // Get both event types
+    const customEvents = data.event || [];      // Your custom events table
+    const campusEvents = data.events || [];     // Campus/community events
+    
+    console.log("📅 Custom events:", customEvents.length);
+    console.log("🏫 Campus/community events:", campusEvents.length);
+    
+    // Merge and normalize both types
+    return mergeAndNormalizeEvents(customEvents, campusEvents);
+    
+  } catch (err) {
+    console.error("❌ Failed to fetch events:", err);
+    return [];
+  }
+}
+
+// ✅ Merge and normalize both event types into consistent format
+function mergeAndNormalizeEvents(customEvents, campusEvents) {
+  // Normalize custom events (from your events table)
+  const normalizedCustom = customEvents.map(event => ({
+    id: event.id,
+    title: event.title || 'Untitled Event',
+    type: event.category || event.type || 'custom',
+    date: event.start_time || event.date,
+    description: event.content || event.description || '',
+    image_url: event.image_url || null,
+    source: 'custom',  // Tag to identify source
+    author: event.author || 'Event Organizer'
+  }));
+  
+  // Normalize campus/community events
+  const normalizedCampus = campusEvents.map(event => ({
+    id: event.id,
+    title: event.title || 'Untitled Event',
+    type: event.category || 'campus',
+    date: event.start_time || event.created_at,
+    venue: event.location || 'TBD',
+    description: event.content || event.description || '',
+    image_url: event.image_url || null,
+    source: 'campus',  // Tag to identify source
+    author: event.author || 'Campus'
+  }));
+  
+  // Merge both arrays
+  const allEvents = [...normalizedCustom, ...normalizedCampus];
+  
+  // Sort by date (most recent first)
+  allEvents.sort((a, b) => {
+    const dateA = new Date(a.date || 0);
+    const dateB = new Date(b.date || 0);
+    return dateB - dateA;
+  });
+  
+  console.log(`📋 Total merged events: ${allEvents.length}`);
+  return allEvents;
+}
+
+// ✅ Render all events to the DOM
+function renderEvents(events) {
+  const eventContainer = document.getElementById("eventContainer");
+  
+  if (!eventContainer) {
+    console.error("❌ eventContainer element not found in DOM");
+    return;
+  }
+  
+  eventContainer.innerHTML = ""; // Clear existing content
+  
+  if (events.length === 0) {
+    eventContainer.innerHTML = '<p style="color: #666; text-align: center; padding: 2rem;">No events found</p>';
+    return;
+  }
+  
+  console.log(`📋 Rendering ${events.length} events (custom + campus/community)`);
+  
+  events.forEach((event, index) => {
+    console.log(`🎯 Rendering event ${index + 1}:`, event);
+    
+    const card = document.createElement("div");
+    card.className = "card event-card";
+    card.dataset.id = event.id;
+    card.dataset.source = event.source; // Track if custom or campus
+    
+    // Format date safely
+    let formattedDate = "Date TBD";
+    if (event.date) {
+      try {
+        const date = new Date(event.date);
+        formattedDate = date.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch (e) {
+        formattedDate = event.date;
+      }
+    }
+    
+    // Different badge colors for different sources
+    const badgeClass = event.source === 'custom' ? 'badge-custom' : 'badge-campus';
+    const sourceLabel = event.source === 'custom' ? 'Event' : 'Campus Post';
+    
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="card-id">Event #${event.id}</span>
+        <span class="badge ${badgeClass}">${sourceLabel}</span>
+        <span class="card-date">${formattedDate}</span>
+      </div>
+      <h3>${event.title}</h3>
+      
+      ${event.author ? `<p><strong>Organizer:</strong> ${event.author}</p>` : ''}
+      <p><strong>Type:</strong> ${event.type}</p>
+      ${event.description ? `<p class="event-description">${event.description}</p>` : ''}
+      
+    `;
+    
+    eventContainer.appendChild(card);
+  });
+  
+  console.log("✅ All events rendered successfully");
+}
+
+
+
+
+// ✅ Initialize on page load
+document.addEventListener("DOMContentLoaded", async () => {
+  console.log("🚀 Initializing merged event rendering...");
+  
+  const eventContainer = document.getElementById("eventContainer");
+  
+  if (!eventContainer) {
+    console.error("❌ eventContainer not found in DOM!");
+    return;
+  }
+  
+  // Show loading state
+  eventContainer.innerHTML = '<p style="text-align: center; padding: 2rem;">Loading all events...</p>';
+  
+  // Fetch and render ALL events (custom + campus)
+  const allEvents = await fetchAllEvents();
+  renderEvents(allEvents);
+  
+  // Attach card actions - only for custom events
+  if (typeof attachCardActions === 'function') {
+    attachCardActionsForMixedEvents(eventContainer);
+  }
+
+  // Attach card actions (edit/delete/QR)
+  attachCardActions(eventContainer, "event");
+});
 
 
 
@@ -500,7 +697,7 @@ competitionForm.addEventListener("submit", async (e) => {
 });
 
 
-  eventForm.addEventListener("submit", e => { e.preventDefault(); submitForm(eventForm, "http:/localhost:3000/api/events"); });
+  eventForm.addEventListener("submit", e => { e.preventDefault(); submitForm(eventForm, "http://localhost:3000/api/events"); });
 
   // ==========================
   // 🔹 Card Actions (Edit / Delete / QR)
@@ -601,10 +798,6 @@ function attachCardActions(container, type) {
       }
     });
 
-
-    // ==========================
-    // QR 按钮 (只针对 competition)
-    // ==========================
     if (type === "competition") {
       const compName = card.querySelector("h3")?.textContent ?? "";
       const participationToken = card.dataset.participationToken;
@@ -652,4 +845,144 @@ function attachCardActions(container, type) {
   // ==========================
   closeQrModal.addEventListener('click', () => qrModal.classList.add('hidden'));
   qrModal.addEventListener('click', e => { if (e.target === qrModal) qrModal.classList.add('hidden'); });
+});
+
+
+
+const eventForm = document.getElementById("eventForm");
+const eventUploadArea = eventForm.querySelector(".upload-area");
+const eventPosterInput = eventForm.querySelector("input[name='poster']");
+const eventDesc = document.getElementById("eventDesc");
+const eventCharCount = document.getElementById("eventCharCount");
+
+let editingEventId = null; // same idea as cardId for competitions
+
+// --------------------
+// Click upload box => open file picker
+// --------------------
+eventUploadArea.addEventListener("click", () => {
+  eventPosterInput.click();
+});
+
+// --------------------
+// Live preview + size/type validation
+// --------------------
+eventPosterInput.addEventListener("change", () => {
+  const file = eventPosterInput.files[0];
+  if (!file) return;
+
+  if (!["image/png", "image/jpeg"].includes(file.type)) {
+    alert("Only PNG or JPG allowed.");
+    eventPosterInput.value = "";
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    alert("File must be under 5MB.");
+    eventPosterInput.value = "";
+    return;
+  }
+
+  // Add preview (same style as competitions)
+  eventUploadArea.innerHTML = `
+    <img src="${URL.createObjectURL(file)}" style="max-width:120px; border-radius:6px; margin-bottom:8px;">
+    <p><strong>${file.name}</strong></p>
+    <p class="upload-hint">Click to change poster</p>
+  `;
+});
+
+// --------------------
+// Description character counter
+// --------------------
+eventDesc.addEventListener("input", () => {
+  eventCharCount.textContent = `${eventDesc.value.length}/500`;
+});
+
+// --------------------
+// Submit Event Form
+// --------------------
+eventForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+
+  const fd = new FormData(eventForm);
+
+  // Build event object
+  const eventData = {
+    id: editingEventId || null,
+    type: fd.get("type"),
+    title: fd.get("title"),
+    date: fd.get("date"),
+    venue: fd.get("venue"),
+    description: fd.get("description") || ""
+  };
+
+
+
+
+  const sendForm = new FormData();
+  sendForm.append("data", JSON.stringify(eventData));
+
+  const posterFile = eventPosterInput.files[0];
+  if (posterFile) {
+    sendForm.append("poster", posterFile, posterFile.name);
+
+  } else {
+    
+  }
+
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/events`, {
+      method: "POST",
+      body: sendForm,
+      credentials: "include"
+    });
+
+
+    const contentType = res.headers.get("Content-Type") || "";
+
+    let responseBody;
+    if (contentType.includes("application/json")) {
+      responseBody = await res.json();
+    } else {
+      responseBody = await res.text();
+    }
+
+    if (!res.ok) {
+      throw new Error(JSON.stringify(responseBody));
+    }
+
+    alert("Event created successfully!");
+
+    // reset form and UI
+    eventForm.reset();
+    eventUploadArea.innerHTML = `
+      <div class="upload-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+          <path d="M12 15V3M12 3L8 7M12 3L16 7M2 17L2 19C2 20.1046 2.89543 21 4 21L20 21C21.1046 21 22 20.1046 22 19V17" 
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <p><strong>+ Upload Poster</strong></p>
+      <p class="upload-hint">PNG, JPG up to 5MB. Recommended: 1000x1500px</p>
+    `;
+    eventCharCount.textContent = "0/500";
+
+  if (typeof renderEvents === "function") {
+
+
+    const dashboardData = await fetch(`${API_BASE_URL}/dashboard`, { credentials: "include" })
+      .then(r => r.json());
+
+    const allEvents = dashboardData.events || [];
+    renderEvents(allEvents);
+  }
+
+
+    modal.classList.add("hidden");
+
+  } catch (err) {
+ 
+  }
 });

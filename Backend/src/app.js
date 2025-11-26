@@ -15,6 +15,7 @@ const auditRoutes = require('./routes/audit'); // fetch logs
 const auditMiddleware = require('./middleware/auditMiddleware'); // adjust the path
 const competitionRoutes = require('./routes/Competition');
 
+const eventsRoute = require ('./routes/events');
 
 const rewardRoute = require("./routes/rewardRoute");
 
@@ -46,6 +47,8 @@ app.use('/api/auth', limiter, authRoutes);
 app.use('/logs', auditRoutes);
 app.use('/api/competition', competitionRoutes);
 app.use("/api/reward", rewardRoute);
+
+app.use("/api/events", eventsRoute);
 
 module.exports = app;
 

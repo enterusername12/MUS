@@ -117,6 +117,31 @@ async function fetchCalendarItems(limit = DEFAULT_CALENDAR_LIMIT) {
   return rows;
 }
 
+
+async function fetchEvents() {
+  const { rows } = await getPool().query(`
+    SELECT id, type, title, date, venue, description, poster, created_at
+    FROM events
+    ORDER BY date ASC NULLS LAST, id ASC
+  `);
+
+  return rows.map(event => ({
+    id: event.id,
+    type: event.type,
+    title: event.title,
+    date: event.date,
+    venue: event.venue,
+    description: event.description,
+    image_url: event.poster 
+      ? `data:image/png;base64,${event.poster.toString("base64")}`
+      : null,
+    created_at: event.created_at
+  }));
+}
+
+
+
+
 async function fetchUserCalendarItems(userId, limit = DEFAULT_CALENDAR_LIMIT) {
   if (!userId) return [];
 
@@ -163,6 +188,8 @@ async function fetchActivePolls() {
 
   return polls.map(p => ({ ...p, options: byPoll[p.id] || [] }));
 }
+
+
 
 async function fetchRewardPoints() {
   const { rows } = await getPool().query(
@@ -447,7 +474,7 @@ async function getDashboardData(options = {}) {
   const { userId = null, limits = {} } = options;
   const calendarLimit = ensureNumber(limits?.calendarLimit, DEFAULT_CALENDAR_LIMIT);
 
-  const [news, events, posts, polls, competitions, rewardPoints, calendarItems, userCalendarItems] = await Promise.all([
+  const [news, events, posts, polls, competitions, rewardPoints, calendarItems, userCalendarItems, event] = await Promise.all([
     fetchLatestNews(),
     fetchUpcomingEvents(),
     fetchPublishedCommunityPosts(),
@@ -455,7 +482,8 @@ async function getDashboardData(options = {}) {
     fetchCompetitions(userId), // ⚡ get all competitions
     fetchRewardPoints(),
     fetchCalendarItems(calendarLimit),
-    fetchUserCalendarItems(userId, calendarLimit)
+    fetchUserCalendarItems(userId, calendarLimit),
+    fetchEvents()
   ]);
 
   const normalizedCompetitions = normalizeCompetitions(competitions);
@@ -491,6 +519,7 @@ async function getDashboardData(options = {}) {
     news: normalizeNews(news),
     events: mergeEvents(normalizeEvents(events), normalizeEvents(posts.map(p => ({ ...p, description: p.content })))),
     polls: normalizePolls(polls),
+    event: normalizeEvents(event), 
     competitions: normalizedCompetitions,  // ⚡ include full competition list
     rewardPoints,
     spotlights,
