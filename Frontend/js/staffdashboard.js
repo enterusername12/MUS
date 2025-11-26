@@ -65,14 +65,12 @@ async function fetchAllEvents() {
     }
     
     const data = await res.json();
-    console.log("📊 Full dashboard data:", data);
+ 
     
     // Get both event types
     const customEvents = data.event || [];      // Your custom events table
     const campusEvents = data.events || [];     // Campus/community events
-    
-    console.log("📅 Custom events:", customEvents.length);
-    console.log("🏫 Campus/community events:", campusEvents.length);
+
     
     // Merge and normalize both types
     return mergeAndNormalizeEvents(customEvents, campusEvents);
@@ -120,7 +118,7 @@ function mergeAndNormalizeEvents(customEvents, campusEvents) {
     return dateB - dateA;
   });
   
-  console.log(`📋 Total merged events: ${allEvents.length}`);
+
   return allEvents;
 }
 
@@ -140,10 +138,10 @@ function renderEvents(events) {
     return;
   }
   
-  console.log(`📋 Rendering ${events.length} events (custom + campus/community)`);
+
   
   events.forEach((event, index) => {
-    console.log(`🎯 Rendering event ${index + 1}:`, event);
+
     
     const card = document.createElement("div");
     card.className = "card event-card";
@@ -188,7 +186,7 @@ function renderEvents(events) {
     eventContainer.appendChild(card);
   });
   
-  console.log("✅ All events rendered successfully");
+
 }
 
 
@@ -196,7 +194,7 @@ function renderEvents(events) {
 
 // ✅ Initialize on page load
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("🚀 Initializing merged event rendering...");
+
   
   const eventContainer = document.getElementById("eventContainer");
   
@@ -354,16 +352,12 @@ bannerInput.addEventListener("change", async (e) => {
   const bannerUpload = document.getElementById("bannerUpload");
   bannerUpload.innerHTML = `<img src="${imgURL}" alt="Banner Preview" style="width:100%; height:auto; border-radius:8px;">`;
 
-  // 🔹 Console 顯示資訊
-  console.log("File object:", file);
-  console.log("Name:", file.name);
-  console.log("Type:", file.type);
-  console.log("Size (bytes):", file.size);
+
 
   // 🔹 ArrayBuffer → Uint8Array（瀏覽器版本的「Buffer」）
   const arrayBuffer = await file.arrayBuffer();
   const uint8Array = new Uint8Array(arrayBuffer);
-  console.log("First 20 bytes:", uint8Array.slice(0, 20));
+
 
   // 🔹 完整二進位
   // 如果你想把它傳到後端，直接 append Blob 就好
@@ -576,7 +570,6 @@ modal.addEventListener('click', e => {
       else if (endpoint.includes("events")) renderEvents(await fetchData("/api/events"));
     } catch (err) {
       console.error(err);
-      alert("Failed to create item.");
     }
   }
 pollForm.addEventListener("submit", async (e) => {
@@ -595,7 +588,6 @@ pollForm.addEventListener("submit", async (e) => {
     id : cardId
   };
 
-  console.log("Submitting poll data:", data);
 
   try {
     const res = await fetch("http://localhost:3000/api/polls", {
@@ -658,17 +650,13 @@ competitionForm.addEventListener("submit", async (e) => {
   // 加入圖片檔案（如果有）
   const bannerFile = bannerInput.files[0];
   if (bannerFile) {
-    console.log("=== File Info ===");
-    console.log("Name:", bannerFile.name);
-    console.log("Type:", bannerFile.type);
-    console.log("Size:", bannerFile.size);
+
     sendFormData.append("banner", bannerFile, bannerFile.name);
   } else {
     console.log("No file selected");
   }
 
-  // ⚡ 完整列印 FormData 內容
-  console.log("📤 Sending FormData content:");
+
   for (let [key, value] of sendFormData.entries()) {
     if (value instanceof File) {
       console.log(`${key}: File { name: ${value.name}, type: ${value.type}, size: ${value.size} }`);
