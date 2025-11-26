@@ -434,59 +434,57 @@ function initializeCommunityHighlights(events = []) {
   renderDots(dots, events.length);
   setupNavigation(prevBtn, nextBtn, container, dots);
 }
+function getLoggedInUser() {
+  const userStr = localStorage.getItem("musAuthUser");
+  if (!userStr) return null;
+  try {
+    return JSON.parse(userStr);
+  } catch {
+    return null;
+  }
+}
+
+const loggedInUser = getLoggedInUser();
+if (!loggedInUser) {
+  alert("User not logged in.");
+}
+
+// --- Poll Helpers ---
+function sanitizeText(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
 
 function formatPollDeadline(deadline) {
   if (!deadline) return "No deadline";
   const parsed = new Date(deadline);
-  if (Number.isNaN(parsed.getTime())) {
-    return deadline;
-  }
+  if (Number.isNaN(parsed.getTime())) return deadline;
   return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 function normalizePollOption(option, index) {
-  const rawVotes =
-    typeof option.voteCount === "number" && Number.isFinite(option.voteCount)
-      ? option.voteCount
-      : typeof option.votes === "number" && Number.isFinite(option.votes)
-        ? option.votes
-        : 0;
-  const voteCount = Math.max(0, Math.round(rawVotes));
-  const rawPercent =
-    typeof option.percent === "number" && !Number.isNaN(option.percent)
-      ? option.percent
-      : null;
-
+  const voteCount = Math.max(0, Math.round(option.voteCount ?? option.votes ?? 0));
   return {
     ...option,
     name: sanitizeText(option.name ?? option.label ?? option.option ?? `Option ${index + 1}`),
     voteCount,
-    percent: rawPercent
+    percent: option.percent ?? null
   };
 }
 
 function buildClientPoll(poll, fallbackId) {
-  const rawOptions = Array.isArray(poll?.options) ? poll.options : [];
-  const normalizedOptions = rawOptions.map((option, index) => normalizePollOption(option, index));
-
-  const roundedTotal =
-    typeof poll.totalVotes === "number" && Number.isFinite(poll.totalVotes)
-      ? Math.max(0, Math.round(poll.totalVotes))
-      : null;
-
-  const votesFromOptions = normalizedOptions.reduce((sum, option) => sum + (option.voteCount || 0), 0);
-  const totalVotes = roundedTotal !== null ? roundedTotal : votesFromOptions;
-
-  const optionsWithPercentages = normalizedOptions.map((option) => {
-    if (option.percent !== null) {
-      const bounded = Math.min(Math.max(Math.round(option.percent), 0), 100);
-      return { ...option, percent: bounded };
-    }
-
-    const computedPercent = totalVotes > 0 ? Math.round((option.voteCount / totalVotes) * 100) : 0;
-    return { ...option, percent: computedPercent };
-  });
-
+  const normalizedOptions = (poll.options ?? []).map(normalizePollOption);
+  const totalVotes = Math.max(
+    poll.totalVotes ?? normalizedOptions.reduce((sum, o) => sum + o.voteCount, 0),
+    0
+  );
+  const optionsWithPercentages = normalizedOptions.map(opt => ({
+    ...opt,
+    percent: opt.percent !== null
+      ? Math.min(Math.max(Math.round(opt.percent), 0), 100)
+      : totalVotes > 0 ? Math.round((opt.voteCount / totalVotes) * 100) : 0
+  }));
   return {
     ...poll,
     id: poll.id ?? poll.pollId ?? fallbackId,
@@ -498,163 +496,122 @@ function buildClientPoll(poll, fallbackId) {
 }
 
 function updatePollCardFromState(pollCard, poll) {
-  if (!pollCard) {
-    return;
-  }
-
+  if (!pollCard) return;
   const totalVotesLabel = pollCard.querySelector(".poll-footer span");
-  if (totalVotesLabel) {
-    totalVotesLabel.textContent = `👥 ${poll.totalVotes} total votes`;
-  }
+  if (totalVotesLabel) totalVotesLabel.textContent = `👥 ${poll.totalVotes} total votes`;
 
   const optionNodes = pollCard.querySelectorAll(".poll-option");
   poll.options.forEach((option, index) => {
     const optionNode = optionNodes[index];
-    if (!optionNode) {
-      return;
-    }
-
+    if (!optionNode) return;
     const percentLabel = optionNode.querySelector(".option-label span:last-child");
-    if (percentLabel) {
-      percentLabel.textContent = `${option.percent}%`;
-    }
-
+    if (percentLabel) percentLabel.textContent = `${option.percent}%`;
     const progressFill = optionNode.querySelector(".progress-fill");
-    if (progressFill) {
-      progressFill.style.width = `${option.percent}%`;
+    if (progressFill) progressFill.style.width = `${option.percent}%`;
+  });
+}
+
+async function votePoll(pollId, optionId) {
+  const token = localStorage.getItem("musAuthToken");
+  if (!token) {
+    alert("User not logged in");
+    return null;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/votess/${pollId}/vote`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json", 
+        "Authorization": `Bearer ${token}` 
+      },
+      body: JSON.stringify({ option_id: optionId })
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`Vote failed: ${res.status} - ${errorText}`);
+      throw new Error(`Failed to vote: ${res.status}`);
     }
-  });
+
+    const data = await res.json();
+    console.log("Vote response:", data);
+    alert("Vote successful!");
+    window.location.reload(); // refresh the page to show updated votes
+    return data.poll;
+  } catch (err) {
+    console.error("Error voting:", err);
+    alert("Failed to submit vote. Please try again.");
+    return null;
+  }
 }
 
-function handleSimulatedVote(poll, pollCard) {
-  if (!poll || !Array.isArray(poll.options) || poll.options.length === 0) {
-    window.alert("Voting is unavailable for this poll right now.");
-    return;
-  }
 
-  if (!Number.isFinite(poll.totalVotes)) {
-    poll.totalVotes = poll.options.reduce((sum, option) => sum + (option.voteCount || 0), 0);
-  }
-
-  const optionsList = poll.options.map((option, index) => `${index + 1}. ${option.name}`).join("\n");
-  const response = window.prompt(
-    `Cast your vote for "${poll.title}" by entering an option number:\n${optionsList}`,
-    "1"
-  );
-
-  if (response === null) {
-    return;
-  }
-
-  const trimmed = response.trim();
-  const selectedIndex = Number(trimmed) - 1;
-  if (!Number.isInteger(selectedIndex) || selectedIndex < 0 || selectedIndex >= poll.options.length) {
-    window.alert("Please enter a valid option number from the list.");
-    return;
-  }
-
-  const selectedOption = poll.options[selectedIndex];
-  selectedOption.voteCount += 1;
-  poll.totalVotes += 1;
-
-  poll.options.forEach((option) => {
-    option.percent = poll.totalVotes > 0 ? Math.round((option.voteCount / poll.totalVotes) * 100) : 0;
-  });
-
-  updatePollCardFromState(pollCard, poll);
-  window.alert(`Thanks for voting for "${selectedOption.name}"!`);
+// --- Handle vote click ---
+function handleVoteClick(poll, pollCard, optionIndex) {
+  const selectedOption = poll.options[optionIndex];
+  votePoll(poll.id, selectedOption.id);
 }
 
+// --- Initialize polls ---
 function initializePolls(polls = []) {
   const container = document.getElementById("pollContainer");
   const dots = document.getElementById("pollDots");
   const prevBtn = document.getElementById("prevPollBtn");
   const nextBtn = document.getElementById("nextPollBtn");
   const pollCount = document.getElementById("pollCount");
-
-  if (!container || !dots) {
-    return;
-  }
-
-  const incomingPolls = Array.isArray(polls) ? polls : [];
-
-  if (pollCount) {
-    const count = incomingPolls.length;
-    pollCount.textContent = `${count} Active ${count === 1 ? "Poll" : "Polls"}`;
-  }
-
-  if (incomingPolls.length === 0) {
-    setEmpty(container, "No active polls right now.");
-    dots.innerHTML = "";
-    if (prevBtn) prevBtn.setAttribute("disabled", "disabled");
-    if (nextBtn) nextBtn.setAttribute("disabled", "disabled");
-    return;
-  }
+  if (!container || !dots) return;
 
   container.innerHTML = "";
+  if (pollCount) pollCount.textContent = `${polls.length} Active ${polls.length === 1 ? "Poll" : "Polls"}`;
 
-  incomingPolls.forEach((poll, index) => {
+  polls.forEach((poll, index) => {
     const clientPoll = buildClientPoll(poll, `poll-${index + 1}`);
     const pollCard = document.createElement("div");
     pollCard.classList.add("poll-card");
+    pollCard.id = `poll-${clientPoll.id}`;
 
     const deadline = formatPollDeadline(clientPoll.deadline);
-    const totalVotes = Number.isFinite(clientPoll.totalVotes) ? clientPoll.totalVotes : 0;
-    const options = Array.isArray(clientPoll.options) ? clientPoll.options : [];
-    const description = clientPoll.description;
+    const optionsHTML = clientPoll.options.map((opt, idx) => `
+      <div class="poll-option">
+        <div class="option-label"><span>${opt.name}</span><span>${opt.percent}%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${opt.percent}%;"></div></div>
+        <button class="option-vote-btn" data-option-index="${idx}">Vote</button>
+      </div>
+    `).join("");
 
     pollCard.innerHTML = `
       <div class="poll-header">
-        <div class="poll-icon">📈</div>
-        <div>
-          <div class="poll-title">${clientPoll.title}</div>
-          <div class="poll-subtitle">${options.length} option${options.length === 1 ? "" : "s"} available</div>
-        </div>
-        <div class="poll-deadline" style="margin-left:auto; color:#b33a3a; font-size:0.85rem;">
-          🗓 Ends ${deadline}
-        </div>
+        <div class="poll-title">${clientPoll.title}</div>
+        <div class="poll-deadline">🗓 Ends ${deadline}</div>
       </div>
-      ${description ? `<p class="poll-description">${description}</p>` : ""}
-      <div class="poll-options">
-        ${options.length > 0
-          ? options
-              .map((opt) => {
-                const percent = typeof opt.percent === "number" && !Number.isNaN(opt.percent) ? opt.percent : 0;
-                return `
-                  <div class="poll-option">
-                    <div class="option-label">
-                      <span>${opt.name}</span>
-                      <span>${percent}%</span>
-                    </div>
-                    <div class="progress-bar">
-                      <div class="progress-fill" style="width:${percent}%;"></div>
-                    </div>
-                  </div>
-                `;
-              })
-              .join("")
-          : '<div class="empty-state">Poll options coming soon.</div>'}
-      </div>
-      <div class="poll-footer">
-        <span>👥 ${totalVotes} total votes</span>
-        <button class="vote-btn">Vote Now</button>
-      </div>
+      ${clientPoll.description ? `<p class="poll-description">${clientPoll.description}</p>` : ""}
+      <div class="poll-options">${optionsHTML}</div>
+      <div class="poll-footer"><span>👥 ${clientPoll.totalVotes} total votes</span></div>
     `;
 
     container.appendChild(pollCard);
 
-    updatePollCardFromState(pollCard, clientPoll);
-
-    const voteBtn = pollCard.querySelector(".vote-btn");
-    if (voteBtn) {
-      voteBtn.addEventListener("click", () => handleSimulatedVote(clientPoll, pollCard));
-    }
+    // Add click listeners for each option
+    pollCard.querySelectorAll(".option-vote-btn").forEach(btn => {
+      btn.addEventListener("click", () => handleVoteClick(clientPoll, pollCard, parseInt(btn.dataset.optionIndex)));
+    });
   });
-
-  renderDots(dots, incomingPolls.length);
-  setupNavigation(prevBtn, nextBtn, container, dots);
 }
 
+// Example: fetch polls from backend and initialize
+async function loadPolls() {
+  try {
+    const res = await fetch("/api/polls"); // Your backend endpoint returning polls
+    const polls = await res.json();
+    initializePolls(polls);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// Load polls on page load
+loadPolls();
 const calendarState = {
   items: [],
   currentDate: new Date(),

@@ -19,6 +19,10 @@ const eventsRoute = require ('./routes/events');
 
 const rewardRoute = require("./routes/rewardRoute");
 
+const votessRouter = require('./routes/votess');
+
+
+
 const app = express();
 
 app.set('trust proxy', false);
@@ -49,6 +53,7 @@ app.use('/api/competition', competitionRoutes);
 app.use("/api/reward", rewardRoute);
 
 app.use("/api/events", eventsRoute);
+app.use('/api/votess', votessRouter);
 
 module.exports = app;
 
