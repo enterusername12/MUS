@@ -155,6 +155,24 @@ async function fetchUserCalendarItems(userId, limit = DEFAULT_CALENDAR_LIMIT) {
   return rows;
 }
 
+async function fetchUserVotedPolls(userId, limit = DEFAULT_CALENDAR_LIMIT) {
+  if (!userId) return [];
+
+  const { rows } = await getPool().query(
+    `SELECT DISTINCT p.id, p.title, p.expires_at
+       FROM poll_votes v
+       INNER JOIN polls p ON p.id = v.poll_id
+      WHERE v.user_id = $1
+        AND p.expires_at >= NOW() - INTERVAL '1 day'
+        AND p.expires_at <= NOW() + INTERVAL '180 days'
+      ORDER BY p.expires_at ASC NULLS LAST, p.id ASC
+      LIMIT $2`,
+    [userId, limit]
+  );
+
+  return rows;
+}
+
 async function fetchActivePolls(userId = null) {
   const { rows: polls } = await getPool().query(
     `SELECT id, title, description, is_active, expires_at, created_at
@@ -409,6 +427,7 @@ const normalizeCalendarEntries = (
   userItems,
   competitions,
   polls,
+  votedPolls,
   limit = DEFAULT_CALENDAR_LIMIT,
   userId = null
 ) => {
@@ -464,11 +483,8 @@ const normalizeCalendarEntries = (
 
 
 
-  const normalizedPolls = ensureArray(polls)
-    .filter((poll) => {
-      const pollId = ensureNumber(poll.id ?? poll.poll_id, null);
-      return Boolean(userId && pollId && poll.user_has_vote);
-    })
+  const normalizedPolls = ensureArray(votedPolls)
+    .filter((poll) => userId && ensureNumber(poll.id ?? poll.poll_id, null))
     .map((poll, i) => {
       const deadlineIso = toISOString(poll.expires_at ?? poll.deadline ?? poll.created_at ?? '');
       const date = toDateOnly(deadlineIso);
@@ -506,7 +522,18 @@ async function getDashboardData(options = {}) {
   const { userId = null, limits = {} } = options;
   const calendarLimit = ensureNumber(limits?.calendarLimit, DEFAULT_CALENDAR_LIMIT);
 
-  const [news, events, posts, polls, competitions, rewardPoints, calendarItems, userCalendarItems, event] = await Promise.all([
+  const [
+    news,
+    events,
+    posts,
+    polls,
+    competitions,
+    rewardPoints,
+    calendarItems,
+    userCalendarItems,
+    event,
+    votedPolls
+  ] = await Promise.all([
     fetchLatestNews(),
     fetchUpcomingEvents(),
     fetchPublishedCommunityPosts(),
@@ -515,7 +542,8 @@ async function getDashboardData(options = {}) {
     fetchRewardPoints(),
     fetchCalendarItems(calendarLimit),
     fetchUserCalendarItems(userId, calendarLimit),
-    fetchEvents()
+    fetchEvents(),
+    fetchUserVotedPolls(userId, calendarLimit)
   ]);
 
   const normalizedCompetitions = normalizeCompetitions(competitions);
@@ -560,6 +588,7 @@ async function getDashboardData(options = {}) {
       userCalendarItems,
       normalizedCompetitions,
       polls,
+      votedPolls,
       calendarLimit,
       userId
     ),
