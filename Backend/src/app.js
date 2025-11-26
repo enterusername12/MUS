@@ -16,6 +16,8 @@ const auditMiddleware = require('./middleware/auditMiddleware'); // adjust the p
 const competitionRoutes = require('./routes/Competition');
 
 const eventsRoute = require ('./routes/events');
+const usersRoutes = require('./routes/users');
+
 
 const rewardRoute = require("./routes/rewardRoute");
 
@@ -51,7 +53,7 @@ app.use('/api/auth', limiter, authRoutes);
 app.use('/logs', auditRoutes);
 app.use('/api/competition', competitionRoutes);
 app.use("/api/reward", rewardRoute);
-
+app.use('/api/users', usersRoutes);
 app.use("/api/events", eventsRoute);
 app.use('/api/votess', votessRouter);
 

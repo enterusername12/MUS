@@ -237,12 +237,12 @@ body {
       background-color: #a855f7;
     }
 
-    .role-badge.student {
-      background-color: #10b981;
+    .role-badge.Student {
+      background-color: #45b704;
     }
 
     .role-badge.guest {
-      background-color: #6b7280;
+      background-color: #000000;
     }
 
     /* Status Badge */
