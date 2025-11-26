@@ -663,6 +663,20 @@ const PREDEFINED_CALENDAR_CLASSES = {
   "campus event": "green"
 };
 
+const calendarModalState = {
+  modal: null,
+  listContainer: null,
+  titleEl: null,
+  typeEl: null,
+  timeEl: null,
+  descriptionEl: null,
+  dateEl: null,
+};
+
+function normalizeCalendarType(type) {
+  return (type || "event").toLowerCase();
+}
+
 function resolveCalendarColor(type) {
   const normalizedType = (type || "event").toLowerCase();
 
@@ -684,6 +698,126 @@ function formatCalendarTypeLabel(type) {
     .split(/[_-\s]+/)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function ensureCalendarEventModal() {
+  if (calendarModalState.modal) {
+    return calendarModalState;
+  }
+
+  const modal = document.createElement("div");
+  modal.id = "calendarEventModal";
+  modal.className = "calendar-modal";
+  modal.innerHTML = `
+    <div class="calendar-modal__backdrop"></div>
+    <div class="calendar-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="calendarModalTitle">
+      <button class="calendar-modal__close" type="button" aria-label="Close">&times;</button>
+      <div class="calendar-modal__header">
+        <div>
+          <p class="calendar-modal__date">&nbsp;</p>
+          <h3 id="calendarModalTitle" class="calendar-modal__heading">Event details</h3>
+        </div>
+        <div class="calendar-modal__pill" data-type="event">Event</div>
+      </div>
+      <div class="calendar-modal__content">
+        <div class="calendar-modal__list" aria-label="Events on this day"></div>
+        <div class="calendar-modal__body">
+          <p class="calendar-modal__time">&nbsp;</p>
+          <h4 class="calendar-modal__title">&nbsp;</h4>
+          <p class="calendar-modal__description">&nbsp;</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const closeModal = () => {
+    modal.classList.remove("calendar-modal--open");
+  };
+
+  modal.querySelector(".calendar-modal__close")?.addEventListener("click", closeModal);
+  modal.querySelector(".calendar-modal__backdrop")?.addEventListener("click", closeModal);
+
+  document.body.appendChild(modal);
+
+  calendarModalState.modal = modal;
+  calendarModalState.listContainer = modal.querySelector(".calendar-modal__list");
+  calendarModalState.titleEl = modal.querySelector(".calendar-modal__title");
+  calendarModalState.typeEl = modal.querySelector(".calendar-modal__pill");
+  calendarModalState.timeEl = modal.querySelector(".calendar-modal__time");
+  calendarModalState.descriptionEl = modal.querySelector(".calendar-modal__description");
+  calendarModalState.dateEl = modal.querySelector(".calendar-modal__date");
+
+  return calendarModalState;
+}
+
+function renderCalendarEventDetails(selectedEvent = {}) {
+  const { titleEl, typeEl, timeEl, descriptionEl, dateEl } = ensureCalendarEventModal();
+
+  const normalizedType = normalizeCalendarType(selectedEvent.type);
+  const title = sanitizeText(selectedEvent.title, "Untitled Event");
+  const description = sanitizeText(selectedEvent.description || selectedEvent.details, "No description provided.");
+  const time = sanitizeText(selectedEvent.time, "All day");
+  const rawDate = sanitizeText(selectedEvent.date, "");
+  let formattedDate = "";
+  if (rawDate) {
+    const parsedDate = new Date(rawDate);
+    formattedDate = Number.isNaN(parsedDate.getTime()) ? rawDate : parsedDate.toDateString();
+  }
+
+  if (titleEl) titleEl.textContent = title;
+  if (typeEl) {
+    typeEl.textContent = formatCalendarTypeLabel(normalizedType);
+    typeEl.setAttribute("data-type", normalizedType);
+  }
+  if (timeEl) timeEl.textContent = time;
+  if (descriptionEl) descriptionEl.textContent = description;
+  if (dateEl) dateEl.textContent = formattedDate;
+}
+
+function renderCalendarEventList(events, selectedEvent) {
+  const { listContainer } = ensureCalendarEventModal();
+  if (!listContainer) return;
+
+  listContainer.innerHTML = "";
+
+  (events || []).forEach((event) => {
+    const normalizedType = normalizeCalendarType(event.type);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "calendar-modal__list-item";
+    button.innerHTML = `
+      <span class="calendar-modal__list-type calendar-entry--${normalizedType}">
+        ${formatCalendarTypeLabel(normalizedType)}
+      </span>
+      <span class="calendar-modal__list-title">${sanitizeText(event.title, "Untitled Event")}</span>
+      ${event.time ? `<span class="calendar-modal__list-time">${sanitizeText(event.time)}</span>` : ""}
+    `;
+
+    if (selectedEvent === event) {
+      button.classList.add("is-active");
+    }
+
+    button.addEventListener("click", () => {
+      renderCalendarEventDetails(event);
+      listContainer.querySelectorAll(".calendar-modal__list-item").forEach((item) => item.classList.remove("is-active"));
+      button.classList.add("is-active");
+    });
+
+    listContainer.appendChild(button);
+  });
+}
+
+function openCalendarEventModal(events = [], selectedEvent = null) {
+  const validEvents = Array.isArray(events) ? events : [];
+  const initialEvent = selectedEvent || validEvents[0] || {};
+  const { modal } = ensureCalendarEventModal();
+
+  renderCalendarEventDetails(initialEvent);
+  renderCalendarEventList(validEvents, initialEvent);
+
+  if (modal) {
+    modal.classList.add("calendar-modal--open");
+  }
 }
 
 function updateCalendarLegend() {
@@ -735,6 +869,9 @@ function renderCalendar() {
     const dotsContainer = document.createElement("div");
     dotsContainer.classList.add("indicators");
 
+    const entriesContainer = document.createElement("div");
+    entriesContainer.classList.add("calendar-entries");
+
     const fullDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const eventsToday = items.filter((item) => item.date === fullDate);
     const joinedEvents = eventsToday.filter(
@@ -742,24 +879,66 @@ function renderCalendar() {
     );
     const eventsToRender = (joinedEvents.length ? joinedEvents : eventsToday).slice(0, 1);
 
+    const eventsForEntries = joinedEvents.length ? joinedEvents : eventsToday;
+    const entriesToRender = eventsForEntries.slice(0, 2);
+
     eventsToRender.forEach((event) => {
       const dot = document.createElement("div");
       dot.classList.add("dot");
-      const typeClass = PREDEFINED_CALENDAR_CLASSES[(event.type || "event").toLowerCase()];
+      const type = (event.type || "event").toLowerCase();
+      const typeClass = PREDEFINED_CALENDAR_CLASSES[type];
       if (typeClass) {
         dot.classList.add(typeClass);
       } else {
-        dot.style.backgroundColor = resolveCalendarColor(event.type);
+        dot.style.backgroundColor = resolveCalendarColor(type);
       }
       dot.title = event.time ? `${event.title} — ${event.time}` : event.title;
       dotsContainer.appendChild(dot);
     });
+
+    entriesToRender.forEach((event) => {
+      const type = normalizeCalendarType(event.type);
+      const entry = document.createElement("div");
+      entry.classList.add("calendar-entry", `calendar-entry--${type}`);
+
+      const iconMap = {
+        poll: "🗳️",
+        competition: "🏆",
+        event: "📅"
+      };
+      const icon = iconMap[type] || iconMap.event;
+      const title = sanitizeText(event.title, "Untitled");
+      const label = formatCalendarTypeLabel(type);
+      const time = sanitizeText(event.time || "", "");
+
+      entry.innerHTML = `
+        <span class="calendar-entry__type">${icon} ${label}</span>
+        <span class="calendar-entry__title">${title}</span>
+        ${time ? `<span class="calendar-entry__time">${time}</span>` : ""}
+      `;
+
+      entry.addEventListener("click", () => openCalendarEventModal(eventsForEntries, event));
+
+      entriesContainer.appendChild(entry);
+    });
+
+    if (eventsForEntries.length > entriesToRender.length) {
+      const remainingCount = eventsForEntries.length - entriesToRender.length;
+      const moreChip = document.createElement("div");
+      moreChip.classList.add("calendar-entry", "calendar-entry--more");
+      moreChip.textContent = `+${remainingCount} more`;
+      moreChip.addEventListener("click", () => openCalendarEventModal(eventsForEntries));
+      entriesContainer.appendChild(moreChip);
+    }
 
     if (eventsToday.length === 0) {
       dotsContainer.classList.add("empty");
     }
 
     cell.appendChild(dateLabel);
+    if (entriesContainer.childElementCount > 0) {
+      cell.appendChild(entriesContainer);
+    }
     cell.appendChild(dotsContainer);
     grid.appendChild(cell);
   }

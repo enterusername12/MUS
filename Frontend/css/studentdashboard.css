@@ -422,6 +422,73 @@ body {
 
 .green { background: #4caf50; }
 
+.calendar-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  width: 100%;
+  align-items: flex-start;
+  align-self: stretch;
+  text-align: left;
+}
+
+.calendar-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: #f5f5f5;
+  color: #2f2f2f;
+  box-sizing: border-box;
+}
+
+.calendar-entry__type {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: inherit;
+}
+
+.calendar-entry__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendar-entry__time {
+  color: #555;
+  font-weight: 500;
+}
+
+.calendar-entry--poll {
+  background: #fdecef;
+  color: #a63c6d;
+}
+
+.calendar-entry--competition {
+  background: #f4e8f1;
+  color: #6f2a50;
+}
+
+.calendar-entry--event {
+  background: #e8f6ec;
+  color: #347a40;
+}
+
+.calendar-entry--more {
+  background: #f1f1f1;
+  color: #555;
+  font-weight: 600;
+}
+
 .calendar-legend {
   display: flex;
   justify-content: center;
@@ -459,6 +526,199 @@ body {
 .dot.red { background: #e84a5f; }
 .dot.purple { background: #8a2c57; }
 .dot.green { background: #4caf50; }
+
+/* === Calendar Event Modal === */
+.calendar-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.calendar-modal--open {
+  display: flex;
+}
+
+.calendar-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.calendar-modal__dialog {
+  position: relative;
+  background: #fff;
+  border-radius: 16px;
+  padding: 18px;
+  width: min(720px, 92vw);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.calendar-modal__close {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  cursor: pointer;
+  color: #4a4a4a;
+}
+
+.calendar-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.calendar-modal__heading {
+  margin: 2px 0 0;
+  font-size: 1.2rem;
+  color: #1f1f1f;
+}
+
+.calendar-modal__date {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.calendar-modal__pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #e8f6ec;
+  color: #347a40;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.calendar-modal__pill[data-type="poll"],
+.calendar-modal__list-type.calendar-entry--poll {
+  background: #fdecef;
+  color: #a63c6d;
+}
+
+.calendar-modal__pill[data-type="competition"],
+.calendar-modal__list-type.calendar-entry--competition {
+  background: #f4e8f1;
+  color: #6f2a50;
+}
+
+.calendar-modal__pill[data-type="event"],
+.calendar-modal__list-type.calendar-entry--event {
+  background: #e8f6ec;
+  color: #347a40;
+}
+
+.calendar-modal__content {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 12px;
+}
+
+.calendar-modal__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.calendar-modal__list-item {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.calendar-modal__list-item:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.calendar-modal__list-item.is-active {
+  border-color: #8a2c57;
+  box-shadow: 0 6px 14px rgba(138, 44, 87, 0.18);
+}
+
+.calendar-modal__list-type {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.calendar-modal__list-title {
+  flex: 1;
+  font-weight: 600;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-modal__list-time {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.calendar-modal__body {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 6px;
+}
+
+.calendar-modal__time {
+  margin: 0;
+  color: #374151;
+  font-weight: 600;
+}
+
+.calendar-modal__title {
+  margin: 0;
+  color: #111827;
+  font-size: 1.1rem;
+}
+
+.calendar-modal__description {
+  margin: 0;
+  color: #4b5563;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .calendar-modal__dialog {
+    width: 95vw;
+    padding: 16px;
+  }
+
+  .calendar-modal__content {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-modal__list {
+    max-height: 200px;
+  }
+}
 
 /* === Student Spotlight Section === */
 #studentSpotlight {
