@@ -5,23 +5,9 @@ const { readJwtUserId } = require('../utils/auth');
 
 const router = express.Router();
 
-const POLL_CALENDAR_SOURCE = 'poll';
-
 const toPositiveInt = (value) => {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-};
-
-const formatCalendarDeadline = (expiresAt) => {
-  if (!(expiresAt instanceof Date) || Number.isNaN(expiresAt.valueOf())) {
-    return null;
-  }
-
-  const iso = expiresAt.toISOString();
-  return {
-    date: iso.slice(0, 10),
-    time: iso.slice(11, 19)
-  };
 };
 
 const mapOptionRow = (option, fallbackPollId) => {
@@ -416,17 +402,10 @@ router.post('/:pollId/vote', async (req, res) => {
     }
 
     const now = new Date();
-    const expiresAt = poll.expiry ? new Date(poll.expiry) : null;
+    const expiresAt = parseExpiresAt(poll.expires_at);
 
     const isExpired = expiresAt && !Number.isNaN(expiresAt.valueOf()) && expiresAt <= now;
     if (!poll.is_active || isExpired) {
-      if (userId) {
-        await getPool().query(
-          `DELETE FROM user_calendar_items
-             WHERE user_id = $1 AND source_type = $2 AND source_id = $3`,
-          [userId, POLL_CALENDAR_SOURCE, pollId]
-        );
-      }
       return res.status(400).json({ message: 'This poll is no longer accepting votes.' });
     }
 
@@ -446,46 +425,6 @@ router.post('/:pollId/vote', async (req, res) => {
           DO UPDATE SET option_id = EXCLUDED.option_id`,
         [pollId, optionId, userId ?? null]
       );
-
-
-      const deadlineParts = formatCalendarDeadline(expiresAt);
-      if (userId && deadlineParts) {
-        await client.query(
-          `INSERT INTO user_calendar_items (
-             user_id,
-             source_type,
-             source_id,
-             title,
-             date,
-             time,
-             category,
-             updated_at
-           )
-           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-           ON CONFLICT (user_id, source_type, source_id)
-           DO UPDATE SET
-             title = EXCLUDED.title,
-             date = EXCLUDED.date,
-             time = EXCLUDED.time,
-             category = EXCLUDED.category,
-             updated_at = NOW()`,
-          [
-            userId,
-            POLL_CALENDAR_SOURCE,
-            pollId,
-            poll.title,
-            deadlineParts.date,
-            deadlineParts.time,
-            POLL_CALENDAR_SOURCE
-          ]
-        );
-      } else if (userId) {
-        await client.query(
-          `DELETE FROM user_calendar_items
-             WHERE user_id = $1 AND source_type = $2 AND source_id = $3`,
-          [userId, POLL_CALENDAR_SOURCE, pollId]
-        );
-      }
 
       await client.query('COMMIT');
     } catch (error) {

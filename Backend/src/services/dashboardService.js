@@ -117,7 +117,6 @@ async function fetchCalendarItems(limit = DEFAULT_CALENDAR_LIMIT) {
   return rows;
 }
 
-
 async function fetchEvents() {
   const { rows } = await getPool().query(`
     SELECT id, type, title, date, venue, description, poster, created_at
@@ -139,9 +138,6 @@ async function fetchEvents() {
   }));
 }
 
-
-
-
 async function fetchUserCalendarItems(userId, limit = DEFAULT_CALENDAR_LIMIT) {
   if (!userId) return [];
 
@@ -159,7 +155,7 @@ async function fetchUserCalendarItems(userId, limit = DEFAULT_CALENDAR_LIMIT) {
   return rows;
 }
 
-async function fetchActivePolls() {
+async function fetchActivePolls(userId = null) {
   const { rows: polls } = await getPool().query(
     `SELECT id, title, description, is_active, expires_at, created_at
        FROM polls
@@ -186,10 +182,24 @@ async function fetchActivePolls() {
     return acc;
   }, {});
 
-  return polls.map(p => ({ ...p, options: byPoll[p.id] || [] }));
+  let userVoteLookup = {};
+  if (userId) {
+    const { rows: voteRows } = await getPool().query(
+      `SELECT DISTINCT poll_id
+         FROM poll_votes
+        WHERE user_id = $1
+          AND poll_id = ANY($2::INT[])`,
+      [userId, ids]
+    );
+
+    userVoteLookup = voteRows.reduce((acc, row) => {
+      acc[row.poll_id] = true;
+      return acc;
+    }, {});
+  }
+
+  return polls.map(p => ({ ...p, options: byPoll[p.id] || [], user_has_vote: Boolean(userVoteLookup[p.id]) }));
 }
-
-
 
 async function fetchRewardPoints() {
   const { rows } = await getPool().query(
@@ -398,6 +408,7 @@ const normalizeCalendarEntries = (
   publicItems,
   userItems,
   competitions,
+  polls,
   limit = DEFAULT_CALENDAR_LIMIT,
   userId = null
 ) => {
@@ -451,7 +462,28 @@ const normalizeCalendarEntries = (
     })
     .filter((item) => item.date);
 
-  const combined = [...normalizedUser, ...normalizedPublic, ...normalizedCompetitions];
+
+
+  const normalizedPolls = ensureArray(polls)
+    .filter((poll) => {
+      const pollId = ensureNumber(poll.id ?? poll.poll_id, null);
+      return Boolean(userId && pollId && poll.user_has_vote);
+    })
+    .map((poll, i) => {
+      const deadlineIso = toISOString(poll.expires_at ?? poll.deadline ?? poll.created_at ?? '');
+      const date = toDateOnly(deadlineIso);
+
+      return {
+        date,
+        title: ensureString(poll.title, `Poll ${i + 1}`),
+        time: toTimeOnly(deadlineIso),
+        type: 'poll',
+        category: 'poll'
+      };
+    })
+    .filter((item) => item.date);
+
+  const combined = [...normalizedUser, ...normalizedPublic, ...normalizedCompetitions, ...normalizedPolls];
 
   const normalized = combined
     .map((item) => ({
@@ -478,7 +510,7 @@ async function getDashboardData(options = {}) {
     fetchLatestNews(),
     fetchUpcomingEvents(),
     fetchPublishedCommunityPosts(),
-    fetchActivePolls(),
+    fetchActivePolls(userId),
     fetchCompetitions(userId), // ⚡ get all competitions
     fetchRewardPoints(),
     fetchCalendarItems(calendarLimit),
@@ -523,7 +555,14 @@ async function getDashboardData(options = {}) {
     competitions: normalizedCompetitions,  // ⚡ include full competition list
     rewardPoints,
     spotlights,
-    calendar: normalizeCalendarEntries(calendarItems, userCalendarItems, normalizedCompetitions, calendarLimit, userId),
+    calendar: normalizeCalendarEntries(
+      calendarItems,
+      userCalendarItems,
+      normalizedCompetitions,
+      polls,
+      calendarLimit,
+      userId
+    ),
     generatedAt: new Date().toISOString()
   };
 }
