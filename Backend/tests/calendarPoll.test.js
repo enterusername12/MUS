@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const DAY_MS = 24 * 60 * 60 * 1000;
 const isoDaysFromNow = (days) => new Date(Date.now() + days * DAY_MS).toISOString();
 const toDateOnly = (isoString) => isoString.slice(0, 10);
+const toTimeOnly = (isoString) => isoString.slice(11, 16);
 
 const sendRequest = async (server, { method = 'GET', path, headers = {}, body = null }) => {
   const url = new URL(path, `http://127.0.0.1:${server.address().port}`);
@@ -78,6 +79,24 @@ describe('poll calendar integration', () => {
         return { rows };
       }
 
+      if (text.includes('FROM poll_votes v') && text.includes('JOIN polls p')) {
+        const [userId] = params;
+        const now = Date.now();
+        const futureLimit = now + 180 * DAY_MS;
+        const pastLimit = now - DAY_MS;
+
+        const rows = pollVotes
+          .filter((vote) => vote.user_id === userId)
+          .map((vote) => polls.find((poll) => poll.id === vote.poll_id))
+          .filter(Boolean)
+          .filter((poll) => {
+            const expiresAt = poll.expires_at?.getTime?.() ?? Date.parse(poll.expires_at);
+            return expiresAt >= pastLimit && expiresAt <= futureLimit;
+          });
+
+        return { rows };
+      }
+
       if (text.includes('FROM poll_options')) {
         const [pollId] = params;
         const rows = pollOptions
@@ -89,6 +108,17 @@ describe('poll calendar integration', () => {
         return { rows };
       }
 
+      if (text.includes('FROM poll_votes') && text.includes('INNER JOIN polls p ON p.id = v.poll_id')) {
+        const [userId, limit] = params;
+        const rows = pollVotes
+          .filter((vote) => vote.user_id === userId)
+          .map((vote) => polls.find((poll) => poll.id === vote.poll_id))
+          .filter(Boolean)
+          .map((poll) => ({ id: poll.id, title: poll.title, expires_at: poll.expires_at }))
+          .slice(0, limit ?? pollVotes.length);
+        return { rows };
+      }
+      
       if (text.startsWith('INSERT INTO poll_votes')) {
         const [pollId, optionId, userId] = params;
         const existingIndex = pollVotes.findIndex((vote) => vote.poll_id === pollId && vote.user_id === userId);
@@ -163,6 +193,7 @@ describe('poll calendar integration', () => {
 
     assert.equal(voteResponse.status, 200);
     assert.equal(pollVotes.length, 1);
+    assert.equal(pollVotes[0].user_id, userId);
 
     const calendarMutations = queryLog.filter(
       (text) => text.includes('user_calendar_items') && /INSERT|DELETE|UPDATE/i.test(text)
@@ -175,5 +206,22 @@ describe('poll calendar integration', () => {
     assert.equal(pollEntries.length, 1, 'voted poll should appear on the calendar');
     assert.equal(pollEntries[0].title, polls[0].title);
     assert.equal(pollEntries[0].date, toDateOnly(polls[0].expires_at.toISOString()));
+    assert.equal(pollEntries[0].time, toTimeOnly(polls[0].expires_at.toISOString()));
+  });
+  
+  it('rejects voting when no authenticated user is provided', async () => {
+    const response = await sendRequest(server, {
+      method: 'POST',
+      path: `/api/polls/${polls[0].id}/vote`,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-Id': '',
+        Authorization: ''
+      },
+      body: JSON.stringify({ optionId: pollOptions[0].id })
+    });
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(pollVotes, []);
   });
 });

@@ -1,7 +1,7 @@
 const express = require('express');
 
 const { getPool } = require('../db');
-const { readJwtUserId } = require('../utils/auth');
+const { readJwtUserId, readUserIdFromRequest } = require('../utils/auth');
 
 const router = express.Router();
 
@@ -275,8 +275,7 @@ const loadPollsWithOptions = async ({ includeInactive = false } = {}) => {
 
 // List polls
 router.get('/', async (req, res) => {
-
-  const userId = readJwtUserId(req);
+  const userId = readUserIdFromRequest(req);
   if (!userId) {
     return res.status(401).json({ message: 'Authentication required.' });
   }
@@ -383,7 +382,10 @@ router.post('/', async (req, res) => {
 
 // Vote on a poll (this wraps your top-level code into a proper async route)
 router.post('/:pollId/vote', async (req, res) => {
-  const userId = readJwtUserId(req);
+  const userId = readUserIdFromRequest(req);
+  if (!userId) {
+    return res.status(401).json({ message: 'Authentication required.' });
+  }
 
   const pollId = toPositiveInt(req.params.pollId);
   if (!pollId) {
@@ -423,7 +425,7 @@ router.post('/:pollId/vote', async (req, res) => {
           VALUES ($1, $2, $3)
           ON CONFLICT ON CONSTRAINT poll_votes_unique_user_poll_idx
           DO UPDATE SET option_id = EXCLUDED.option_id`,
-        [pollId, optionId, userId ?? null]
+        [pollId, optionId, userId]
       );
 
       await client.query('COMMIT');

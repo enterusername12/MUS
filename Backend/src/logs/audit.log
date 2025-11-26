@@ -366,3 +366,5 @@
 2025-11-26T11:33:29.008Z [POST] /api/votess/53/vote from ::1 Status: 500, Duration: 683ms
 2025-11-26T11:35:31.922Z [POST] /api/votess/53/vote from ::1 Status: 200, Duration: 1645ms
 2025-11-26T11:35:39.594Z [POST] /api/votess/53/vote from ::ffff:127.0.0.1 Status: 200, Duration: 1432ms
+2025-11-26T13:28:22.306Z [POST] /api/auth/login from ::1 Status: 200, Duration: 1707ms
+2025-11-26T13:28:47.121Z [POST] /api/votess/53/vote from ::1 Status: 200, Duration: 2325ms

@@ -7,14 +7,38 @@ const toPositiveInt = (value) => {
   return Number.isInteger(num) && num > 0 ? num : null;
 };
 
-const readJwtUserId = (req) => {
-  const authHeader = req?.headers?.authorization;
-  if (!authHeader || typeof authHeader !== 'string') {
+const readCookieValue = (req, name) => {
+  if (!req) return null;
+
+  if (req.cookies && typeof req.cookies === 'object') {
+    const direct = req.cookies[name];
+    if (direct) return direct;
+  }
+
+  const rawCookie = req.headers?.cookie;
+  if (!rawCookie || typeof rawCookie !== 'string') {
     return null;
   }
 
-  const [scheme, token] = authHeader.split(' ');
-  if (scheme?.toLowerCase() !== 'bearer' || !token) {
+  const parts = rawCookie.split(';');
+  for (const part of parts) {
+    const [key, ...rest] = part.split('=');
+    if (key?.trim() === name) {
+      return decodeURIComponent(rest.join('=') || '');
+    }
+  }
+
+  return null;
+};
+
+const readJwtUserId = (req) => {
+  const authHeader = req?.headers?.authorization;
+  const [scheme, tokenFromHeader] = typeof authHeader === 'string' ? authHeader.split(' ') : [];
+  const bearerToken = scheme?.toLowerCase() === 'bearer' && tokenFromHeader ? tokenFromHeader : null;
+  const cookieToken = readCookieValue(req, 'musAuthToken');
+  const token = bearerToken || cookieToken;
+
+  if (!token) {
     return null;
   }
 
