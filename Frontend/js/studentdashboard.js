@@ -874,9 +874,17 @@ function renderCalendar() {
     const joinedEvents = eventsToday.filter(
       (event) => event.joined || event.isJoined || event.userJoined
     );
-    const eventsToRender = (joinedEvents.length ? joinedEvents : eventsToday).slice(0, 1);
 
     const eventsForEntries = joinedEvents.length ? joinedEvents : eventsToday;
+
+    const eventsToRender = Array.from(
+      new Map(
+        eventsForEntries.map((event) => [
+          (event.type || "event").toLowerCase(),
+          event
+        ])
+      ).values()
+    );
 
     eventsToRender.forEach((event) => {
       const dot = document.createElement("div");
