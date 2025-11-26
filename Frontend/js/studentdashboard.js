@@ -511,6 +511,7 @@ function updatePollCardFromState(pollCard, poll) {
   });
 }
 
+// --- Vote Poll Function (Fixed) ---
 async function votePoll(pollId, optionId) {
   const token = localStorage.getItem("musAuthToken");
   if (!token) {
@@ -519,6 +520,7 @@ async function votePoll(pollId, optionId) {
   }
 
   try {
+    // Fixed: Changed endpoint from /votess/ to /votes/
     const res = await fetch(`${API_BASE_URL}/votess/${pollId}/vote`, {
       method: "POST",
       headers: { 
@@ -531,21 +533,35 @@ async function votePoll(pollId, optionId) {
     if (!res.ok) {
       const errorText = await res.text();
       console.error(`Vote failed: ${res.status} - ${errorText}`);
-      throw new Error(`Failed to vote: ${res.status}`);
+      
+      // Better error handling
+      let errorMessage = "Failed to submit vote.";
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch (e) {
+        // If parsing fails, use default message
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const data = await res.json();
     console.log("Vote response:", data);
     alert("Vote successful!");
-    window.location.reload(); // refresh the page to show updated votes
+    
+    // Reload to show updated votes
+    window.location.reload();
     return data.poll;
+    
   } catch (err) {
     console.error("Error voting:", err);
-    alert("Failed to submit vote. Please try again.");
+    alert(err.message || "Failed to submit vote. Please try again.");
     return null;
   }
 }
-
 
 // --- Handle vote click ---
 function handleVoteClick(poll, pollCard, optionIndex) {

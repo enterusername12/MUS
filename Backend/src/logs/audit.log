@@ -357,3 +357,12 @@
 2025-11-26T08:15:55.060Z [POST] /api/votess/53/vote from ::1 Status: 200, Duration: 970ms
 2025-11-26T09:27:36.723Z [POST] /api/votess/53/vote from ::1 Status: 200, Duration: 971ms
 2025-11-26T09:27:43.071Z [POST] /api/votess/53/vote from ::1 Status: 200, Duration: 987ms
+2025-11-26T11:22:53.644Z [POST] /api/auth/login from ::1 Status: 200, Duration: 616ms
+2025-11-26T11:23:01.537Z [POST] /api/votess/53/vote from ::1 Status: 500, Duration: 666ms
+2025-11-26T11:23:31.646Z [POST] /api/votess/53/vote from ::1 Status: 500, Duration: 1794ms
+2025-11-26T11:29:46.668Z [POST] /api/votess/53/vote from ::1 Status: 500, Duration: 1753ms
+2025-11-26T11:32:59.213Z [POST] /api/votes/53/vote from ::1 Status: 404, Duration: 2ms
+2025-11-26T11:33:01.740Z [POST] /api/votes/53/vote from ::1 Status: 404, Duration: 1ms
+2025-11-26T11:33:29.008Z [POST] /api/votess/53/vote from ::1 Status: 500, Duration: 683ms
+2025-11-26T11:35:31.922Z [POST] /api/votess/53/vote from ::1 Status: 200, Duration: 1645ms
+2025-11-26T11:35:39.594Z [POST] /api/votess/53/vote from ::ffff:127.0.0.1 Status: 200, Duration: 1432ms

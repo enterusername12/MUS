@@ -98,19 +98,33 @@ router.post('/:pollId/vote', async (req, res) => {
 
     // Different handling for authenticated vs anonymous users
     if (userId) {
-      // For authenticated users, upsert their vote
-      await getPool().query(
-        `INSERT INTO poll_votes (poll_id, option_id, user_id)
-           VALUES ($1, $2, $3)
-           ON CONFLICT (user_id, poll_id)
-           DO UPDATE SET option_id = EXCLUDED.option_id, created_at = NOW()`,
-        [pollId, optionId, userId]
+      // For authenticated users, check if they already voted
+      const { rows: existingVotes } = await getPool().query(
+        `SELECT id, option_id FROM poll_votes WHERE user_id = $1 AND poll_id = $2`,
+        [userId, pollId]
       );
+
+      if (existingVotes.length > 0) {
+        // Update existing vote
+        await getPool().query(
+          `UPDATE poll_votes 
+           SET option_id = $1, created_at = NOW() 
+           WHERE user_id = $2 AND poll_id = $3`,
+          [optionId, userId, pollId]
+        );
+      } else {
+        // Insert new vote
+        await getPool().query(
+          `INSERT INTO poll_votes (poll_id, option_id, user_id)
+           VALUES ($1, $2, $3)`,
+          [pollId, optionId, userId]
+        );
+      }
     } else {
       // For anonymous users, just insert (allows multiple anonymous votes)
       await getPool().query(
         `INSERT INTO poll_votes (poll_id, option_id, user_id)
-           VALUES ($1, $2, NULL)`,
+         VALUES ($1, $2, NULL)`,
         [pollId, optionId]
       );
     }
