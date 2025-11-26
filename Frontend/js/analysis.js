@@ -1,112 +1,64 @@
-// Dummy Data
-        const pollsData = [
-            {
-                id: 1,
-                title: "Best Campus Food Option",
-                status: "active",
-                endDate: "Oct 20",
-                totalVotes: 234,
-                participation: 68,
-                options: [
-                    { name: "Pizza Place", votes: 89, percentage: 38, color: "#c2577e" },
-                    { name: "Sandwich Bar", votes: 67, percentage: 29, color: "#5a2154" },
-                    { name: "Asian Cuisine", votes: 54, percentage: 23, color: "#a04573" },
-                    { name: "Salad Station", votes: 24, percentage: 10, color: "#dc92ac" }
-                ]
-            },
-            {
-                id: 2,
-                title: "Favorite Study Spot",
-                status: "active",
-                endDate: "Oct 18",
-                totalVotes: 189,
-                participation: 55,
-                options: [
-                    { name: "Main Library", votes: 72, percentage: 38, color: "#c2577e" },
-                    { name: "Coffee Shop", votes: 56, percentage: 30, color: "#5a2154" },
-                    { name: "Student Center", votes: 41, percentage: 22, color: "#a04573" },
-                    { name: "Outdoor Quad", votes: 20, percentage: 10, color: "#dc92ac" }
-                ]
-            },
-            {
-                id: 3,
-                title: "Preferred Library Hours",
-                status: "completed",
-                endDate: "Oct 10",
-                totalVotes: 456,
-                participation: 82,
-                options: [
-                    { name: "24/7 Access", votes: 183, percentage: 40, color: "#c2577e" },
-                    { name: "6am - Midnight", votes: 137, percentage: 30, color: "#5a2154" },
-                    { name: "8am - 10pm", votes: 91, percentage: 20, color: "#a04573" },
-                    { name: "9am - 6pm", votes: 45, percentage: 10, color: "#dc92ac" }
-                ]
-            },
-            {
-                id: 4,
-                title: "Best Campus Event This Semester",
-                status: "active",
-                endDate: "Oct 25",
-                totalVotes: 322,
-                participation: 71,
-                options: [
-                    { name: "Music Festival", votes: 129, percentage: 40, color: "#c2577e" },
-                    { name: "Career Fair", votes: 96, percentage: 30, color: "#5a2154" },
-                    { name: "Sports Day", votes: 64, percentage: 20, color: "#a04573" },
-                    { name: "Cultural Night", votes: 33, percentage: 10, color: "#dc92ac" }
-                ]
-            }
-        ];
+const API_BASE_URL = 'http://localhost:3000/api';
 
-        const studentsData = [
-            {
-                id: 1,
-                name: "Alex Chen",
-                award: "Research Excellence Award",
-                month: "January",
-                year: "2024",
-                engagementScore: 95,
-                chartData: [95, 88, 92, 90, 87, 93, 91, 95]
-            },
-            {
-                id: 2,
-                name: "Sarah Johnson",
-                award: "Community Service Leader",
-                month: "February",
-                year: "2024",
-                engagementScore: 88,
-                chartData: [85, 87, 88, 86, 89, 88, 90, 88]
-            },
-            {
-                id: 3,
-                name: "Michael Brown",
-                award: "Innovation Challenge Winner",
-                month: "March",
-                year: "2024",
-                engagementScore: 92,
-                chartData: [90, 91, 92, 89, 93, 92, 91, 92]
-            },
-            {
-                id: 4,
-                name: "Emily Davis",
-                award: "Leadership Excellence",
-                month: "April",
-                year: "2024",
-                engagementScore: 91,
-                chartData: [88, 90, 91, 92, 89, 91, 90, 91]
-            }
-        ];
-
-        let currentPoll = pollsData[0];
-        let currentStudent = studentsData[0];
+        let pollsData = [];
+        let studentsData = [];
+        let currentPoll = null;
+        let currentStudent = null;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            renderPolls();
-            renderStudents();
-            displayPollDetails(currentPoll);
-            displayStudentDetails(currentStudent);
+            loadPolls();
+            loadStudents();
         });
+
+async function loadPolls() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/analysis/polls`);
+        if (!response.ok) throw new Error('Failed to fetch polls');
+
+        const result = await response.json();
+        pollsData = result; // <-- use result directly
+
+        if (pollsData.length > 0) {
+            currentPoll = pollsData[0];
+            renderPolls();
+            displayPollDetails(currentPoll);
+        } else {
+            document.getElementById('pollList').innerHTML =
+                '<p style="text-align:center;color:#999;">No polls available</p>';
+        }
+
+    } catch (error) {
+        console.error('Error loading polls:', error);
+        document.getElementById('pollList').innerHTML =
+            '<div class="error">Failed to load polls. Please try again.</div>';
+    }
+}
+
+async function loadStudents() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/analysis/students`);
+        if (!response.ok) throw new Error('Failed to fetch students');
+
+        const result = await response.json();
+        studentsData = result; // <-- use result directly
+
+        if (studentsData.length > 0) {
+            currentStudent = studentsData[0];
+            renderStudents();
+            displayStudentDetails(currentStudent);
+        } else {
+            document.getElementById('studentList').innerHTML =
+                '<p style="text-align:center;color:#999;">No students available</p>';
+        }
+
+    } catch (error) {
+        console.error('Error loading students:', error);
+        document.getElementById('studentList').innerHTML =
+            '<div class="error">Failed to load students. Please try again.</div>';
+    }
+}
+
 
         function switchTab(tab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -123,11 +75,17 @@
 
         function renderPolls(filteredData = pollsData) {
             const pollList = document.getElementById('pollList');
+            
+            if (filteredData.length === 0) {
+                pollList.innerHTML = '<p style="text-align:center;color:#999;">No polls found</p>';
+                return;
+            }
+            
             pollList.innerHTML = '';
             
             filteredData.forEach(poll => {
                 const card = document.createElement('div');
-                card.className = 'poll-card' + (poll.id === currentPoll.id ? ' selected' : '');
+                card.className = 'poll-card' + (currentPoll && poll.id === currentPoll.id ? ' selected' : '');
                 card.onclick = () => selectPoll(poll);
                 
                 card.innerHTML = `
@@ -209,20 +167,22 @@
                           stroke-width="2"/>
                 `;
                 
-                const labelAngle = startAngle + angle / 2;
-                const labelX = 150 + 100 * Math.cos(labelAngle * Math.PI / 180);
-                const labelY = 150 + 100 * Math.sin(labelAngle * Math.PI / 180);
-                
-                paths += `
-                    <text x="${labelX}" y="${labelY}" 
-                          text-anchor="middle" 
-                          dominant-baseline="middle" 
-                          fill="white" 
-                          font-weight="bold" 
-                          font-size="14">
-                        ${option.percentage}%
-                    </text>
-                `;
+                if (option.percentage > 0) {
+                    const labelAngle = startAngle + angle / 2;
+                    const labelX = 150 + 100 * Math.cos(labelAngle * Math.PI / 180);
+                    const labelY = 150 + 100 * Math.sin(labelAngle * Math.PI / 180);
+                    
+                    paths += `
+                        <text x="${labelX}" y="${labelY}" 
+                              text-anchor="middle" 
+                              dominant-baseline="middle" 
+                              fill="white" 
+                              font-weight="bold" 
+                              font-size="14">
+                            ${option.percentage}%
+                        </text>
+                    `;
+                }
                 
                 startAngle = endAngle;
             });
@@ -239,24 +199,55 @@
         }
 
         function renderStudents(filteredData = studentsData) {
-            const studentList = document.getElementById('studentList');
-            studentList.innerHTML = '';
-            
-            filteredData.forEach(student => {
-                const card = document.createElement('div');
-                card.className = 'student-card' + (student.id === currentStudent.id ? ' selected' : '');
-                card.onclick = () => selectStudent(student);
-                
-                card.innerHTML = `
-                    <div class="student-date">${student.month} ${student.year}</div>
-                    <div class="student-name">${student.name}</div>
-                    <div class="student-award">${student.award}</div>
-                    <div class="engagement-score">Engagement Score: ${student.engagementScore}</div>
-                `;
-                
-                studentList.appendChild(card);
-            });
-        }
+    const studentList = document.getElementById('studentList');
+
+    if (filteredData.length === 0) {
+        studentList.innerHTML = '<p style="text-align:center;color:#999;">No students found</p>';
+        return;
+    }
+
+    studentList.innerHTML = '';
+
+    filteredData.forEach(student => {
+        const engagementScore = calculateEngagement(student.totalPoints);
+
+        const card = document.createElement('div');
+        card.className = 'student-card' + (currentStudent && student.id === currentStudent.id ? ' selected' : '');
+        card.onclick = () => selectStudent(student);
+
+        card.innerHTML = `
+            <div class="student-name">${student.name}</div>
+            <div class="student-id">${student.studentId}</div>
+            <div class="engagement-score">Engagement: ${engagementScore}</div>
+            <div class="total-points">Points: ${student.totalPoints}</div>
+        `;
+
+        studentList.appendChild(card);
+    });
+}
+
+function displayStudentDetails(student) {
+    const details = document.getElementById('studentDetails');
+    const engagementScore = calculateEngagement(student.totalPoints);
+
+    details.innerHTML = `
+        <div class="section-title">Student Overview</div>
+        <div class="result-title">${student.name}</div>
+        <div class="student-id">ID: ${student.studentId}</div>
+        <div class="total-points">Total Points: ${student.totalPoints}</div>
+        <div class="engagement-score" style="font-weight:bold; margin-top:10px;">
+            Engagement Score: ${engagementScore}
+        </div>
+    `;
+}
+
+// Example: convert points into a simple engagement score
+function calculateEngagement(points) {
+    if (points >= 30000) return 'Excellent';
+    if (points >= 10000) return 'High';
+    if (points > 0) return 'Moderate';
+    return 'Low';
+}
 
         function selectStudent(student) {
             currentStudent = student;
@@ -264,34 +255,6 @@
             displayStudentDetails(student);
         }
 
-        function displayStudentDetails(student) {
-            const details = document.getElementById('studentDetails');
-            const lineChart = createLineChart(student.chartData);
-            
-            details.innerHTML = `
-                <div class="section-title">Result Overview</div>
-                <div class="result-title">
-                    ${student.name}
-                    <span class="score-badge">${student.engagementScore}</span>
-                </div>
-                <div style="color: #666; font-size: 16px; margin-bottom: 20px;">${student.award}</div>
-                <div style="color: #666; font-size: 14px; margin-bottom: 20px;">Engagement Score</div>
-                
-                <div class="detail-row">
-                    <div class="detail-col">
-                        <div class="detail-label">Month</div>
-                        <div class="detail-value">${student.month}</div>
-                    </div>
-                    <div class="detail-col">
-                        <div class="detail-label">Year</div>
-                        <div class="detail-value">${student.year}</div>
-                    </div>
-                </div>
-                
-                <div class="section-title" style="margin-top: 40px;">Engagement Overview</div>
-                <div class="line-chart">${lineChart}</div>
-            `;
-        }
 
         function createLineChart(data) {
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'];
@@ -302,7 +265,7 @@
             const chartHeight = height - padding * 2;
             
             const maxValue = 100;
-            const minValue = 80;
+            const minValue = 70;
             
             let points = '';
             let circles = '';
@@ -312,13 +275,13 @@
                 const y = padding + chartHeight - ((value - minValue) / (maxValue - minValue)) * chartHeight;
                 
                 points += `${x},${y} `;
-                circles += `<circle cx="${x}" cy="${y}" r="4" fill="#8b3a62" stroke="white" stroke-width="2"/>`;
+                circles += `<circle cx="${x}" cy="${y}" r="5" fill="#8b3a62" stroke="white" stroke-width="2"/>`;
             });
             
             let gridLines = '';
             for (let i = 0; i <= 4; i++) {
                 const y = padding + (i / 4) * chartHeight;
-                const value = maxValue - (i / 4) * (maxValue - minValue);
+                const value = Math.round(maxValue - (i / 4) * (maxValue - minValue));
                 gridLines += `
                     <line x1="${padding}" y1="${y}" x2="${width - padding}" y2="${y}" 
                           stroke="#e5e5e5" stroke-dasharray="3,3"/>
@@ -344,7 +307,7 @@
                 <svg viewBox="0 0 ${width} ${height}">
                     ${gridLines}
                     ${xLabels}
-                    <polyline points="${points}" fill="none" stroke="#8b3a62" stroke-width="2"/>
+                    <polyline points="${points}" fill="none" stroke="#8b3a62" stroke-width="3"/>
                     ${circles}
                 </svg>
             `;
@@ -360,3 +323,4 @@
             
             renderStudents(filtered);
         }
+    

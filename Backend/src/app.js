@@ -23,6 +23,9 @@ const rewardRoute = require("./routes/rewardRoute");
 
 const votessRouter = require('./routes/votess');
 
+const analysisRoutes = require('./routes/analysis');
+
+
 
 
 const app = express();
@@ -56,6 +59,9 @@ app.use("/api/reward", rewardRoute);
 app.use('/api/users', usersRoutes);
 app.use("/api/events", eventsRoute);
 app.use('/api/votess', votessRouter);
+// Add this line with your other app.use statements
+app.use('/api/analysis', analysisRoutes);
+
 
 module.exports = app;
 
