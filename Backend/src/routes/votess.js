@@ -2,6 +2,8 @@
 const express = require('express');
 const { getPool } = require('../db');
 const { readJwtUserId } = require('../utils/auth');
+// 🟢 FIX: Import AI Services
+const { logInteraction, getDashboardRecommendations } = require('../services/aiHub');
 
 const router = express.Router();
 
@@ -120,6 +122,22 @@ router.post('/:pollId/vote', async (req, res) => {
           [pollId, optionId, userId]
         );
       }
+
+      // 🟢 FIX 1: Log Interaction with CORRECT Type
+      logInteraction({
+        userId,
+        contentId: pollId,        // Send the Poll ID
+        contentType: 'poll',      // Explicitly say this is a poll
+        action: 'vote',
+        timestamp: new Date().toISOString()
+      }).catch(err => console.warn('Failed to log vote interaction:', err.message));
+
+      // 🟢 FIX 2: Trigger Regeneration (No change needed here, this is already correct)
+      getDashboardRecommendations({ 
+        userId, 
+        useCache: false 
+      }).catch(err => console.warn('Failed to regenerate suggestions:', err.message));
+      
     } else {
       // For anonymous users, just insert (allows multiple anonymous votes)
       await getPool().query(
