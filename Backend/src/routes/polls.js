@@ -1,7 +1,9 @@
 const express = require('express');
 
 const { getPool } = require('../db');
-const { readJwtUserId, readUserIdFromRequest } = require('../utils/auth');
+const { readUserIdFromRequest } = require('../utils/auth');
+const { embedContent } = require('../services/aiHub'); // 🟢 Added import
+const { refreshAllUserCaches } = require('../services/cacheRefresher');
 
 const router = express.Router();
 
@@ -166,26 +168,11 @@ const readPollPayload = (body = {}) => {
     return { error: 'Poll title is required.' };
   }
 
-  // if (!description) {
-  //   return { error: 'Poll description is required.' };
-  // }
-
   if (optionsError) {
     return { error: optionsError };
   }
 
   const expiresAt = parseExpiresAt(body.expiresAt ?? body.expires_at);
-  if (body.expiresAt !== undefined || body.expires_at !== undefined) {
-    // if (!expiresAt) {
-    //   return { error: 'expiresAt must be a valid ISO date/time string or YYYY-MM-DD.' };
-    // }
-
-    const now = new Date();
-    // if (expiresAt <= now) {
-    //   return { error: 'expiresAt must be set in the future.' };
-    // }
-  }
-
   const isActive = normalizeBoolean(body.isActive ?? body.is_active, true);
 
   return {
@@ -298,18 +285,7 @@ router.post('/', async (req, res) => {
 
   let pollId = req.body.id ?? null; // If id exists, this is an update
 
-  const authHeader = req.headers['authorization'];
-  let userId = null;
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.slice(7); // remove "Bearer "
-    try {
-      const user = JSON.parse(token); // parse token into object
-      userId = user.id;
-    } catch (err) {
-      console.error("Failed to parse Authorization header:", token, err);
-    }
-  }
-
+  const userId = readUserIdFromRequest(req);
   if (!userId) {
     return res.status(401).json({ message: 'Authentication required.' });
   }
@@ -364,6 +340,19 @@ router.post('/', async (req, res) => {
 
       await client.query('COMMIT');
 
+      // ✅ FIX: Trigger Embedding AND Cache Refresh
+      const optionsText = payload.optionLabels.join(' ');
+      const textToEmbed = `${payload.title} ${payload.description} ${optionsText}`;
+      embedContent({
+        type: 'poll',
+        id: pollId,
+        text: textToEmbed
+      }).then(() => {
+          // 🟢 NEW: Update user feeds to include this new poll
+          console.log("Triggering background cache refresh for new poll...");
+          refreshAllUserCaches();
+      }).catch(err => console.error(`Failed to embed poll ${pollId}:`, err.message));
+
       const poll = await loadPollWithOptions(pollId);
       return res.status(201).json({ poll });
     } catch (error) {
@@ -380,7 +369,7 @@ router.post('/', async (req, res) => {
 });
 
 
-// Vote on a poll (this wraps your top-level code into a proper async route)
+// Vote on a poll
 router.post('/:pollId/vote', async (req, res) => {
   const userId = readUserIdFromRequest(req);
   if (!userId) {
@@ -451,14 +440,16 @@ router.delete('/:id', async (req, res) => {
   try {
     const pool = getPool();
     await pool.query('DELETE FROM polls WHERE id = $1', [id]);
+    
+    // 🟢 NEW: Refresh feeds
+    refreshAllUserCaches();
+
     res.status(200).json({ success: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to delete poll' });
   }
 });
-
-
 
 // // Alias /votes → /vote
 // router.post('/:pollId/votes', async (req, res) => {
@@ -479,7 +470,5 @@ router.delete('/:id', async (req, res) => {
 //     }
 //   }
 // });
-
-
 
 module.exports = router;
