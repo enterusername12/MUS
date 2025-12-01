@@ -5,7 +5,7 @@
 
   "moderation": {
     "model": "models/twitter-roberta-base-sentiment-latest",
-    "device": "cuda",
+    "device": "cpu",
     "thresholds": { "block": 0.70, "queue": 0.40 },
     "maxTextLength": 2000,
     "fileLogging": true
@@ -13,13 +13,13 @@
 
   "reco": {
     "model": "models/all-MiniLM-L6-v2",
-    "device": "cuda",
+    "device": "cpu",
     "alpha": 0.6,
     "lambda_decay": 0.02,
     "max_events": 500,
     "future_only_default": true
   },
 
-  "db_url": "postgresql://postgres:0909@localhost:5432/tests_5d4x_local"
+  "db_url": "postgresql://tests_5d4x_user:RTWwsaKevvi4JHudymDWs7AXXCKvSgeF@dpg-d4al9gmuk2gs739hpe1g-a.oregon-postgres.render.com/tests_5d4x"
 
 }
