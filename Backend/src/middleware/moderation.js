@@ -1,7 +1,8 @@
 // Calls the FastAPI moderation service for a post description
 const axios = require('axios');
 
-const AI_MOD_URL = process.env.AI_MOD_URL || 'http://localhost:8000/moderate';
+// 🟢 FIX: Default to 8020 to match your Python command
+const AI_MOD_URL = process.env.AI_MOD_URL || 'http://localhost:8020/moderate';
 
 async function aiModeration(req, _res, next) {
   try {
@@ -16,13 +17,12 @@ async function aiModeration(req, _res, next) {
       meta: { source: 'community_post' }
     }, { timeout: 12_000 });
 
-    // Expected: { action: 'publish'|'queue'|'block', toxic_prob: 0..1, ... }
     req.moderation = data || { action: 'publish', toxic_prob: 0 };
     return next();
   } catch (err) {
     console.error('[AI moderation] error:', err.message);
-    // Fail-open but mark unknown so staff can review later if needed
-    req.moderation = { action: 'publish', toxic_prob: 0, error: 'ai_unreachable' };
+    // Mark as unreachable so you know why it failed
+    req.moderation = { action: 'publish', toxic_prob: 0, error: 'ai_unreachable', reason: err.message };
     return next();
   }
 }
