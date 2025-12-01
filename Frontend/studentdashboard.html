@@ -41,6 +41,52 @@
 
   <hr class="dashboard-line">
 
+  <!-- Interest declaration banner (shown only when interests are empty) -->
+  <section id="interest-banner" class="interest-banner hidden">
+    <div class="interest-banner-header">
+      <h2>Tell us what you're interested in</h2>
+      <p>We’ll use this to personalise events, news and activities for you.</p>
+    </div>
+
+    <div class="interest-tags" id="interest-tags-container">
+      <!-- Tags will be rendered by interests.js -->
+    </div>
+
+    <div class="interest-input-row">
+      <label for="interest-freeform">Or add your own interests</label>
+      <textarea
+        id="interest-freeform"
+        rows="2"
+        placeholder="e.g. AI, basketball, music club, part-time jobs"
+      ></textarea>
+      <small class="interest-hint">
+        You can type multiple interests separated by commas.
+      </small>
+    </div>
+
+    <div class="interest-actions">
+      <button id="interest-save-btn" class="btn btn-primary">
+        Save interests
+      </button>
+      <button id="interest-skip-btn" class="btn btn-secondary">
+        Not now
+      </button>
+    </div>
+
+    <p id="interest-status" class="interest-status"></p>
+  </section>
+
+  <!-- Compact summary bar when user already has interests -->
+  <section id="interest-summary" class="interest-summary hidden">
+    <span class="interest-summary-label">Your interests:</span>
+    <span id="interest-summary-text" class="interest-summary-text"></span>
+    <button id="interest-edit-btn" class="interest-edit-btn">
+      Update
+    </button>
+  </section>
+
+  <hr class="line">
+
   <!-- ✅ Campus News & Events -->
   <section class="dashboard-section">
     <div class="header-flex">
@@ -83,10 +129,10 @@
   <div class="modal-content">
     <span class="close-btn" id="closeShareModal">&times;</span>
     <h2>Share Post</h2>
-
-    <form id="sharePostForm">
+    
+    <div id="sharePostForm">
       <label>Post Title *</label>
-      <input type="text" id="postTitle" placeholder="Enter post title" required>
+      <input type="text" id="postTitle" placeholder="Enter post title">
 
       <label>Category *</label>
       <select id="postCategory">
@@ -99,19 +145,19 @@
       <input type="text" id="postTags" placeholder="Type a tag and press Enter">
 
       <label>Description *</label>
-      <textarea id="postDescription" placeholder="Describe your post..." required></textarea>
+      <textarea id="postDescription" placeholder="Describe your post..."></textarea>
 
       <label>Attach Photo (optional)</label>
       <input type="file" id="postPhoto" accept="image/png, image/jpeg, image/gif">
 
       <div class="modal-buttons">
         <button type="button" id="cancelPostBtn">Cancel</button>
-        <button type="submit" id="sharePostBtn">Share Post</button>
+        <button type="button" id="sharePostBtn">Share Post</button>
       </div>
-    </form>
+  </div>
   </div>
 </div>
-  
+
 <hr class="line">
 
 <section class="dashboard-section" id="pollSection">
@@ -236,6 +282,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 </script>
+
+<script src="js/interests.js"></script>
 
 </body>
 </html>
