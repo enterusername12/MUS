@@ -1,6 +1,9 @@
 const express = require("express");
 const multer = require("multer");
 const { getPool } = require('../db');
+const { embedContent } = require('../services/aiHub'); // 🟢 Added import
+const { refreshAllUserCaches } = require('../services/cacheRefresher');
+
 const router = express.Router();
 
 // Multer: store file in memory
@@ -105,6 +108,20 @@ router.post("/", upload.single("poster"), async (req, res) => {
 
     await client.query("COMMIT");
 
+    JavaScript
+
+    // ✅ FIX: Trigger Embedding AND Cache Refresh
+    const textToEmbed = `${type} ${title} ${description}`;
+    embedContent({
+      type: 'event',
+      id: eventId,
+      text: textToEmbed
+    }).then(() => {
+        // 🟢 NEW: Once embedded, update everyone's feed in the background
+        console.log("Triggering background cache refresh for new event...");
+        refreshAllUserCaches(); 
+    }).catch(err => console.error(`Failed to embed event ${eventId}:`, err.message));
+
     res.json({
       success: true,
       id: eventId,
@@ -131,6 +148,10 @@ router.delete("/:id", async (req, res) => {
 
   try {
     await pool.query("DELETE FROM events WHERE id=$1", [id]);
+    
+    // 🟢 NEW: Remove this event from everyone's recommendations
+    refreshAllUserCaches(); 
+
     res.json({ success: true, message: `Deleted event ${id}` });
   } catch (err) {
     console.error("❌ Error deleting event:", err);
