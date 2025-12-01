@@ -358,22 +358,37 @@ def embed_item(inp: EmbedIn):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"embed failed: {e}")
 
-# ---------------- Interactions (events for now) ----------------
+class EphemeralDashboardIn(BaseModel):
+    interests_text: str
+    k_headline: int = 12
+    k_posts: int = 6
+    k_polls: int = 6
+    future_only: bool = True
+    news_days_back: int = 60
+    posts_days_back: int = 60
+
+# ---------------- Interactions ----------------
 class InteractIn(BaseModel):
     user_id: str
-    event_id: str
+    content_id: str    # Renamed from event_id
+    content_type: str  # New field
     action: str
     timestamp: Optional[str] = None
 
 @app.post("/interact")
 def interact(inp: InteractIn):
     try:
-        store.append_interaction(user_id=int(inp.user_id), event_id=int(inp.event_id),
-                                 action=inp.action, ts_iso=inp.timestamp)
+        # Pass new fields to the store
+        store.append_interaction(
+            user_id=int(inp.user_id), 
+            content_id=int(inp.content_id),
+            content_type=inp.content_type,
+            action=inp.action, 
+            ts_iso=inp.timestamp
+        )
         return _json_safe({"status": "ok", "logged": True})
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"interaction failed: {e}")
-
 # ---------------- Helpers ----------------
 def _ensure_embeddings(items: List[Dict[str, Any]], content_type: str) -> List[Dict[str, Any]]:
     id_key = {
@@ -659,10 +674,22 @@ def _is_fresh(ts_iso: str, ttl_minutes: int = 5) -> bool:
         return False
 
 def _shape_headline_for_cache(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    # keep only safe fields
-    keep = {"event_id","news_id","title","description","start_time","published_at","content_type"}
-    return [{k:v for k,v in it.items() if k in keep} for it in items]
-
+    # Updated: Only keep IDs and Type. Backend will hydrate details.
+    out = []
+    for it in items:
+        # We need to distinguish between Event and News
+        entry = {
+            "content_type": it.get("content_type"),
+            # Only keep the relevant ID
+            "event_id": it.get("event_id"), 
+            "news_id": it.get("news_id")
+        }
+        # Add score if available for debugging, but mostly we just need IDs
+        if "score" in it:
+            entry["score"] = it["score"]
+        out.append(entry)
+    return out
+    
 def _shape_simple_for_cache(items: List[Dict[str, Any]], id_key: str) -> List[Dict[str, Any]]:
     keep = {id_key,"title","description","created_at","expires_at","content_type"}
     return [{k:v for k,v in it.items() if k in keep} for it in items]
@@ -707,7 +734,7 @@ def recommend_dashboard_cached(
     )
     # 3) write cache
     try:
-        headline = _shape_headline_for_cache(resp["headline"])
+        headline = (resp["headline"])
         posts    = _shape_simple_for_cache(resp["posts"], "post_id")
         polls    = _shape_simple_for_cache(resp["polls"], "poll_id")
         _write_cache_row(user_id, headline, posts, polls)
@@ -717,3 +744,104 @@ def recommend_dashboard_cached(
     resp["cached"] = False
     return _json_safe(resp)
 
+@app.post("/recommend_dashboard_ephemeral")
+def recommend_dashboard_ephemeral(inp: EphemeralDashboardIn):
+    """
+    For VISITORS (no account). Uses only the provided interests_text to build a
+    temporary user vector. Does NOT write anything to users or rec_interactions,
+    but WILL ensure content embeddings are created for items that are missing.
+    """
+    text = (inp.interests_text or "").strip()
+    if not text:
+        # No interests provided: just behave like a time-based cold start
+        events = store.fetch_events(future_only=inp.future_only, limit=inp.k_headline)
+        news = store.fetch_news(days_back=inp.news_days_back, limit=inp.k_headline)
+        posts = store.fetch_posts(days_back=inp.posts_days_back, limit=inp.k_posts)
+        polls = store.fetch_polls(future_only=True, limit=inp.k_polls)
+
+        # Shape into the same structure as /recommend_dashboard cold start
+        # headline = mix of events + news sorted by time
+        for ev in events:
+            ev["content_type"] = "event"
+        for nw in news:
+            nw["content_type"] = "news"
+
+        headline = events + news
+        headline.sort(
+            key=lambda it: (
+                it.get("start_time")
+                or it.get("published_at")
+                or it.get("created_at")
+                or "9999-12-31"
+            )
+        )
+
+        return {
+            "user_id": None,
+            "headline": headline[: inp.k_headline],
+            "posts": posts[: inp.k_posts],
+            "polls": polls[: inp.k_polls],
+            "meta": {"mode": "time_based", "ephemeral": True},
+        }
+
+    # 1) Embed the visitor's interests text
+    user_vec_list = embedder.embed_texts([text])
+    user_vec = user_vec_list[0]  # plain Python list of floats
+
+    # 2) Fetch candidate content (no per-user filters)
+    events = store.fetch_events(future_only=inp.future_only)
+    news = store.fetch_news(days_back=inp.news_days_back)
+    posts = store.fetch_posts(days_back=inp.posts_days_back)
+    polls = store.fetch_polls(future_only=True)
+
+    # 3) Ensure embeddings exist in DB (creates + saves if missing)
+    events = _ensure_embeddings(events, "event")
+    news = _ensure_embeddings(news, "news")
+    posts = _ensure_embeddings(posts, "post")
+    polls = _ensure_embeddings(polls, "poll")
+
+    # 4) Filter out any items without valid vectors
+    events_vec = [it for it in events if _has_valid_vec(it)]
+    news_vec = [it for it in news if _has_valid_vec(it)]
+    posts_vec = [it for it in posts if _has_valid_vec(it)]
+    polls_vec = [it for it in polls if _has_valid_vec(it)]
+
+    # 5) Score & pick top-k using the same scoring util as /recommend_dashboard
+    import pandas as pd
+    from recommendation.scoring import top_k_with_profile
+
+    headline_items = []
+    if events_vec or news_vec:
+        # For headline, combine events + news, then rank them together
+        ev_df = pd.DataFrame(events_vec)
+        nw_df = pd.DataFrame(news_vec)
+        ev_df["content_type"] = "event"
+        nw_df["content_type"] = "news"
+        combo_df = pd.concat([ev_df, nw_df], ignore_index=True)
+
+        top_headline = top_k_with_profile(combo_df, user_vec, inp.k_headline)
+        headline_items = top_headline.to_dict(orient="records")
+
+    posts_items = []
+    if posts_vec:
+        po_df = pd.DataFrame(posts_vec)
+        po_df["content_type"] = "post"
+        top_posts = top_k_with_profile(po_df, user_vec, inp.k_posts)
+        posts_items = top_posts.to_dict(orient="records")
+
+    polls_items = []
+    if polls_vec:
+        pl_df = pd.DataFrame(polls_vec)
+        pl_df["content_type"] = "poll"
+        top_polls = top_k_with_profile(pl_df, user_vec, inp.k_polls)
+        polls_items = top_polls.to_dict(orient="records")
+
+    return _json_safe(
+        {
+            "user_id": None,
+            "headline": headline_items,
+            "posts": posts_items,
+            "polls": polls_items,
+            "meta": {"mode": "interest_based", "ephemeral": True},
+        }
+    )
