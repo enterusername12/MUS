@@ -1,8 +1,10 @@
 // routes/users.js
 const express = require('express');
 const { getPool } = require('../db');
-
 const router = express.Router();
+const { readUserIdFromRequest } = require("../utils/auth");
+const pool = getPool();
+
 
 // Get all users with statistics
 router.get('/', async (req, res) => {
@@ -318,5 +320,112 @@ router.delete('/:id', async (req, res) => {
     });
   }
 });
+
+// Get current user's profile (used by interests UI)
+router.get("/me", async (req, res) => {
+  try {
+    const userId = readUserIdFromRequest(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const { rows } = await pool.query(
+      `
+      SELECT
+        id,
+        role,
+        first_name,
+        last_name,
+        email,
+        personal_email,
+        student_id,
+        phone,
+        interests_text,
+        created_at,
+        updated_at
+      FROM users
+      WHERE id = $1
+      `,
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    return res.json(rows[0]);
+  } catch (err) {
+    console.error("Error in GET /api/users/me:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Update current user's interests_text (called by interests.js)
+router.put("/me/interests", async (req, res) => {
+  try {
+    const userId = readUserIdFromRequest(req);
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    let { interestsText } = req.body || {};
+    if (typeof interestsText !== "string") {
+      interestsText = "";
+    }
+    interestsText = interestsText.trim();
+
+    const { rows } = await pool.query(
+      `
+      UPDATE users
+      SET
+        interests_text = $1,
+        updated_at = NOW()
+      WHERE id = $2
+      RETURNING
+        id,
+        role,
+        first_name,
+        last_name,
+        email,
+        personal_email,
+        student_id,
+        phone,
+        interests_text,
+        created_at,
+        updated_at
+      `,
+      [interestsText, userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const updatedUser = rows[0];
+
+    // OPTIONAL: send to AI service to update embedding
+    try {
+      const { updateUserInterestsEmbedding } = require("../services/aiHub");
+      if (updateUserInterestsEmbedding && interestsText) {
+        // fire-and-forget, don't block user
+        updateUserInterestsEmbedding({
+          userId,
+          interestsText,
+        }).catch((e) =>
+          console.warn("Failed to send interests to AI hub:", e.message)
+        );
+      }
+    } catch (e) {
+      console.warn("AI hub not configured for interests embedding:", e.message);
+    }
+
+    return res.json(updatedUser);
+  } catch (err) {
+    console.error("Error in PUT /api/users/me/interests:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 
 module.exports = router;
