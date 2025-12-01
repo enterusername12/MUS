@@ -1222,9 +1222,137 @@ function renderCards(container, data, type) {
   });
 }
 
+function setupSharePostModal() {
+  console.log("✅ Setting up post modal...");
 
-// Load everything when the page is ready
+  const modal = document.getElementById("sharePostModal");
+  const openBtn = document.getElementById("createPost");
+  const closeBtn = document.getElementById("closeShareModal");
+  const cancelBtn = document.getElementById("cancelPostBtn");
+  const submitBtn = document.getElementById("sharePostBtn");
+
+  if (!modal || !openBtn || !submitBtn) {
+    console.error("❌ Critical UI elements missing for Share Post Modal");
+    return;
+  }
+
+  // --- Open Logic ---
+  openBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    modal.classList.remove("hidden");
+    modal.style.display = "flex";
+  });
+
+  // --- Close Logic (Manually Clear Inputs) ---
+  const closeModal = () => {
+    modal.classList.add("hidden");
+    modal.style.display = "none";
+    
+    // ✅ MANUAL RESET (Since we removed the <form> tag)
+    document.getElementById("postTitle").value = "";
+    document.getElementById("postCategory").value = "General";
+    document.getElementById("postTags").value = "";
+    document.getElementById("postDescription").value = "";
+    document.getElementById("postPhoto").value = ""; // Clear file input
+  };
+
+  if (closeBtn) closeBtn.addEventListener("click", closeModal);
+  if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
+
+  // --- CLICK HANDLER (No Form Submit) ---
+  submitBtn.addEventListener("click", async (e) => {
+    e.preventDefault(); // Stop any default behavior
+    console.log("🚀 Share button clicked!");
+
+    // 1. Get Values
+    const title = document.getElementById("postTitle").value.trim();
+    const category = document.getElementById("postCategory").value;
+    const description = document.getElementById("postDescription").value.trim();
+    const tags = document.getElementById("postTags").value;
+
+    // 2. Validate
+    if (!title || !description) {
+      alert("Please fill in the Title and Description.");
+      return;
+    }
+
+    // 3. UI Feedback (Analysis Mode)
+    const originalText = submitBtn.innerText;
+    submitBtn.innerText = "Analyzing...";
+    submitBtn.disabled = true;
+    submitBtn.style.backgroundColor = "#ccc";
+    submitBtn.style.cursor = "wait";
+
+    try {
+      const payload = { title, category, tags, description };
+      console.log("📤 Sending payload:", payload);
+
+      const response = await fetch(`${API_BASE_URL}/community-posts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("musAuthToken")}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+      console.log("📥 Received response:", data);
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to create post");
+      }
+
+      // 4. Close Modal on success
+      closeModal();
+
+      // 5. Show Moderation Result (Prevent Crash if missing)
+      if (data.post && data.post.moderation) {
+        const status = data.post.moderation.status;
+        const score = data.post.moderation.score || 0;
+
+        if (status === "publish") {
+          alert(`✅ Success!\n\nYour post has been published.`);
+        } else if (status === "queue") {
+          alert(`⚠️ Post Held for Review\n\nReason: Potential unsafe content (Score: ${score.toFixed(2)}).\nIt will be visible after staff approval.`);
+        } else if (status === "block") {
+          alert(`⛔ Post Blocked\n\nReason: High toxicity detected (Score: ${score.toFixed(2)}).\nThis content violates our community guidelines.`);
+        }
+      } else {
+        alert(`✅ ${data.message}`);
+      }
+
+      // 6. Refresh Feed
+      if (typeof initializeDashboard === 'function') {
+         await initializeDashboard(); 
+      } else {
+         window.location.reload();
+      }
+
+    } catch (err) {
+      console.error("❌ Error:", err);
+      alert("Error: " + err.message);
+    } finally {
+      // 7. Reset Button State
+      submitBtn.innerText = originalText;
+      submitBtn.disabled = false;
+      submitBtn.style.backgroundColor = ""; 
+      submitBtn.style.cursor = "pointer";
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  initializeDashboard();
-  setupSharePostModal();
+  // 1. Setup the UI interactions FIRST (so they work even if data fails)
+  console.log("1. Starting UI Setup...");
+  try {
+    setupSharePostModal();
+    console.log("✅ UI Setup Complete");
+  } catch (err) {
+    console.error("❌ UI Setup Failed:", err);
+  }
+
+  // 2. Then load the dashboard data
+  console.log("2. Loading Dashboard Data...");
+  initializeDashboard().catch(err => console.error("❌ Dashboard Data Failed:", err));
 });
