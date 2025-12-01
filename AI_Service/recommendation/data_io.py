@@ -1,4 +1,7 @@
-# data_io.py — Postgres-backed store for MUS recommender (per-table embeddings, schema-aligned)
+# recommendation/data_io.py
+# -----------------------------------------------------------------------------
+# Updated to use public.events (instead of campus_events) + public.campus_news
+# -----------------------------------------------------------------------------
 from __future__ import annotations
 import json, math
 from typing import Any, Dict, List, Optional, Tuple
@@ -6,10 +9,11 @@ from dataclasses import dataclass
 import psycopg
 from psycopg.rows import dict_row
 
-# ---------- action weights (event interactions for now) ----------
+# ... (Keep ACTION_WEIGHT as is) ...
 ACTION_WEIGHT: Dict[str, float] = {
     "attend": 1.0,
     "register": 0.7,
+    "vote": 0.8,
     "click": 0.3,
     "view": 0.3,
     "dismiss": -0.5,
@@ -22,25 +26,21 @@ class EventRow:
     description: str
     start_time: str
     location: Optional[str]
+    type: Optional[str]  # Added type from your new table
 
 class PgStore:
     def __init__(self, db_url: str):
         self.db_url = db_url
         self.conn: Optional[psycopg.Connection] = None
 
-    # ----- connection -----
     def _ensure_conn(self) -> psycopg.Connection:
         if self.conn is None or self.conn.closed:
             self.conn = psycopg.connect(self.db_url, row_factory=dict_row, autocommit=True)
         return self.conn
 
-    # ----- users -----
+    # ... (Keep Users methods: get_user_profile, upsert_user_embedding as is) ...
     def get_user_profile(self, user_id: int) -> Dict[str, Any]:
-        sql = """
-        SELECT id, interests_text, interest_embedding
-          FROM public.users
-         WHERE id = %s
-        """
+        sql = "SELECT id, interests_text, interest_embedding FROM public.users WHERE id = %s"
         with self._ensure_conn().cursor() as cur:
             cur.execute(sql, (user_id,))
             row = cur.fetchone()
@@ -56,39 +56,42 @@ class PgStore:
         with self._ensure_conn().cursor() as cur:
             cur.execute(sql, params)
 
-    # ===== EVENTS =====
+    # ===== EVENTS (UPDATED to public.events) =====
     def fetch_events(self, future_only: bool = True, limit: Optional[int] = None) -> List[EventRow]:
-        # Consider an event "upcoming/active" if it has not ended yet.
-        # Many rows have start_time NULL or in the past, but end_time is still future.
-            where = "WHERE COALESCE(start_time, end_time) >= now()" if future_only else ""
-            lim = f"LIMIT {int(limit)}" if limit else ""
-            sql = f"""
-            SELECT id AS event_id,
-                title,
-                COALESCE(description,'') AS description,
-                start_time,
-                end_time,
-                location
-            FROM public.campus_events
-            {where}
-            ORDER BY COALESCE(start_time, end_time) ASC NULLS LAST
-            {lim}
-            """
-            with self._ensure_conn().cursor() as cur:
-                cur.execute(sql)
-                rows = cur.fetchall()
-            return rows
+        # Mapping: id -> event_id, date -> start_time, venue -> location
+        where = "WHERE date >= CURRENT_DATE" if future_only else ""
+        lim = f"LIMIT {int(limit)}" if limit else ""
+        
+        sql = f"""
+        SELECT 
+            id AS event_id,
+            title,
+            COALESCE(description, '') AS description,
+            date AS start_time, 
+            venue AS location,
+            type
+        FROM public.events
+        {where}
+        ORDER BY date ASC
+        {lim}
+        """
+        with self._ensure_conn().cursor() as cur:
+            cur.execute(sql)
+            rows = cur.fetchall()
+        return rows
 
     def get_event_embedding(self, event_id: int) -> Optional[List[float]]:
-        sql = "SELECT event_embedding FROM public.campus_events WHERE id = %s"
+        # Updated table name
+        sql = "SELECT event_embedding FROM public.events WHERE id = %s"
         with self._ensure_conn().cursor() as cur:
             cur.execute(sql, (event_id,))
             row = cur.fetchone()
         return row["event_embedding"] if row and row["event_embedding"] is not None else None
 
     def upsert_event_embedding(self, event_id: int, vector: List[float]) -> None:
+        # Updated table name
         sql = """
-        UPDATE public.campus_events
+        UPDATE public.events
            SET event_embedding = %s::jsonb,
                event_embedding_updated_at = now()
          WHERE id = %s
@@ -96,7 +99,10 @@ class PgStore:
         with self._ensure_conn().cursor() as cur:
             cur.execute(sql, (json.dumps(vector), event_id))
 
-    # ===== NEWS (uses summary/body, published_at/created_at) =====
+    # ... (Keep NEWS, POSTS, POLLS, INTERACTIONS methods exactly as they were) ...
+    # (Copy-paste the rest of your original data_io.py content here for fetch_news, fetch_posts, etc.)
+    # ...
+    # ===== NEWS =====
     def fetch_news(self, days_back: int = 60, limit: int = 300) -> List[Dict[str, Any]]:
         sql = """
         SELECT id AS news_id,
@@ -130,8 +136,7 @@ class PgStore:
         with self._ensure_conn().cursor() as cur:
             cur.execute(sql, (json.dumps(vector), news_id))
 
-    # ===== COMMUNITY POSTS (uses description, created_at) =====
-    
+    # ===== COMMUNITY POSTS =====
     def fetch_posts(self, days_back: int = 60, limit: int = 300) -> List[Dict[str, Any]]:
         sql = """
         SELECT id AS post_id,
@@ -166,7 +171,7 @@ class PgStore:
         with self._ensure_conn().cursor() as cur:
             cur.execute(sql, (json.dumps(vector), post_id))
 
-    # ===== POLLS (uses description, expires_at) =====
+    # ===== POLLS =====
     def fetch_polls(self, future_only: bool = True, limit: int = 200) -> List[Dict[str, Any]]:
         where = "WHERE expires_at IS NULL OR expires_at >= now()" if future_only else ""
         sql = f"""
@@ -201,45 +206,71 @@ class PgStore:
         with self._ensure_conn().cursor() as cur:
             cur.execute(sql, (json.dumps(vector), poll_id))
 
-    # ----- interactions (event-focused for now) -----
-    def append_interaction(self, user_id: int, event_id: int, action: str, ts_iso: Optional[str]) -> None:
-        # public.rec_interactions(user_id, event_id, action, ts, meta)
+    # recommendation/data_io.py
+
+    # ... inside PgStore class ...
+
+    # 1. Update the INSERT function
+    def append_interaction(self, user_id: int, content_id: int, content_type: str, action: str, ts_iso: Optional[str]) -> None:
         sql = """
-        INSERT INTO public.rec_interactions (user_id, event_id, action, ts)
-        VALUES (%s, %s, %s::public.rec_action, COALESCE(%s::timestamptz, now()))
+        INSERT INTO public.rec_interactions (user_id, content_id, content_type, action, ts)
+        VALUES (%s, %s, %s, %s::public.rec_action, COALESCE(%s::timestamptz, now()))
         """
         with self._ensure_conn().cursor() as cur:
-            cur.execute(sql, (user_id, event_id, action, ts_iso))
+            cur.execute(sql, (user_id, content_id, content_type, action, ts_iso))
 
-    def fetch_user_interactions_with_embeddings(
-        self, user_id: int, half_life_days: float = 14.0
-    ) -> List[Tuple[List[float], float]]:
-        """
-        Returns list of (event_embedding, decayed_weight)
-        decayed_weight = ACTION_WEIGHT[action] * exp(-lambda * age_days)
-        where lambda = ln(2) / half_life_days
-        """
+    # 2. Update the FETCH function (The "Learning" Query)
+    def fetch_user_interactions_with_embeddings(self, user_id: int, half_life_days: float = 14.0) -> List[Tuple[List[float], float]]:
         lam = math.log(2.0) / max(half_life_days, 1e-6)
+        
+        # New Polymorphic Query: Joins Events, Polls, News, and Posts to find the embedding
         sql = """
-        SELECT i.action, i.ts, ce.event_embedding
+        SELECT i.action, i.ts,
+               CASE 
+                 WHEN i.content_type = 'event' THEN e.event_embedding
+                 WHEN i.content_type = 'poll' THEN p.poll_embedding
+                 WHEN i.content_type = 'news' THEN n.news_embedding
+                 WHEN i.content_type = 'post' THEN cp.post_embedding
+               END as embedding
           FROM public.rec_interactions i
-          JOIN public.campus_events ce ON ce.id = i.event_id
+          LEFT JOIN public.events e ON i.content_type = 'event' AND i.content_id = e.id
+          LEFT JOIN public.polls p ON i.content_type = 'poll' AND i.content_id = p.id
+          LEFT JOIN public.campus_news n ON i.content_type = 'news' AND i.content_id = n.id
+          LEFT JOIN public.community_posts cp ON i.content_type = 'post' AND i.content_id = cp.id
          WHERE i.user_id = %s
+           AND (e.event_embedding IS NOT NULL 
+                OR p.poll_embedding IS NOT NULL 
+                OR n.news_embedding IS NOT NULL
+                OR cp.post_embedding IS NOT NULL)
         """
+        
         out: List[Tuple[List[float], float]] = []
         from datetime import datetime, timezone
         now = datetime.now(timezone.utc)
+        
         with self._ensure_conn().cursor() as cur:
             cur.execute(sql, (user_id,))
             rows = cur.fetchall()
+            
         if not rows:
             return out
+            
         for r in rows:
-            emb = r["event_embedding"]
+            emb = r["embedding"]
             if emb is None:
                 continue
-            age_days = max((now - r["ts"]).total_seconds() / 86400.0, 0.0)
-            base = ACTION_WEIGHT.get(r["action"], 0.0)
+            
+            # Time Decay Logic
+            ts = r["ts"]
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            
+            age_days = max((now - ts).total_seconds() / 86400.0, 0.0)
+            
+            # Map 'vote' action to a weight if not in ACTION_WEIGHT
+            # You should add "vote": 0.8 to ACTION_WEIGHT dict at top of file
+            base = ACTION_WEIGHT.get(r["action"], 0.5) 
+            
             w = base * math.exp(-lam * age_days)
             if w != 0.0:
                 out.append((emb, w))
