@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   const API_BASE_URL = window.getApiBaseUrl
     ? window.getApiBaseUrl()
-    : window.__CONFIG?.apiBaseUrl?.replace(/\/$/, "") || "http://localhost:3000";
+    : window.__CONFIG?.apiBaseUrl?.replace(/\/$/, "") || "http://10.51.33.36:3000";
   const tabs = document.querySelectorAll(".tab");
   const container = document.querySelector(".card-container");
   const pageTitle = document.getElementById("page-title");

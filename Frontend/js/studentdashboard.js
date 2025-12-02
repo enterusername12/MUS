@@ -1,6 +1,6 @@
 
 // Dashboard widgets are hydrated from the backend API and rendered client-side.
-const API_BASE_URL = "http://localhost:3000/api";
+const API_BASE_URL = "http://10.51.33.36:3000/api";
 
 // === AI interaction helpers ===
 

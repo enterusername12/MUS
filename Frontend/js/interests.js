@@ -7,7 +7,7 @@ const INTERESTS_API_BASE =
     ? API_BASE_URL
     : (window.getApiBaseUrl
         ? window.getApiBaseUrl() + "/api"
-        : "http://localhost:3000/api");
+        : "http://10.51.33.36:3000/api");
 
 // Default tags for Student and Guest roles
 const DEFAULT_INTEREST_TAGS_STUDENT = [
