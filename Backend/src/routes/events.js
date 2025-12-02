@@ -107,9 +107,7 @@ router.post("/", upload.single("poster"), async (req, res) => {
     }
 
     await client.query("COMMIT");
-
-    JavaScript
-
+    
     // ✅ FIX: Trigger Embedding AND Cache Refresh
     const textToEmbed = `${type} ${title} ${description}`;
     embedContent({
