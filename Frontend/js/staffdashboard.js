@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://10.51.33.36:3000/api';
+const API_BASE_URL = 'http://localhost:3000/api';
 let cardId;
 let cardcompetition;
 async function fetchPolls() {
@@ -247,7 +247,7 @@ async function renderPolls() {
 }
 async function fetchDashboardData() {
   try {
-    const res = await fetch("http://10.51.33.36:3000/api/dashboard", {
+    const res = await fetch("http://localhost:3000/api/dashboard", {
       credentials: "include",
       headers: {
         "Authorization": `Bearer ${localStorage.getItem("musAuthUser")}`
@@ -566,7 +566,7 @@ modal.addEventListener('click', e => {
 
       // 重新刷新列表
       if (endpoint.includes("polls")) renderPolls(await fetchData("/api/polls"));
-      else if (endpoint.includes("competitions")) renderCompetitions(await fetchData("http://10.51.33.36:3000/api/competition"));
+      else if (endpoint.includes("competitions")) renderCompetitions(await fetchData("http://localhost:3000/api/competition"));
       else if (endpoint.includes("events")) renderEvents(await fetchData("/api/events"));
     } catch (err) {
       console.error(err);
@@ -590,7 +590,7 @@ pollForm.addEventListener("submit", async (e) => {
 
 
   try {
-    const res = await fetch("http://10.51.33.36:3000/api/polls", {
+    const res = await fetch("http://localhost:3000/api/polls", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -666,7 +666,7 @@ competitionForm.addEventListener("submit", async (e) => {
   }
 
   try {
-    const res = await fetch("http://10.51.33.36:3000/api/competition", {
+    const res = await fetch("http://localhost:3000/api/competition", {
       method: "POST",
       body: sendFormData // 直接傳 FormData
       // ⚠️ 不要加 Content-Type，瀏覽器會自動加 multipart/form-data
@@ -685,7 +685,7 @@ competitionForm.addEventListener("submit", async (e) => {
 });
 
 
-  eventForm.addEventListener("submit", e => { e.preventDefault(); submitForm(eventForm, "http://10.51.33.36:3000/api/events"); });
+  eventForm.addEventListener("submit", e => { e.preventDefault(); submitForm(eventForm, "http://localhost:3000/api/events"); });
 
   // ==========================
   // 🔹 Card Actions (Edit / Delete / QR)

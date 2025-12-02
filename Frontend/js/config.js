@@ -6,7 +6,7 @@
   const stripTrailingSlash = value =>
     typeof value === "string" ? value.replace(/\/$/, "") : value;
 
-  const FALLBACK_BASE_URL = "http://10.51.33.36:3000";
+  const FALLBACK_BASE_URL = "http://localhost:3000";
 
   window.getApiBaseUrl = function getApiBaseUrl() {
     const configuredBase = window.__CONFIG?.apiBaseUrl;

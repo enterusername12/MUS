@@ -11,7 +11,7 @@ const ALLOWED_FILE_MIME_TYPES = new Set([
 ]);
 const ALLOWED_FILE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'pdf', 'txt', 'doc', 'docx']);
 
-const API_BASE_URL = window.getApiBaseUrl ? window.getApiBaseUrl() : 'http://10.51.33.36:3000';
+const API_BASE_URL = window.getApiBaseUrl ? window.getApiBaseUrl() : 'http://localhost:3000';
 const form = document.getElementById('feedbackForm');
 const feedback = document.getElementById('feedback');
 const charCount = document.querySelector('.char-count');

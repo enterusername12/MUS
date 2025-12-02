@@ -8,7 +8,7 @@ const API_BASE = (() => {
     return explicit.trim().replace(/\/$/, '');
   }
 
-  const backendOrigin = window.__MU_BACKEND_ORIGIN__ || 'http://10.51.33.36:3000';
+  const backendOrigin = window.__MU_BACKEND_ORIGIN__ || 'http://localhost:3000';
   try {
     const backendURL = new URL(backendOrigin);
     const pageOrigin = window.location?.origin;
@@ -20,8 +20,8 @@ const API_BASE = (() => {
     }
     return `${backendURL.origin.replace(/\/$/, '')}/api/merch`;
   } catch (error) {
-    console.warn('Unable to parse backend origin, defaulting to 10.51.33.36:3000', error);
-    return 'http://10.51.33.36:3000/api/merch';
+    console.warn('Unable to parse backend origin, defaulting to localhost:3000', error);
+    return 'http://localhost:3000/api/merch';
   }
 })();
 const SORT_PARAM_MAP = {

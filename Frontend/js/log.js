@@ -4,7 +4,7 @@ async function loadAuditLogs() {
 
   try {
     // Fetch logs from backend
-    const response = await fetch(`http://10.51.33.36:3000/logs`);
+    const response = await fetch(`http://localhost:3000/logs`);
     console.log('Fetch response:', response);
 
     if (!response.ok) {
