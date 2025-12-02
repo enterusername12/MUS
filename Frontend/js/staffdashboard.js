@@ -575,8 +575,8 @@ modal.addEventListener('click', e => {
 pollForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  // 取得 musAuthUser
-  const musAuthUser = localStorage.getItem("musAuthUser");
+  // ✅ FIX: Get the TOKEN, not the user object
+  const token = localStorage.getItem("musAuthToken");
 
   // 收集表單資料
   const formData = new FormData(pollForm);
@@ -590,11 +590,11 @@ pollForm.addEventListener("submit", async (e) => {
 
 
   try {
-    const res = await fetch("http://10.51.33.36:3000/api/polls", {
+    const res = await fetch(`${API_BASE_URL}/polls`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${musAuthUser}`
+        "Authorization": `Bearer ${token}`  // Use the token
       },
       credentials: "include",
       body: JSON.stringify(data)
@@ -627,6 +627,9 @@ pollForm.addEventListener("submit", async (e) => {
 
 competitionForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+
+  // define token 
+  const token = localStorage.getItem("musAuthToken")
 
   // 先用 FormData 收集表單文字欄位
   const formData = new FormData(competitionForm);
@@ -666,8 +669,11 @@ competitionForm.addEventListener("submit", async (e) => {
   }
 
   try {
-    const res = await fetch("http://10.51.33.36:3000/api/competition", {
+    const res = await fetch(`${API_BASE_URL}/competition`, {
       method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}` // ✅ Add Header
+      },
       body: sendFormData // 直接傳 FormData
       // ⚠️ 不要加 Content-Type，瀏覽器會自動加 multipart/form-data
     });
@@ -683,9 +689,6 @@ competitionForm.addEventListener("submit", async (e) => {
     alert("Failed to create competition");
   }
 });
-
-
-  eventForm.addEventListener("submit", e => { e.preventDefault(); submitForm(eventForm, "http://10.51.33.36:3000/api/events"); });
 
   // ==========================
   // 🔹 Card Actions (Edit / Delete / QR)
@@ -822,8 +825,6 @@ function attachCardActions(container, type) {
     });
   });
 }
-
-
   attachCardActions(pollContainer, "poll");
   attachCardActions(competitionContainer, "competition");
   attachCardActions(eventContainer, "event");
@@ -833,144 +834,151 @@ function attachCardActions(container, type) {
   // ==========================
   closeQrModal.addEventListener('click', () => qrModal.classList.add('hidden'));
   qrModal.addEventListener('click', e => { if (e.target === qrModal) qrModal.classList.add('hidden'); });
-});
+  
+  
+  const eventUploadArea = eventForm.querySelector(".upload-area");
+  const eventPosterInput = eventForm.querySelector("input[name='poster']");
+  const eventDesc = document.getElementById("eventDesc");
+  const eventCharCount = document.getElementById("eventCharCount");
 
+  let editingEventId = null; // same idea as cardId for competitions
 
+  // --------------------
+  // Click upload box => open file picker
+  // --------------------
+  eventUploadArea.addEventListener("click", () => {
+    eventPosterInput.click();
+  });
 
-const eventForm = document.getElementById("eventForm");
-const eventUploadArea = eventForm.querySelector(".upload-area");
-const eventPosterInput = eventForm.querySelector("input[name='poster']");
-const eventDesc = document.getElementById("eventDesc");
-const eventCharCount = document.getElementById("eventCharCount");
+  // --------------------
+  // Live preview + size/type validation
+  // --------------------
+  eventPosterInput.addEventListener("change", () => {
+    const file = eventPosterInput.files[0];
+    if (!file) return;
 
-let editingEventId = null; // same idea as cardId for competitions
-
-// --------------------
-// Click upload box => open file picker
-// --------------------
-eventUploadArea.addEventListener("click", () => {
-  eventPosterInput.click();
-});
-
-// --------------------
-// Live preview + size/type validation
-// --------------------
-eventPosterInput.addEventListener("change", () => {
-  const file = eventPosterInput.files[0];
-  if (!file) return;
-
-  if (!["image/png", "image/jpeg"].includes(file.type)) {
-    alert("Only PNG or JPG allowed.");
-    eventPosterInput.value = "";
-    return;
-  }
-
-  if (file.size > 5 * 1024 * 1024) {
-    alert("File must be under 5MB.");
-    eventPosterInput.value = "";
-    return;
-  }
-
-  // Add preview (same style as competitions)
-  eventUploadArea.innerHTML = `
-    <img src="${URL.createObjectURL(file)}" style="max-width:120px; border-radius:6px; margin-bottom:8px;">
-    <p><strong>${file.name}</strong></p>
-    <p class="upload-hint">Click to change poster</p>
-  `;
-});
-
-// --------------------
-// Description character counter
-// --------------------
-eventDesc.addEventListener("input", () => {
-  eventCharCount.textContent = `${eventDesc.value.length}/500`;
-});
-
-// --------------------
-// Submit Event Form
-// --------------------
-eventForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-
-  const fd = new FormData(eventForm);
-
-  // Build event object
-  const eventData = {
-    id: editingEventId || null,
-    type: fd.get("type"),
-    title: fd.get("title"),
-    date: fd.get("date"),
-    venue: fd.get("venue"),
-    description: fd.get("description") || ""
-  };
-
-
-
-
-  const sendForm = new FormData();
-  sendForm.append("data", JSON.stringify(eventData));
-
-  const posterFile = eventPosterInput.files[0];
-  if (posterFile) {
-    sendForm.append("poster", posterFile, posterFile.name);
-
-  } else {
-    
-  }
-
-
-  try {
-    const res = await fetch(`${API_BASE_URL}/events`, {
-      method: "POST",
-      body: sendForm,
-      credentials: "include"
-    });
-
-
-    const contentType = res.headers.get("Content-Type") || "";
-
-    let responseBody;
-    if (contentType.includes("application/json")) {
-      responseBody = await res.json();
-    } else {
-      responseBody = await res.text();
+    if (!["image/png", "image/jpeg"].includes(file.type)) {
+      alert("Only PNG or JPG allowed.");
+      eventPosterInput.value = "";
+      return;
     }
 
-    if (!res.ok) {
-      throw new Error(JSON.stringify(responseBody));
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File must be under 5MB.");
+      eventPosterInput.value = "";
+      return;
     }
 
-    alert("Event created successfully!");
-
-    // reset form and UI
-    eventForm.reset();
+    // Add preview (same style as competitions)
     eventUploadArea.innerHTML = `
-      <div class="upload-icon">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-          <path d="M12 15V3M12 3L8 7M12 3L16 7M2 17L2 19C2 20.1046 2.89543 21 4 21L20 21C21.1046 21 22 20.1046 22 19V17" 
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <p><strong>+ Upload Poster</strong></p>
-      <p class="upload-hint">PNG, JPG up to 5MB. Recommended: 1000x1500px</p>
+      <img src="${URL.createObjectURL(file)}" style="max-width:120px; border-radius:6px; margin-bottom:8px;">
+      <p><strong>${file.name}</strong></p>
+      <p class="upload-hint">Click to change poster</p>
     `;
-    eventCharCount.textContent = "0/500";
+  });
 
-  if (typeof renderEvents === "function") {
+  // --------------------
+  // Description character counter
+  // --------------------
+  eventDesc.addEventListener("input", () => {
+    eventCharCount.textContent = `${eventDesc.value.length}/500`;
+  });
+
+  // --------------------
+  // Submit Event Form
+  // --------------------
+  eventForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
 
-    const dashboardData = await fetch(`${API_BASE_URL}/dashboard`, { credentials: "include" })
-      .then(r => r.json());
+    const fd = new FormData(eventForm);
 
-    const allEvents = dashboardData.events || [];
-    renderEvents(allEvents);
-  }
+    // Build event object
+    const eventData = {
+      id: editingEventId || null,
+      type: fd.get("type"),
+      title: fd.get("title"),
+      date: fd.get("date"),
+      venue: fd.get("venue"),
+      description: fd.get("description") || ""
+    };
 
 
-    modal.classList.add("hidden");
 
-  } catch (err) {
- 
-  }
+
+    const sendForm = new FormData();
+    sendForm.append("data", JSON.stringify(eventData));
+
+    const posterFile = eventPosterInput.files[0];
+    if (posterFile) {
+      sendForm.append("poster", posterFile, posterFile.name);
+
+    } else {
+      
+    }
+
+
+    try {
+      const token = localStorage.getItem("musAuthToken"); // ✅ Get Token
+
+      const res = await fetch(`${API_BASE_URL}/events`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}` // ✅ Add Header
+        },
+        body: sendForm,
+        credentials: "include"
+      });
+
+
+      const contentType = res.headers.get("Content-Type") || "";
+
+      let responseBody;
+      if (contentType.includes("application/json")) {
+        responseBody = await res.json();
+      } else {
+        responseBody = await res.text();
+      }
+
+      if (!res.ok) {
+        throw new Error(JSON.stringify(responseBody));
+      }
+
+      alert("Event created successfully!");
+
+      // reset form and UI
+      eventForm.reset();
+      eventUploadArea.innerHTML = `
+        <div class="upload-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+            <path d="M12 15V3M12 3L8 7M12 3L16 7M2 17L2 19C2 20.1046 2.89543 21 4 21L20 21C21.1046 21 22 20.1046 22 19V17" 
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <p><strong>+ Upload Poster</strong></p>
+        <p class="upload-hint">PNG, JPG up to 5MB. Recommended: 1000x1500px</p>
+      `;
+      eventCharCount.textContent = "0/500";
+
+    if (typeof renderEvents === "function") {
+
+
+      const dashboardData = await fetch(`${API_BASE_URL}/dashboard`, { credentials: "include" })
+        .then(r => r.json());
+
+      const allEvents = dashboardData.events || [];
+      renderEvents(allEvents);
+    }
+
+
+      modal.classList.add("hidden");
+
+    } catch (err) {
+      console.error("Event submit failed:", err);
+      alert("Failed to create event: " + err.message);
+    }
+  });
+
 });
+
+
