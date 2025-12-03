@@ -378,3 +378,6 @@
 2025-11-26T18:33:58.342Z [POST] /api/competition from ::1 Status: 200, Duration: 4128ms
 2025-11-26T18:35:40.168Z [POST] /api/votess/53/vote from ::1 Status: 200, Duration: 2014ms
 2025-11-26T18:37:35.034Z [POST] /api/competition/register from ::1 Status: 200, Duration: 973ms
+2025-12-03T11:01:12.145Z [POST] /api/competition/register from ::1 Status: 200, Duration: 434ms
+2025-12-03T11:01:42.984Z [POST] /api/reward/claim from ::1 Status: 200, Duration: 193ms
+2025-12-03T11:02:53.350Z [POST] /api/feedback from ::1 Status: 201, Duration: 2305ms

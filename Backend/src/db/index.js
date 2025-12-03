@@ -345,24 +345,30 @@ const createDatabaseIfMissing = async () => {
 };
 
 /* ------------------ ENSURE DATABASE STRUCTURE ------------------ */
-
+// Drop the table if it exists
 const ensureDatabase = async () => {
   try {
+    
     const client = await pool.connect();
     try {
+      // Drop the table if it exists
+
       // users
-      await client.query(`CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        role TEXT NOT NULL,
-        first_name TEXT,
-        last_name TEXT,
-        email TEXT NOT NULL UNIQUE,
-        personal_email TEXT,
-        student_id TEXT,
-        phone TEXT,
-        password_hash TEXT NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )`);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          role TEXT NOT NULL,
+          first_name TEXT,
+          last_name TEXT,
+          email TEXT NOT NULL UNIQUE,
+          personal_email TEXT,
+          student_id TEXT,
+          phone TEXT,
+          password_hash TEXT NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
 
       // user_login_history
       await client.query(`CREATE TABLE IF NOT EXISTS user_login_history (
@@ -629,6 +635,20 @@ const ensureDatabase = async () => {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )`);
+
+// create table
+await client.query(`CREATE TABLE IF NOT EXISTS campus_events (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    location VARCHAR(255),
+    start_time TIMESTAMPTZ,
+    end_time TIMESTAMPTZ,
+    image_url TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+)`);
+
 
       // indexes
       await client.query(`CREATE INDEX IF NOT EXISTS campus_events_start_time_idx ON campus_events (start_time)`);
