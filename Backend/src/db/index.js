@@ -158,8 +158,6 @@ const seedDashboardData = async (client) => {
     );
   }
 
- 
-
   const [{ count: calendarCount }] = (
     await client.query('SELECT COUNT(*)::INT FROM calendar_items')
   ).rows;
@@ -229,91 +227,95 @@ const seedDashboardData = async (client) => {
 
 /* ---------- NEW: SEED MERCHANDISE DATA ---------- */
 const seedMerchandiseData = async (client) => {
-  const { rows } = await client.query(`SELECT COUNT(*) AS count FROM merch_products`);
-  if (Number(rows[0]?.count || 0) > 0) return;
+  try {
+    const { rows } = await client.query(`SELECT COUNT(*) AS count FROM merch_products`);
+    if (Number(rows[0]?.count || 0) > 0) return;
 
-  const products = [
-  {
-      name: 'Campus Guide Book',
-      sku: 'MU-CAMPUS-GUIDE',
-      description: 'Essential guide for new students with maps and resources.',
-      category: 'Books',
-      price: 12.99,
-      stockQty: 150,
-      isFeatured: false,
-      imageUrl: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=600&q=80'
-    },
-    {
-      name: 'University Hoodie',
-      sku: 'MU-HOODIE',
-      description: 'Warm pullover with Murdoch logo.',
-      category: 'Apparel',
-      price: 49.0,
-      stockQty: 80,
-      isFeatured: true,
-      imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=600&q=80'
-    },
-    {
-      name: 'Event Ticket',
-      sku: 'MU-EVENT-TICKET',
-      description: 'Access to annual campus festival and activities.',
-      category: 'Tickets',
-      price: 25.0,
-      stockQty: 200,
-      isFeatured: false,
-      imageUrl: 'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&w=600&q=80'
-    },
-    {
-      name: 'Enamel Pin',
-      sku: 'MU-ENAMEL-PIN',
-      description: 'Collectible enamel pin.',
-      category: 'Accessories',
-      price: 6.5,
-      stockQty: 300,
-      isFeatured: false,
-      imageUrl: 'https://images.unsplash.com/photo-1475180098004-ca77a66827be?auto=format&fit=crop&w=600&q=80'
-    },
-    {
-      name: 'Stationery Set',
-      sku: 'MU-STATIONERY-SET',
-      description: 'Notebook and pen set.',
-      category: 'Stationery',
-      price: 9.75,
-      stockQty: 250,
-      isFeatured: false,
-      imageUrl: 'https://images.unsplash.com/photo-1503602642458-232111445657?auto=format&fit=crop&w=600&q=80'
-    },
-    {
-      name: 'Campus Tote Bag',
-      sku: 'MU-TOTE-BAG',
-      description: 'Canvas tote with MU print.',
-      category: 'Accessories',
-      price: 15.0,
-      stockQty: 120,
-      isFeatured: true,
-      imageUrl: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=600&q=80'
+    const products = [
+      {
+        name: 'Campus Guide Book',
+        sku: 'MU-CAMPUS-GUIDE',
+        description: 'Essential guide for new students with maps and resources.',
+        category: 'Books',
+        price: 12.99,
+        stockQty: 150,
+        isFeatured: false,
+        imageUrl: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=600&q=80'
+      },
+      {
+        name: 'University Hoodie',
+        sku: 'MU-HOODIE',
+        description: 'Warm pullover with Murdoch logo.',
+        category: 'Apparel',
+        price: 49.0,
+        stockQty: 80,
+        isFeatured: true,
+        imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=600&q=80'
+      },
+      {
+        name: 'Event Ticket',
+        sku: 'MU-EVENT-TICKET',
+        description: 'Access to annual campus festival and activities.',
+        category: 'Tickets',
+        price: 25.0,
+        stockQty: 200,
+        isFeatured: false,
+        imageUrl: 'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&w=600&q=80'
+      },
+      {
+        name: 'Enamel Pin',
+        sku: 'MU-ENAMEL-PIN',
+        description: 'Collectible enamel pin.',
+        category: 'Accessories',
+        price: 6.5,
+        stockQty: 300,
+        isFeatured: false,
+        imageUrl: 'https://images.unsplash.com/photo-1475180098004-ca77a66827be?auto=format&fit=crop&w=600&q=80'
+      },
+      {
+        name: 'Stationery Set',
+        sku: 'MU-STATIONERY-SET',
+        description: 'Notebook and pen set.',
+        category: 'Stationery',
+        price: 9.75,
+        stockQty: 250,
+        isFeatured: false,
+        imageUrl: 'https://images.unsplash.com/photo-1503602642458-232111445657?auto=format&fit=crop&w=600&q=80'
+      },
+      {
+        name: 'Campus Tote Bag',
+        sku: 'MU-TOTE-BAG',
+        description: 'Canvas tote with MU print.',
+        category: 'Accessories',
+        price: 15.0,
+        stockQty: 120,
+        isFeatured: true,
+        imageUrl: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=600&q=80'
+      }
+    ];
+
+    for (const product of products) {
+      await client.query(
+        `INSERT INTO merch_products (
+           name, sku, description, category, price, stock_qty, image_url,
+           is_active, is_featured, created_at, updated_at
+         )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8, NOW(), NOW())
+         ON CONFLICT (sku) DO NOTHING`,
+        [
+          product.name,
+          product.sku,
+          product.description,
+          product.category,
+          product.price,
+          product.stockQty,
+          product.imageUrl,
+          product.isFeatured
+        ]
+      );
     }
-  ];
-
-  for (const product of products) {
-    await client.query(
-      `INSERT INTO merch_products (
-         name, sku, description, category, price, stock_qty, image_url,
-         is_active, is_featured, created_at, updated_at
-       )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8, NOW(), NOW())
-       ON CONFLICT (sku) DO NOTHING`,
-            [
-        product.name,
-        product.sku,
-        product.description,
-        product.category,
-        product.price,
-        product.stockQty,
-        product.imageUrl,
-        product.isFeatured
-      ]
-    );
+  } catch (err) {
+    console.warn("Merch seeding skipped or failed (table might not exist yet)", err.message);
   }
 };
 
@@ -351,9 +353,21 @@ const ensureDatabase = async () => {
     
     const client = await pool.connect();
     try {
-      // Drop the table if it exists
+      // 1. EXTENSIONS & TYPES
+      // Ensure 'rec_action' enum exists with 'vote'
+      const checkEnum = await client.query("SELECT 1 FROM pg_type WHERE typname = 'rec_action'");
+      if (checkEnum.rowCount === 0) {
+        await client.query(`CREATE TYPE public.rec_action AS ENUM ('view', 'click', 'register', 'attend', 'dismiss', 'vote')`);
+      } else {
+        // If it exists, try to add 'vote' if missing (ignore error if exists)
+        try {
+          await client.query(`ALTER TYPE public.rec_action ADD VALUE IF NOT EXISTS 'vote'`);
+        } catch (e) {
+          // Ignore "duplicate value" errors on older Postgres versions that don't support IF NOT EXISTS for enums
+        }
+      }
 
-      // users
+      // 2. USERS & AUTH
       await client.query(`
         CREATE TABLE IF NOT EXISTS users (
           id SERIAL PRIMARY KEY,
@@ -366,9 +380,15 @@ const ensureDatabase = async () => {
           phone TEXT,
           password_hash TEXT NOT NULL,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          interests_text TEXT DEFAULT '' NOT NULL,
+          interest_embedding JSONB
         )
       `);
+      
+      // Add missing columns if table existed before
+      await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS interests_text TEXT DEFAULT '' NOT NULL`);
+      await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS interest_embedding JSONB`);
 
       // user_login_history
       await client.query(`CREATE TABLE IF NOT EXISTS user_login_history (
@@ -394,6 +414,8 @@ const ensureDatabase = async () => {
         CONSTRAINT user_consent_identity CHECK (user_id IS NOT NULL OR session_token IS NOT NULL)
       )`);
 
+      // 3. CORE CONTENT (Events, News, Posts)
+      
       // campus_news
       await client.query(`CREATE TABLE IF NOT EXISTS campus_news (
         id SERIAL PRIMARY KEY,
@@ -403,52 +425,89 @@ const ensureDatabase = async () => {
         link TEXT,
         image_url TEXT,
         published_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        news_embedding JSONB,
+        news_embedding_updated_at TIMESTAMP
+      )`);
+
+      // events (Custom Staff Events)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS events (
+          id SERIAL PRIMARY KEY,
+          type TEXT NOT NULL,
+          title TEXT NOT NULL,
+          date DATE NOT NULL,
+          venue TEXT NOT NULL,
+          description TEXT NOT NULL,
+          poster BYTEA,
+          created_at TIMESTAMP DEFAULT NOW(),
+          event_embedding JSONB,
+          event_embedding_updated_at TIMESTAMP
+        )
+      `);
+
+      // campus_events (Legacy/University Events)
+      await client.query(`CREATE TABLE IF NOT EXISTS campus_events (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT,
+        location TEXT,
+        start_time TIMESTAMPTZ,
+        end_time TIMESTAMPTZ,
+        image_url TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        event_embedding JSONB,
+        event_embedding_updated_at TIMESTAMP,
+        is_cancelled BOOLEAN DEFAULT FALSE NOT NULL,
+        max_participants INTEGER CHECK (max_participants > 0)
+      )`);
+
+      // community_posts
+      await client.query(`CREATE TABLE IF NOT EXISTS community_posts (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        category TEXT,
+        description TEXT NOT NULL,
+        tags TEXT[],
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        moderation_status TEXT DEFAULT 'publish' NOT NULL,
+        moderation_score DOUBLE PRECISION DEFAULT 0 NOT NULL,
+        moderation_meta JSONB,
+        image_url TEXT,
+        post_embedding JSONB,
+        post_embedding_updated_at TIMESTAMP
       )`);
 
       // competition
       await client.query(`
-      CREATE TABLE IF NOT EXISTS competition (
-        id SERIAL PRIMARY KEY,
-        hosts TEXT[],
-        title TEXT NOT NULL,
-        reward TEXT,
-        venue TEXT,
-        max_participants INTEGER,
-        due DATE,
-        description TEXT,
-        banner BYTEA,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+        CREATE TABLE IF NOT EXISTS competition (
+          id SERIAL PRIMARY KEY,
+          hosts TEXT[],
+          title TEXT NOT NULL,
+          reward TEXT,
+          venue TEXT,
+          max_participants INTEGER,
+          due DATE,
+          description TEXT,
+          banner BYTEA,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
 
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS events (
-        id SERIAL PRIMARY KEY,
-        type TEXT NOT NULL,
-        title TEXT NOT NULL,
-        date DATE NOT NULL,
-        venue TEXT NOT NULL,
-        description TEXT NOT NULL,
-        poster BYTEA,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-
-    `);
-      
-
-
-      // polls
+      // 4. POLLS
       await client.query(`CREATE TABLE IF NOT EXISTS polls (
         id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         description TEXT,
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
         expires_at TIMESTAMPTZ,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        poll_embedding JSONB,
+        poll_embedding_updated_at TIMESTAMP
       )`);
 
-      // poll_options
       await client.query(`CREATE TABLE IF NOT EXISTS poll_options (
         id SERIAL PRIMARY KEY,
         poll_id INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
@@ -456,7 +515,6 @@ const ensureDatabase = async () => {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )`);
 
-      // poll_votes
       await client.query(`CREATE TABLE IF NOT EXISTS poll_votes (
         id SERIAL PRIMARY KEY,
         poll_id INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
@@ -465,6 +523,46 @@ const ensureDatabase = async () => {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )`);
 
+      // 5. AI & RECOMMENDATIONS (UPDATED SCHEMA)
+      
+      // rec_interactions
+      await client.query(`CREATE TABLE IF NOT EXISTS rec_interactions (
+        id BIGSERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        content_id INTEGER NOT NULL,
+        content_type TEXT NOT NULL DEFAULT 'event',
+        action public.rec_action NOT NULL,
+        ts TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+        meta JSONB
+      )`);
+      
+      // Migrations for existing rec_interactions table
+      // 1. Rename event_id -> content_id if exists
+      try {
+        await client.query(`ALTER TABLE rec_interactions RENAME COLUMN event_id TO content_id`);
+      } catch (e) { /* ignore if already renamed */ }
+      
+      // 2. Add content_type if missing
+      await client.query(`ALTER TABLE rec_interactions ADD COLUMN IF NOT EXISTS content_type TEXT NOT NULL DEFAULT 'event'`);
+      
+      // 3. Drop old FK constraint to events if it exists
+      try {
+        await client.query(`ALTER TABLE rec_interactions DROP CONSTRAINT IF EXISTS rec_interactions_event_id_fkey`);
+      } catch (e) {}
+
+      // rec_suggestion_cache
+      await client.query(`CREATE TABLE IF NOT EXISTS rec_suggestion_cache (
+        suggestion_id BIGSERIAL PRIMARY KEY,
+        user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        headline JSONB DEFAULT '[]'::jsonb NOT NULL,
+        posts JSONB DEFAULT '[]'::jsonb NOT NULL,
+        polls JSONB DEFAULT '[]'::jsonb NOT NULL,
+        competitions JSONB DEFAULT '[]'::jsonb NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+      )`);
+
+      // 6. OTHER FEATURES (Spotlights, Rewards, Calendar, Merch, Feedback)
+      
       // student_spotlights
       await client.query(`CREATE TABLE IF NOT EXISTS student_spotlights (
         id SERIAL PRIMARY KEY,
@@ -487,7 +585,6 @@ const ensureDatabase = async () => {
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
       `);
-
 
       // calendar_items
       await client.query(`CREATE TABLE IF NOT EXISTS calendar_items (
@@ -518,23 +615,6 @@ const ensureDatabase = async () => {
         UNIQUE (user_id, source_type, source_id)
       )`);
 
-      // community_posts
-      await client.query(`CREATE TABLE IF NOT EXISTS community_posts (
-        id SERIAL PRIMARY KEY,
-        title TEXT NOT NULL,
-        category TEXT,
-        description TEXT NOT NULL,
-        tags TEXT[],
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )`);
-
-      // moderation fields
-      await client.query(`ALTER TABLE community_posts
-        ADD COLUMN IF NOT EXISTS moderation_status TEXT NOT NULL DEFAULT 'publish',
-        ADD COLUMN IF NOT EXISTS moderation_score DOUBLE PRECISION NOT NULL DEFAULT 0,
-        ADD COLUMN IF NOT EXISTS moderation_meta JSONB`);
-
       // feedback_submissions
       await client.query(`CREATE TABLE IF NOT EXISTS feedback_submissions (
         id SERIAL PRIMARY KEY,
@@ -554,26 +634,8 @@ const ensureDatabase = async () => {
         moderator_response TEXT,
         moderator_response_updated_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        CONSTRAINT feedback_submissions_status_check
-          CHECK (status IN ('pending', 'in_review', 'resolved', 'skipped'))
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )`);
-
-      await client.query(`ALTER TABLE feedback_submissions
-        DROP CONSTRAINT IF EXISTS feedback_submissions_status_check`);
-
-      await client.query(`ALTER TABLE feedback_submissions
-        ADD CONSTRAINT feedback_submissions_status_check
-          CHECK (status IN ('pending', 'in_review', 'resolved', 'skipped'))`);
-
-      await client.query(
-        `ALTER TABLE feedback_submissions
-           ADD COLUMN IF NOT EXISTS facility_location TEXT,
-           ADD COLUMN IF NOT EXISTS attachment_path TEXT,
-           ADD COLUMN IF NOT EXISTS attachment_data BYTEA,
-           ADD COLUMN IF NOT EXISTS moderator_response TEXT,
-           ADD COLUMN IF NOT EXISTS moderator_response_updated_at TIMESTAMPTZ`
-      );
 
       // merch_products
       await client.query(`CREATE TABLE IF NOT EXISTS merch_products (
@@ -592,8 +654,6 @@ const ensureDatabase = async () => {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )`);
-
-      await client.query(`ALTER TABLE merch_products ADD COLUMN IF NOT EXISTS image_url TEXT`);
       
       // merch_orders
       await client.query(`CREATE TABLE IF NOT EXISTS merch_orders (
@@ -607,15 +667,7 @@ const ensureDatabase = async () => {
         is_paid BOOLEAN NOT NULL DEFAULT FALSE,
         is_cancelled BOOLEAN NOT NULL DEFAULT FALSE,
         is_fulfilled BOOLEAN NOT NULL DEFAULT FALSE,
-        pickup_ready_at TIMESTAMPTZ NOT NULL DEFAULT (
-          NOW() + INTERVAL '2 days' + (
-            CASE
-              WHEN COALESCE(current_setting('murdoch.randomize_pickup_ready', true), 'false')::BOOLEAN
-                THEN FLOOR(random() * 4)::INT * INTERVAL '1 day'
-              ELSE INTERVAL '0 days'
-            END
-          )
-        ),
+        pickup_ready_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '2 days',
         subtotal NUMERIC(12,2) NOT NULL DEFAULT 0,
         tax_total NUMERIC(12,2) NOT NULL DEFAULT 0,
         total NUMERIC(12,2) NOT NULL DEFAULT 0,
@@ -636,21 +688,18 @@ const ensureDatabase = async () => {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )`);
 
-// create table
-await client.query(`CREATE TABLE IF NOT EXISTS campus_events (
-    id SERIAL PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    location VARCHAR(255),
-    start_time TIMESTAMPTZ,
-    end_time TIMESTAMPTZ,
-    image_url TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-)`);
+      // Audit Logs
+      await client.query(`CREATE TABLE IF NOT EXISTS audit_logs (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        action_type TEXT NOT NULL,
+        resource_type TEXT NOT NULL,
+        details JSONB,
+        ip_address TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )`);
 
-
-      // indexes
+      // 7. INDEXES
       await client.query(`CREATE INDEX IF NOT EXISTS campus_events_start_time_idx ON campus_events (start_time)`);
       await client.query(`CREATE INDEX IF NOT EXISTS calendar_items_start_time_idx ON calendar_items (start_time)`);
       await client.query(`CREATE INDEX IF NOT EXISTS user_calendar_items_user_id_date_idx ON user_calendar_items (user_id, date, time)`);
@@ -659,6 +708,10 @@ await client.query(`CREATE TABLE IF NOT EXISTS campus_events (
       await client.query(`CREATE INDEX IF NOT EXISTS feedback_submissions_status_idx ON feedback_submissions (status, created_at DESC)`);
       await client.query(`CREATE INDEX IF NOT EXISTS merch_products_category_idx ON merch_products (category)`);
       await client.query(`CREATE INDEX IF NOT EXISTS merch_orders_status_idx ON merch_orders (status)`);
+      
+      // AI Indexes
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_rec_interactions_content ON rec_interactions (content_type, content_id)`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_rec_cache_user_created ON rec_suggestion_cache (user_id, created_at DESC)`);
 
       await seedDashboardData(client);
       await seedMerchandiseData(client);
